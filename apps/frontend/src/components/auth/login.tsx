@@ -41,22 +41,40 @@ export function Login() {
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
     setLoading(true);
     setNotActivated(false);
-    const login = await fetchData('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...data,
-        provider: 'LOCAL',
-      }),
-    });
-    if (login.status === 400) {
-      const errorMessage = await login.text();
-      if (errorMessage === 'User is not activated') {
-        setNotActivated(true);
-      } else {
+    try {
+      const login = await fetchData('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...data,
+          provider: 'LOCAL',
+        }),
+      });
+      if (login.status === 400) {
+        const errorMessage = await login.text();
+        if (errorMessage === 'User is not activated') {
+          setNotActivated(true);
+        } else {
+          form.setError('email', {
+            message: errorMessage,
+          });
+        }
+      } else if (login.status >= 400) {
         form.setError('email', {
-          message: errorMessage,
+          message:
+            login.status === 404
+              ? 'Your browser got a 404 when trying to contact the API, the most likely reasons for this are the NEXT_PUBLIC_BACKEND_URL is set incorrectly, or the backend is not running.'
+              : `Login failed with HTTP status ${login.status}. Please check that the backend is running and reachable.`,
         });
       }
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      form.setError('email', {
+        message:
+          'Could not contact the API. Please check that NEXT_PUBLIC_BACKEND_URL is set correctly and the backend is running. Error: ' +
+          errorMessage,
+      });
+    } finally {
       setLoading(false);
     }
   };

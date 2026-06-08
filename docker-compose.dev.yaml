@@ -12,7 +12,7 @@ services:
       POSTGRES_PASSWORD: postiz-local-pwd
       POSTGRES_USER: postiz-local
       POSTGRES_DB: postiz-db-local
-      TEMPORAL_ADDRESS: "temporal:7233"
+      TEMPORAL_ADDRESS: 'temporal:7233'
     volumes:
       - postgres-volume:/var/lib/postgresql/data
     ports:
@@ -34,7 +34,7 @@ services:
     container_name: postiz-pg-admin
     restart: always
     ports:
-      - 8081:80
+      - 8082:80
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
       PGADMIN_DEFAULT_PASSWORD: admin
@@ -88,7 +88,7 @@ services:
   temporal:
     container_name: temporal
     ports:
-      - "7233:7233"
+      - '7233:7233'
     image: temporalio/auto-setup:1.28.1
     depends_on:
       - temporal-postgresql
@@ -133,7 +133,7 @@ services:
     networks:
       - temporal-network
     ports:
-      - "8080:8080"
+      - '8080:8080'
 
 volumes:
   redisinsight:

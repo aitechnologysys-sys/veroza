@@ -11,11 +11,12 @@ import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
+import { IBillingProvider } from '@gitroom/nestjs-libraries/services/billing.provider.interface';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing');
 
 @Injectable()
-export class StripeService {
+export class StripeService implements IBillingProvider {
   constructor(
     private _subscriptionService: SubscriptionService,
     private _organizationService: OrganizationService,
@@ -351,9 +352,9 @@ export class StripeService {
     };
   }
 
-  async getCustomerByOrganizationId(organizationId: string) {
+  async getCustomerByOrganizationId(organizationId: string): Promise<string | null> {
     const org = (await this._organizationService.getOrgById(organizationId))!;
-    return org.paymentId;
+    return org.paymentId ?? null;
   }
 
   async createBillingPortalLink(customer: string) {

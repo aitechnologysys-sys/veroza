@@ -60,7 +60,9 @@ export const FirstBillingComponent = () => {
   const [datafast_session_id] = useCookie('datafast_session_id', '');
 
   useEffect(() => {
-    setStripe(loadStripe(stripeClient));
+    if (stripeClient) {
+      setStripe(loadStripe(stripeClient));
+    }
   }, []);
 
   const loadCheckout = useCallback(async () => {
@@ -105,6 +107,13 @@ export const FirstBillingComponent = () => {
       refreshWhenHidden: false,
     }
   );
+
+  // Polar returns { url } — redirect directly to hosted checkout
+  useEffect(() => {
+    if (data?.url) {
+      window.location.href = data.url;
+    }
+  }, [data?.url]);
 
   const price = useMemo(
     () => Object.entries(pricing).filter(([key, value]) => key !== 'FREE'),
@@ -205,7 +214,7 @@ export const FirstBillingComponent = () => {
           <div className="block tablet:hidden">
             <JoinOver />
           </div>
-          {!isLoading && data && stripe ? (
+          {!isLoading && data?.client_secret && stripe ? (
             <EmbeddedBilling
               stripe={stripe}
               secret={data.client_secret}

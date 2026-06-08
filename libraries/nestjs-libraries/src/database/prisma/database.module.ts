@@ -17,6 +17,7 @@ import { MediaRepository } from '@gitroom/nestjs-libraries/database/prisma/media
 import { NotificationsRepository } from '@gitroom/nestjs-libraries/database/prisma/notifications/notifications.repository';
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
+import { PolarService } from '@gitroom/nestjs-libraries/services/polar.service';
 import { ExtractContentService } from '@gitroom/nestjs-libraries/openai/extract.content.service';
 import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
 import { AgenciesService } from '@gitroom/nestjs-libraries/database/prisma/agencies/agencies.service';
@@ -68,6 +69,13 @@ import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/adm
     PostsService,
     PostsRepository,
     StripeService,
+    PolarService,
+    {
+      provide: 'BILLING_PROVIDER',
+      useFactory: (stripe: StripeService, polar: PolarService) =>
+        process.env.BILLING_PROVIDER === 'polar' ? polar : stripe,
+      inject: [StripeService, PolarService],
+    },
     SignatureRepository,
     AutopostRepository,
     AutopostService,

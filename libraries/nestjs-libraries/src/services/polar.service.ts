@@ -57,16 +57,11 @@ export class PolarService implements IBillingProvider {
       throw new Error('Polar webhook timestamp is too old');
     }
 
-    const rawSecret = process.env.POLAR_WEBHOOK_SECRET!;
-    // Polar uses "polar_whs_BASE64KEY"; Svix standard uses "whsec_BASE64KEY"
-    let secretBytes: Buffer;
-    if (rawSecret.startsWith('polar_whs_')) {
-      secretBytes = Buffer.from(rawSecret.slice('polar_whs_'.length), 'base64');
-    } else if (rawSecret.startsWith('whsec_')) {
-      secretBytes = Buffer.from(rawSecret.slice('whsec_'.length), 'base64');
-    } else {
-      secretBytes = Buffer.from(rawSecret);
-    }
+    // Polar base64-encodes the configured secret and hands it to the
+    // standardwebhooks lib, which base64-decodes it again — the two cancel out.
+    // The effective HMAC key is therefore the raw secret string as UTF-8 bytes
+    // (whole string, including any "polar_whs_"/"whsec_" prefix, no decoding).
+    const secretBytes = process.env.POLAR_WEBHOOK_SECRET!;
 
     const signedContent = `${msgId}.${msgTimestamp}.${rawBody.toString(
       'utf8'
@@ -75,6 +70,7 @@ export class PolarService implements IBillingProvider {
       .update(signedContent)
       .digest('base64');
 
+    // webhook-signature is a space-separated list of "v1,<base64sig>" entries
     const signatures = msgSignatures
       .split(' ')
       .map((s: string) => s.split(',').slice(1).join(','))
@@ -177,7 +173,7 @@ export class PolarService implements IBillingProvider {
         params: { external_id: organization.id, limit: 1 },
       })
       .then((r) => r.data?.items?.[0] ?? null)
-      .catch(() => null);
+      .catch((): null => null);
 
     const customerId = existing
       ? existing.id
@@ -227,7 +223,7 @@ export class PolarService implements IBillingProvider {
     const { data } = await this.http.get('/v1/products', {
       params: { limit: 100 },
     });
-    console.log('what ', JSON.stringify(data));
+
     const product = (data?.items ?? []).find((item: any) =>
       (item?.prices ?? []).some(
         (price: any) =>

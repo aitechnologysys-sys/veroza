@@ -167,12 +167,13 @@ export class PolarService implements IBillingProvider {
       ? users.users[0].user.email
       : `${users.users[0].user.email}@postiz.com`;
 
-    // Check if customer already exists in Polar by external_id
+    // Check if customer already exists in Polar by external_id.
+    // Use the dedicated external-id endpoint (returns the single customer or
+    // 404). The list endpoint ignores an unknown `external_id` filter and
+    // returns ALL customers, so items[0] would wrongly match the oldest one.
     const existing = await this.http
-      .get('/v1/customers', {
-        params: { external_id: organization.id, limit: 1 },
-      })
-      .then((r) => r.data?.items?.[0] ?? null)
+      .get(`/v1/customers/external/${organization.id}`)
+      .then((r) => r.data ?? null)
       .catch((): null => null);
 
     const customerId = existing

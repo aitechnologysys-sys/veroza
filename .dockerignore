@@ -21,3 +21,11 @@ dist
 .git
 .github
 reports
+
+# Never bake runtime secrets or local data into the image. Config is injected at
+# runtime via docker-compose (env_file/environment); the build does not need .env.
+.env
+.env.*
+!.env.example
+uploads
+.pnpm-store

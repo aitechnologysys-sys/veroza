@@ -161,7 +161,9 @@ docker compose -p postiz-dev -f docker-compose.dev.yaml down
 
 # PROD (everything in Docker)
 
-docker compose -p postiz-prod up -d --build
+docker compose -p postiz-prod up -d --build (first time)
+
+docker compose -p postiz-prod up -d
 
 # ... verify at http://localhost:4007 ...
 

@@ -83,12 +83,10 @@
 
 ### Our Sponsors
 
-| Sponsor |                                  Logo                                   | Description     |
-|---------|:-----------------------------------------------------------------------:|-----------------|
-| [Hostinger](https://www.hostinger.com/vps/docker/postiz?ref=postiz) | <img src=".github/sponsors/hostinger.png" alt="Hostinger" width="500"/> | Hostinger is on a mission to make online success possible for anyone – from developers to aspiring bloggers and business owners |
-| [Virlo](https://dev.virlo.ai/?ref=postiz) | <img src="https://github.com/user-attachments/assets/25182598-5344-45fc-b9cd-e4cfa16aabfd" alt="Virlo" width="500"/> | Virlo is the #1 social media trend spotting and all-in-one GTM tool for teams leveraging short-form video |
-
-
+| Sponsor                                                             |                                                         Logo                                                         | Description                                                                                                                     |
+| ------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------: | ------------------------------------------------------------------------------------------------------------------------------- |
+| [Hostinger](https://www.hostinger.com/vps/docker/postiz?ref=postiz) |                       <img src=".github/sponsors/hostinger.png" alt="Hostinger" width="500"/>                        | Hostinger is on a mission to make online success possible for anyone – from developers to aspiring bloggers and business owners |
+| [Virlo](https://dev.virlo.ai/?ref=postiz)                           | <img src="https://github.com/user-attachments/assets/25182598-5344-45fc-b9cd-e4cfa16aabfd" alt="Virlo" width="500"/> | Virlo is the #1 social media trend spotting and all-in-one GTM tool for teams leveraging short-form video                       |
 
 # Intro
 
@@ -115,6 +113,7 @@ To have the project up and running, please follow the [Quick Start Guide](https:
 ## Sponsor Postiz
 
 We now give a few options to Sponsor Postiz:
+
 - Just a donation: You like what we are building, and want to buy us some coffees so we can build faster.
 - Main Repository: Get your logo with a backlink from the main Postiz repository. Postiz has almost 3m downloads and 20k views per month.
 - Main Repository + Website: Get your logo on the central repository and the main website. Here are some metrics: - Website has 20k hits per month + 65 DR (strong backlink) - Repository has 20k hits per month + Almost 3m docker downloads.
@@ -146,3 +145,30 @@ This repository's source code is available under the [AGPL-3.0 license](LICENSE)
 <p align="center">
   <img src="https://github.com/snyk-labs/secure-developer-sample-repo/raw/main/badge_full.svg" alt="Secure Developer Badge Full" width="150">
 </p>
+
+# DEV (deps in Docker, app on host)
+
+docker compose -p postiz-dev -f docker-compose.dev.yaml up -d
+pnpm run prisma-db-push # first time / after schema changes
+pnpm run dev
+ngrok http 3000 (if polar webhook test) - put any other port if you need
+
+# ... verify at http://localhost:4200 ...
+
+# stop it:
+
+docker compose -p postiz-dev -f docker-compose.dev.yaml down
+
+# PROD (everything in Docker)
+
+docker compose -p postiz-prod up -d --build
+
+# ... verify at http://localhost:4007 ...
+
+# To test prod build with polar webhook
+
+ngrok http 4007
+
+# stop it:
+
+docker compose -p postiz-prod down

@@ -9,11 +9,11 @@ import { PolarService } from '@gitroom/nestjs-libraries/services/polar.service';
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Polar')
-@Controller('/payment-webhook')
+@Controller('/')
 export class PolarController {
   constructor(private readonly _polarService: PolarService) {}
 
-  @Post('/')
+  @Post(['/payment-webhook', '/api/payment-webhook'])
   async polar(@Req() req: RawBodyRequest<Request>) {
     const rawHeaders = req.headers as any;
     const headers: Record<string, string> = {

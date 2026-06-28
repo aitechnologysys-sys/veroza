@@ -17,10 +17,10 @@ services:
     container_name: postiz
     restart: always
 
-    # All secrets / API keys come from the root .env file (JWT, Cloudflare, social
-    # keys, email, OpenAI, Polar, Stripe, etc.). Edit .env, not this file.
+    # All secrets / API keys come from .env.prod (JWT, Cloudflare, social
+    # keys, email, OpenAI, Polar, Stripe, etc.). Edit .env.prod, not this file.
     env_file:
-      - .env
+      - .env.prod
 
     # Infra wiring that MUST point at compose service names / container paths.
     # `environment:` overrides `env_file`, so these win over the localhost-based

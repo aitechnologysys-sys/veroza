@@ -22,9 +22,20 @@ Postiz/Postaryx is an AI social media scheduling tool supporting 28+ channels (I
 
 ## Billing
 
-Billing has been migrated from Stripe to **Polar**, behind an `IBillingProvider` abstraction — both providers are still in the tree and are selected at runtime by `BILLING_PROVIDER` (`stripe` | `polar`). See **`docs/billing-current-state.md`** for the authoritative current state, the Stripe re-enablement steps, and the Stripe test-mode setup. Related background: `docs/stripe-implementation.md` (pre-migration reference) and `docs/polar-integration-plan.md` (the original plan — partially superseded by what was actually built).
+Both `StripeService` and `PolarService` implement `IBillingProvider` and live behind two independent env switches:
 
-Important gotcha to be aware of before touching anything billing-adjacent: `STRIPE_PUBLISHABLE_KEY` / `STRIPE_SECRET_KEY` are still used across the codebase as the global "is billing enforced at all" switch, independently of `BILLING_PROVIDER`. Details in `docs/billing-current-state.md`.
+| Var | Question it answers | Values |
+|---|---|---|
+| `BILLING_ENABLED` | Is billing **enforced** at all? | must be the literal `"true"`; anything else = free/self-hosted mode |
+| `BILLING_PROVIDER` | **Which gateway** handles checkout? | `stripe` (default) \| `polar` |
+
+**Currently active: Stripe.** Polar is implemented and parked.
+
+`BILLING_ENABLED` is the single source of truth for enforcement, and it is read in exactly one place — `isBillingEnabled()` in `libraries/helpers/src/utils/is.billing.enabled.ts`. Import that function; **never** gate a feature on `process.env.STRIPE_*` or `process.env.POLAR_*`. Upstream Postiz used the presence of `STRIPE_PUBLISHABLE_KEY` as the enforcement gate in 15 scattered places; we deliberately diverge from upstream here. The only two legitimate `process.env.STRIPE_*` reads left in the tree are the Stripe SDK constructor and the `stripeClient` prop that feeds `loadStripe()`.
+
+The Stripe API version is pinned explicitly in `stripe.service.ts` (`STRIPE_API_VERSION`), unlike upstream which inherits the SDK's default. It must stay in sync with the API version configured on the Stripe webhook endpoint — a mismatch fails silently. Don't remove the pin, and treat an SDK bump as a change that also touches the dashboard.
+
+See **`docs/billing-current-state.md`** for the full picture: provider wiring, Stripe setup and test-mode products, webhook/ngrok setup, and the Polar feature gaps. Background: `docs/stripe-implementation.md` (pre-migration reference) and `docs/polar-integration-plan.md` (original plan, partially superseded).
 
 ## Monorepo Structure
 

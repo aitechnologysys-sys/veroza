@@ -4,7 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Postiz is an AI social media scheduling tool supporting 28+ channels (Instagram, X, LinkedIn, YouTube, TikTok, Discord, Slack, Bluesky, etc.). It's a production system with real users — always consider backward compatibility and data migrations when changing the schema or existing behavior.
+This is a **fork of [Postiz](https://github.com/gitroomhq/postiz-app)** being taken in its own product direction. Names you will see:
+
+| Where | Name |
+|---|---|
+| Product / brand (target) | **Postaryx** |
+| Git repository (`origin`) | `aitechnologysys-sys/veroza` — **VEROZA** is the holding-company / repo name, not the product name |
+| Upstream remote (`upstream`) | `gitroomhq/postiz-app` — the original Postiz repo, kept for pulling changes |
+| Local directory | `postiz-app` (unchanged from the original clone) |
+| `package.json` `name` | `gitroom` (unchanged upstream value) |
+
+The rename to Postaryx is **not complete**. Code, packages, path aliases (`@gitroom/*`), env var names, database identifiers, and user-facing strings still say "postiz"/"gitroom" in most places. Do **not** do a blanket find-and-replace — a rename has to be scoped and deliberate (e.g. user-facing copy first, then env/config, and internal identifiers only if there's a concrete reason). Ask before renaming anything that crosses a runtime boundary: path aliases, env var names, Prisma model/column names, Stripe/Polar metadata values (`service: 'gitroom'` / `service: 'postiz'`), or the published SDK package.
+
+Postiz/Postaryx is an AI social media scheduling tool supporting 28+ channels (Instagram, X, LinkedIn, YouTube, TikTok, Discord, Slack, Bluesky, etc.). Treat it as a production system — always consider backward compatibility and data migrations when changing the schema or existing behavior.
+
+**Keeping close to upstream is a deliberate goal.** When there's a choice between an idiomatic-for-us change and one that mirrors what upstream Postiz does, prefer mirroring upstream — it keeps `git merge upstream/main` tractable. Where we intentionally diverge (e.g. the billing provider abstraction), document the divergence in `docs/`.
+
+## Billing
+
+Billing has been migrated from Stripe to **Polar**, behind an `IBillingProvider` abstraction — both providers are still in the tree and are selected at runtime by `BILLING_PROVIDER` (`stripe` | `polar`). See **`docs/billing-current-state.md`** for the authoritative current state, the Stripe re-enablement steps, and the Stripe test-mode setup. Related background: `docs/stripe-implementation.md` (pre-migration reference) and `docs/polar-integration-plan.md` (the original plan — partially superseded by what was actually built).
+
+Important gotcha to be aware of before touching anything billing-adjacent: `STRIPE_PUBLISHABLE_KEY` / `STRIPE_SECRET_KEY` are still used across the codebase as the global "is billing enforced at all" switch, independently of `BILLING_PROVIDER`. Details in `docs/billing-current-state.md`.
 
 ## Monorepo Structure
 

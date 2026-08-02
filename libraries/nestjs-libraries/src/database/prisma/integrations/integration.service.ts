@@ -18,6 +18,7 @@ import { timer } from '@gitroom/helpers/utils/timer';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { RefreshToken } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { IntegrationTimeDto } from '@gitroom/nestjs-libraries/dtos/integrations/integration.time.dto';
+import { isBillingEnabled } from '@gitroom/helpers/utils/is.billing.enabled';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { PlugDto } from '@gitroom/nestjs-libraries/dtos/plugs/plug.dto';
 import { difference, uniq } from 'lodash';
@@ -256,7 +257,7 @@ export class IntegrationService {
       await this._integrationRepository.getIntegrationsList(org)
     ).filter((f) => !f.disabled);
     if (
-      !!process.env.STRIPE_PUBLISHABLE_KEY &&
+      isBillingEnabled() &&
       integrations.length >= totalChannels
     ) {
       throw new Error('You have reached the maximum number of channels');

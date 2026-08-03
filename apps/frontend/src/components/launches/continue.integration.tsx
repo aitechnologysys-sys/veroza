@@ -72,13 +72,7 @@ export const ContinueIntegration: FC<{
       };
     }
 
-    if (provider === 'vk') {
-      return {
-        ...searchParams,
-        state: searchParams.state || '',
-        code: searchParams.code + '&&&&' + searchParams.device_id,
-      };
-    }
+    // VK removed deliberately — see scripts/check-banned-providers.mjs
 
     if (provider === 'mewe') {
       const hash =

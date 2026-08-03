@@ -56,7 +56,6 @@ export type AllProvidersSettings =
   | ProviderExtension<'telegram', None>
   | ProviderExtension<'nostr', None>
   | ProviderExtension<'moltbook', MoltbookDto>
-  | ProviderExtension<'vk', None>
   | ProviderExtension<'skool', SkoolDto>
   | ProviderExtension<'mewe', MeweDto>
   | ProviderExtension<'whop', WhopDto>;
@@ -93,7 +92,7 @@ export const allProviders = (setEmpty?: any) => {
     { value: setEmpty, name: 'bluesky' },
     { value: setEmpty, name: 'telegram' },
     { value: setEmpty, name: 'nostr' },
-    { value: setEmpty, name: 'vk' },
+    // VK removed deliberately — see scripts/check-banned-providers.mjs
     { value: MoltbookDto, name: 'moltbook' },
     { value: SkoolDto, name: 'skool' },
     { value: WhopDto, name: 'whop' },

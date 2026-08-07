@@ -111,11 +111,20 @@ export class IntegrationService {
     timezone?: number,
     customInstanceDetails?: string
   ) {
-    const uploadedPicture = picture
-      ? picture?.indexOf('imagedelivery.net') > -1
-        ? picture
-        : await this.storage.uploadSimple(picture)
-      : undefined;
+    let uploadedPicture = picture;
+    if (uploadedPicture) {
+      try {
+        uploadedPicture =
+          uploadedPicture.indexOf('imagedelivery.net') > -1
+            ? uploadedPicture
+            : await this.storage.uploadSimple(uploadedPicture);
+      } catch (err) {
+        // Avatar persistence is best-effort. A bad remote image should not
+        // abort the social integration flow.
+        console.warn('Skipping integration picture upload:', err);
+        uploadedPicture = undefined;
+      }
+    }
 
     return this._integrationRepository.createOrUpdateIntegration(
       additionalSettings,

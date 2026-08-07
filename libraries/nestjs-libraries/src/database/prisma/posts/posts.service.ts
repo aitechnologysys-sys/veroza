@@ -49,7 +49,7 @@ import { RefreshToken } from '@gitroom/nestjs-libraries/integrations/social.abst
 import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { stripLinks } from '@gitroom/helpers/utils/strip.links';
-import { validate } from 'class-validator';
+import { getMetadataStorage, validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import { weightedLength } from '@gitroom/helpers/utils/count.length';
@@ -801,14 +801,23 @@ export class PostsService {
         let valid = true;
         let settingsError = '';
         if (provider?.dto) {
-          const instance = plainToInstance(provider.dto, settings, {
-            enableImplicitConversion: true,
-          });
-          const validationErrors = await validate(instance as object, {
-            skipMissingProperties: false,
-          });
-          settingsError = this.firstValidationError(validationErrors);
-          valid = validationErrors.length === 0;
+          const validationMetadata = getMetadataStorage().getTargetValidationMetadatas(
+            provider.dto,
+            '',
+            false,
+            false
+          );
+
+          if (validationMetadata.length > 0) {
+            const instance = plainToInstance(provider.dto, settings, {
+              enableImplicitConversion: true,
+            });
+            const validationErrors = await validate(instance as object, {
+              skipMissingProperties: false,
+            });
+            settingsError = this.firstValidationError(validationErrors);
+            valid = validationErrors.length === 0;
+          }
         }
 
         // Provider-specific media validation (the old client `checkValidity`).

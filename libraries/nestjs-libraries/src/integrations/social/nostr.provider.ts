@@ -71,6 +71,17 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
     };
   }
 
+  private privateKeyToBytes(privateKey: string): Uint8Array {
+    const normalized = String(privateKey || '').trim().toLowerCase();
+    if (!/^[0-9a-f]{64}$/.test(normalized)) {
+      throw new Error('Invalid Nostr private key. Expected a 64-character hex key.');
+    }
+
+    return Uint8Array.from(
+      normalized.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
+    );
+  }
+
   private async findRelayInformation(pubkey: string) {
     // This queries ALL relays in parallel and resolves with
     // the first matching event from ANY relay.
@@ -136,12 +147,8 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
   }) {
     try {
       const body = JSON.parse(Buffer.from(params.code, 'base64').toString());
-
-      const pubkey = getPublicKey(
-        Uint8Array.from(
-          body.password.match(/.{1,2}/g).map((byte: any) => parseInt(byte, 16))
-        )
-      );
+      const privateKey = this.privateKeyToBytes(body.password);
+      const pubkey = getPublicKey(privateKey);
 
       const user = await this.findRelayInformation(pubkey);
 
@@ -174,6 +181,7 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
   ): Promise<PostResponse[]> {
     const { password } = AuthService.verifyJWT(accessToken) as any;
     const [firstPost] = postDetails;
+    const privateKey = this.privateKeyToBytes(password);
 
     const textEvent = finalizeEvent(
       {
@@ -182,7 +190,7 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
         tags: [],
         created_at: Math.floor(Date.now() / 1000),
       },
-      password
+      privateKey
     );
 
     const eventId = await this.publish(id, textEvent);
@@ -208,6 +216,7 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
     const { password } = AuthService.verifyJWT(accessToken) as any;
     const [commentPost] = postDetails;
     const replyToId = lastCommentId || postId;
+    const privateKey = this.privateKeyToBytes(password);
 
     const textEvent = finalizeEvent(
       {
@@ -219,7 +228,7 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
         ],
         created_at: Math.floor(Date.now() / 1000),
       },
-      password
+      privateKey
     );
 
     const eventId = await this.publish(id, textEvent);

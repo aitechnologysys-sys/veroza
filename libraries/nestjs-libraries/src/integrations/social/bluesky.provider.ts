@@ -151,7 +151,8 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 2; // Bluesky has moderate rate limits
   identifier = 'bluesky';
   name = 'Bluesky';
-  toolTip = "We don’t currently support two-factor authentication. If it’s enabled on Bluesky, you’ll need to disable it."
+  toolTip =
+    'Use your Bluesky handle or account email plus an app password. If you are on a custom PDS, set the service URL to that host. We do not currently support two-factor authentication.'
   isBetweenSteps = false;
   scopes = ['write:statuses', 'profile', 'write:media'];
   editor = 'normal' as const;
@@ -189,13 +190,13 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
       },
       {
         key: 'identifier',
-        label: 'Identifier',
+        label: 'Handle or email',
         validation: `/^.+$/`,
         type: 'text' as const,
       },
       {
         key: 'password',
-        label: 'Password',
+        label: 'App password',
         validation: `/^.{3,}$/`,
         type: 'password' as const,
       },

@@ -148,16 +148,56 @@ This repository's source code is available under the [AGPL-3.0 license](LICENSE)
 
 # DEV (deps in Docker, app on host)
 
+
+# Development
+
+## First time
+
+```bash
+pnpm install
+
 docker compose -p postiz-dev -f docker-compose.dev.yaml up -d
-pnpm run prisma-db-push # first time / after schema changes
+
+pnpm run prisma-db-push
+
 pnpm run dev
-ngrok http 3000 (if polar webhook test) - put any other port if you need
+```
 
-# ... verify at http://localhost:4200 ...
+Open:
 
-# stop it:
+```
+http://localhost:4200
+```
 
+## Daily
+
+Start dependencies:
+
+```bash
+docker compose -p postiz-dev -f docker-compose.dev.yaml up -d
+```
+
+Start the app:
+
+```bash
+pnpm run dev
+```
+
+## Stop
+
+```bash
 docker compose -p postiz-dev -f docker-compose.dev.yaml down
+```
+
+## Common issue (Linux)
+
+If you get **"OS file watch limit reached"**:
+
+```bash
+echo "fs.inotify.max_user_watches=524288" | sudo tee /etc/sysctl.d/99-inotify.conf
+echo "fs.inotify.max_user_instances=1024" | sudo tee -a /etc/sysctl.d/99-inotify.conf
+sudo sysctl --system
+```
 
 # PROD (everything in Docker)
 

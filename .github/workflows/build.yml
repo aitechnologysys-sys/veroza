@@ -2,7 +2,16 @@
 name: Build
 
 on:
+  # Upstream has a bare `push:` here, which matches EVERY branch. Combined with
+  # `pull_request:` below, that builds the same commit twice as soon as a PR is
+  # open — once for the push event, once for the pull_request event. Restricting
+  # push to the default branch means: feature branches build once (via the PR),
+  # main builds once (directly). Same coverage, half the runs.
+  #
+  # Divergence from upstream — expect a conflict here on `git merge upstream/main`
+  # and keep our version. See docs/UPSTREAM-SYNC.md.
   push:
+    branches: [main]
   merge_group:
   pull_request:
 

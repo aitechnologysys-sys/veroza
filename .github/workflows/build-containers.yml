@@ -73,17 +73,16 @@ jobs:
           # GHCR requires an all-lowercase image path; the owner/repo may not be.
           REPO="$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
           IMAGE="ghcr.io/${REPO}"
-          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
           # Bare package name (repo without the owner) — what the GHCR API and the
           # pruning step below expect. Derived from github.repository rather than
           # github.event.repository.name so it is defined for every event type.
-          echo "package=${REPO#*/}" >> "$GITHUB_OUTPUT"
+          PACKAGE="${REPO#*/}"
 
           # Shown in the app UI by launches.component.tsx. Pair the release line
           # from version.txt with the commit so a running container is traceable
           # back to an exact build.
-          echo "version=$(cat version.txt)-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          VERSION="$(cat version.txt)-${GITHUB_SHA::7}"
 
           # The sha tag is always pushed — it is the rollback handle.
           TAGS="${IMAGE}:${{ github.sha }}"
@@ -104,9 +103,14 @@ jobs:
           ${IMAGE}:branch-${SAFE_REF}"
           fi
 
+          # One grouped redirect (shellcheck SC2129). `tags` is multi-line, so it
+          # needs GitHub's heredoc form rather than a plain key=value.
           {
+            echo "image=${IMAGE}"
+            echo "package=${PACKAGE}"
+            echo "version=${VERSION}"
             echo 'tags<<__EOF__'
-            echo "$TAGS"
+            echo "${TAGS}"
             echo '__EOF__'
           } >> "$GITHUB_OUTPUT"
 

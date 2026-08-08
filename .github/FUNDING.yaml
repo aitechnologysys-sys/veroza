@@ -1,3 +1,24 @@
-#patreon: Postiz
-open_collective: postiz
-# github: gitroomhq
+# Sponsor button: intentionally disabled.
+#
+# This file is inherited from upstream Postiz (gitroomhq/postiz-app). Its
+# `open_collective: postiz` entry made the "Sponsor" button on OUR repo collect
+# money for THEM (https://opencollective.com/postiz) — verified live before it
+# was commented out. Every entry stays commented so no funding link is
+# published; GitHub hides the button when nothing is configured.
+#
+# Kept as a file rather than deleted on purpose: upstream still ships a
+# FUNDING.yaml, so deleting ours would turn every future upstream change to it
+# into a delete/modify merge conflict. See docs/UPSTREAM-SYNC.md.
+#
+# To enable sponsorship for Postaryx later, uncomment ONE line and put our own
+# account in it — never upstream's:
+#   github: <our-github-username-or-org>
+#   open_collective: <our-collective-slug>
+#   patreon: <our-patreon>
+#
+# Verify whatever you set actually resolves to us:
+#   gh api graphql -f query='{repository(owner:"aitechnologysys-sys",name:"veroza"){fundingLinks{platform url}}}'
+
+#open_collective: postiz      # ← upstream's collective. Do not re-enable.
+#patreon: Postiz              # ← upstream's Patreon. Do not re-enable.
+#github: gitroomhq            # ← upstream's org. Do not re-enable.

@@ -56,10 +56,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Deliberately NO `version:` here. pnpm/action-setup@v4 hard-errors with
+      # "Multiple versions of pnpm specified" if `version:` is given while
+      # package.json also has a `packageManager` field — and ours pins
+      # `pnpm@10.6.1`. Omitting it makes the action read that pin, so CI always
+      # uses the exact pnpm the repo declares.
+      #
+      # build.yml gets away with `version: 10` only because it is still on
+      # action-setup@v2, which predates this check. Do not copy that pattern here.
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
           run_install: false
 
       - name: Setup node

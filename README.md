@@ -166,16 +166,39 @@ quick-reference; the linked docs hold the detail and the reasoning.
 
 Dependencies in Docker, the three apps on the host.
 
+**First time:**
+
 ```bash
+pnpm install
 docker compose -p postiz-dev -f docker-compose.dev.yaml up -d   # Postgres, Redis, Temporal
-pnpm run prisma-db-push        # first time, and after any schema change
+pnpm run prisma-db-push        # also after any schema change
 pnpm run dev                   # backend + frontend + orchestrator
 # → http://localhost:4200
+```
 
-# Testing a billing webhook? Expose the backend:
-ngrok http 3000
+**Every day after that** — only these two:
 
-docker compose -p postiz-dev -f docker-compose.dev.yaml down    # stop
+```bash
+docker compose -p postiz-dev -f docker-compose.dev.yaml up -d
+pnpm run dev
+```
+
+**Stop:**
+
+```bash
+docker compose -p postiz-dev -f docker-compose.dev.yaml down
+```
+
+Testing a billing webhook? Expose the backend: `ngrok http 3000`
+
+### Common issue on Linux
+
+If you get **"OS file watch limit reached"**, raise the inotify limits:
+
+```bash
+echo "fs.inotify.max_user_watches=524288" | sudo tee /etc/sysctl.d/99-inotify.conf
+echo "fs.inotify.max_user_instances=1024" | sudo tee -a /etc/sysctl.d/99-inotify.conf
+sudo sysctl --system
 ```
 
 See [docs/LOCAL-DEVELOPMENT.md](docs/LOCAL-DEVELOPMENT.md).

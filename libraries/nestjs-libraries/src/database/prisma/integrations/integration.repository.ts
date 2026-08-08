@@ -143,12 +143,20 @@ export class IntegrationRepository {
   }
 
   async updateIntegration(id: string, params: Partial<Integration>) {
-    if (
-      params.picture &&
-      (params.picture.indexOf(process.env.CLOUDFLARE_BUCKET_URL!) === -1 ||
-        params.picture.indexOf(process.env.FRONTEND_URL!) === -1)
-    ) {
-      params.picture = await this.storage.uploadSimple(params.picture);
+    if (params.picture) {
+      const alreadyStored =
+        params.picture.indexOf(process.env.CLOUDFLARE_BUCKET_URL!) > -1 ||
+        params.picture.indexOf(process.env.FRONTEND_URL!) > -1;
+
+      if (!alreadyStored) {
+        try {
+          params.picture = await this.storage.uploadSimple(params.picture);
+        } catch (err) {
+          // Keep updates flowing even if the avatar cannot be copied.
+          console.warn('Skipping integration picture update:', err);
+          delete params.picture;
+        }
+      }
     }
 
     const existing = await this._integration.model.integration.findUnique({

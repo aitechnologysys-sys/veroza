@@ -1,0 +1,80 @@
+---
+# NOTE: this file used to be named `.github/workflows/eslint` — no extension.
+# GitHub only loads `.yml`/`.yaml` from this directory, so upstream's version of
+# this workflow has never executed, in any repo, ever. Renaming it is what makes
+# it run at all.
+#
+# It also used to point at `apps/backend/.eslintrc.json` and
+# `apps/frontend/.eslintrc.json` via a matrix. Neither file exists in this tree.
+# The real configuration is the flat config at the repo root (eslint.config.mjs),
+# which is why CLAUDE.md says to lint from the root only.
+#
+# ⚠️  CURRENTLY NON-BLOCKING — AND THE LINT ITSELF IS BROKEN.
+# `pnpm eslint .` crashes before linting a single file:
+#
+#     TypeError: Converting circular structure to JSON
+#       at @eslint/eslintrc/lib/shared/config-validator.js
+#
+# Cause: package.json pins `eslint@8.57.0` but `eslint-config-next@16.2.6`
+# (matching next@16.2.6) targets ESLint 9's flat config. Loading it through
+# FlatCompat on ESLint 8 blows up. Fixing that is an ESLint 9 upgrade plus
+# whatever new rules then fire across the tree — a real piece of work, not a
+# workflow change, so it is deliberately out of scope here.
+#
+# Until that is fixed this job reports and does not fail. To turn it into a real
+# gate afterwards, delete the `continue-on-error: true` line below.
+
+name: ESLint
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - package.json
+      - eslint.config.mjs
+      - apps/**
+      - '!apps/docs/**'
+      - libraries/**
+
+  pull_request:
+    paths:
+      - package.json
+      - eslint.config.mjs
+      - apps/**
+      - '!apps/docs/**'
+      - libraries/**
+
+jobs:
+  eslint:
+    name: Run eslint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+          cache: 'pnpm'
+
+      # The workspace's own eslint + plugins + the root flat config. Upstream
+      # `npm install eslint`-ed a fresh copy here, which resolved a different
+      # version than the repo actually uses.
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run ESLint
+        # See the header: remove this line once the ESLint 8/9 mismatch is fixed.
+        continue-on-error: true
+        run: pnpm eslint .

@@ -1,103 +1,192 @@
 ---
-name: "Build Containers"
+# Builds the application container image in GitHub Actions and pushes it to our
+# own GHCR namespace. The VM only ever *pulls* — it never builds.
+#
+# WHY THIS EXISTS
+# ---------------
+# Dockerfile.dev runs `pnpm install && pnpm run build` for all three apps inside
+# the image build, with NODE_OPTIONS=--max-old-space-size=4096. Building that on
+# the Oracle VM spikes it to ~11.4 GB against a 12 GB box, i.e. an OOM risk that
+# takes the running stack down with it. Moving the build to a CI runner removes
+# the spike entirely. See docs/CONTAINMENT-DEPLOYMENT-PLAN.md §6.
+#
+# DIVERGENCE FROM UPSTREAM
+# ------------------------
+# Upstream's version of this file pushes to ghcr.io/gitroomhq/postiz-app and
+# builds amd64 + arm64 + a manifest (3 jobs). We push to our own namespace and
+# build arm64 only — the deploy target is an Oracle Ampere A1 instance and dev
+# machines are Apple Silicon, so an amd64 image would be paid-for and unused.
+# Expect a conflict here on `git merge upstream/main`; keep our version.
+#
+# SAFE TO CI-BUILD?
+# -----------------
+# Yes. Postiz reads NEXT_PUBLIC_* in *server* components and threads them to the
+# client through VariableContextComponent (apps/frontend/src/app/(app)/layout.tsx),
+# so they are runtime values, not baked into the bundle. The only client-side
+# inlined vars are NEXT_PUBLIC_VERSION (passed as a build arg below) and the
+# optional NEXT_PUBLIC_FACEBOOK_PIXEL. A CI-built image is therefore behaviour-
+# identical to the old on-box build.
+
+name: Build image
 
 on:
-  workflow_dispatch:
+  # Every merge to main produces a deployable image. Deploying is a separate,
+  # manual step on the VM (`docker compose -p postiz pull postiz && up -d`).
   push:
-    tags:
-      - '*'
+    branches: [main]
+  # Lets you rebuild any branch by hand from the Actions tab.
+  workflow_dispatch:
+
+# A newer push to the same branch cancels an in-flight build — no point paying
+# for an image nobody will deploy.
+concurrency:
+  group: build-image-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build-containers-common:
-    runs-on: ubuntu-latest
-    outputs:
-      containerver: ${{ steps.getcontainerver.outputs.containerver }}
-    steps:
-      - name: Get Container Version
-        id: getcontainerver
-        run: |
-          echo "containerver=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+  build:
+    name: Build and push arm64 image
+    # Hosted ARM64 runner — native, no QEMU emulation (emulated builds of this
+    # repo take hours). Billed at $0.005/min, cheaper than the x86 runner.
+    runs-on: ubuntu-24.04-arm
 
-  build-containers:
-    needs: build-containers-common
-    strategy:
-      matrix:
-        include:
-          - runnertags: ubuntu-latest
-            arch: amd64
-          - runnertags: ubuntu-24.04-arm
-            arch: arm64
-    runs-on: ${{ matrix.runnertags }}
+    # GITHUB_TOKEN is read-only by default. `packages: write` is what lets the
+    # push to ghcr.io succeed. Because the image name matches ${{ github.repository }},
+    # GitHub auto-links the package to this repo and no extra PAT is needed.
+    permissions:
+      contents: read
+      packages: write
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+
+      # Runs before the (expensive) image build so a banned provider fails in
+      # seconds. Mirrors the same gate in build.yml — an image that reaches GHCR
+      # should never be one we would refuse to merge.
+      - name: Check banned providers
+        run: node scripts/check-banned-providers.mjs
+
+      - name: Compute image metadata
+        id: meta
+        run: |
+          # GHCR requires an all-lowercase image path; the owner/repo may not be.
+          REPO="$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+          IMAGE="ghcr.io/${REPO}"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
+          # Bare package name (repo without the owner) — what the GHCR API and the
+          # pruning step below expect. Derived from github.repository rather than
+          # github.event.repository.name so it is defined for every event type.
+          echo "package=${REPO#*/}" >> "$GITHUB_OUTPUT"
+
+          # Shown in the app UI by launches.component.tsx. Pair the release line
+          # from version.txt with the commit so a running container is traceable
+          # back to an exact build.
+          echo "version=$(cat version.txt)-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+          # The sha tag is always pushed — it is the rollback handle.
+          TAGS="${IMAGE}:${{ github.sha }}"
+
+          # :latest is what the VM pulls, so ONLY main may move it. A manual
+          # `workflow_dispatch` run on a feature branch must never be able to
+          # overwrite what production pulls next. Branch builds get their own
+          # namespaced tag instead, sanitised to what a Docker tag permits
+          # (a branch like `feat/deploy-docker_#2` is not a legal tag).
+          if [ "${{ github.ref }}" = "refs/heads/${{ github.event.repository.default_branch }}" ]; then
+            TAGS="${TAGS}
+          ${IMAGE}:latest"
+          else
+            # printf, not echo: echo's trailing newline is not in the allowed set,
+            # so tr would convert it to a stray '-' at the end of the tag.
+            SAFE_REF="$(printf '%s' '${{ github.ref_name }}' | tr -c 'a-zA-Z0-9._-' '-' | cut -c1-100)"
+            TAGS="${TAGS}
+          ${IMAGE}:branch-${SAFE_REF}"
+          fi
+
+          {
+            echo 'tags<<__EOF__'
+            echo "$TAGS"
+            echo '__EOF__'
+          } >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to ghcr
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ github.token }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push Image
-        env:
-          CONTAINERVER: ${{ needs.build-containers-common.outputs.containerver }}
-          NEXT_PUBLIC_VERSION: ${{ github.ref_name }}
-        run: |
-          docker buildx build --platform linux/${{ matrix.arch }} \
-            -f Dockerfile.dev \
-            -t ghcr.io/gitroomhq/postiz-app:${{ env.CONTAINERVER }}-${{ matrix.arch }} \
-            --build-arg NEXT_PUBLIC_VERSION=${{ env.NEXT_PUBLIC_VERSION }} \
-            --pull \
-            --no-cache \
-            --provenance=false --sbom=false \
-            --output "type=registry,name=ghcr.io/gitroomhq/postiz-app:${{ env.CONTAINERVER }}-${{ matrix.arch }}" .
-
-  build-container-manifest:
-    needs: [build-containers, build-containers-common]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Login to ghcr
-        uses: docker/login-action@v3
+      - name: Build and push
+        uses: docker/build-push-action@v6
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
+          context: .
+          file: Dockerfile.dev
+          platforms: linux/arm64
+          push: true
+          build-args: |
+            NEXT_PUBLIC_VERSION=${{ steps.meta.outputs.version }}
+          # Computed above: always :<sha>, plus :latest on the default branch
+          # only, or :branch-<name> for a manual run on any other branch.
+          tags: ${{ steps.meta.outputs.tags }}
+          # NOTE: this buys less than it looks like. Dockerfile.dev does
+          # `COPY . /app` *before* `pnpm install`, so any source change busts the
+          # copy layer and every layer after it — including the install and build.
+          # Real caching needs the Dockerfile restructured to copy the lockfile
+          # and package.json files first, install, then copy sources. Left as-is
+          # for now to stay close to upstream's Dockerfile.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Keep the image a plain single-platform manifest; attestations confuse
+          # some registry/compose combinations and we do not consume them.
+          provenance: false
+          sbom: false
 
-      - name: Create Docker Manifest
-        env:
-          CONTAINERVER: ${{ needs.build-containers-common.outputs.containerver }}
+      # Registry hygiene, NOT cost control. This repo is public, so its GHCR
+      # package is eligible for free unlimited storage and bandwidth — old
+      # versions cost nothing to keep. This step exists so the package's version
+      # list stays navigable instead of growing one entry per merge forever, and
+      # so the untagged orphans left behind when :latest moves get swept up.
+      #
+      # Keeps the 20 newest versions and deletes anything older. At roughly one
+      # build per merge that is weeks of rollback runway.
+      #
+      # ⚠️  If you deliberately park production on an old :<sha> for a long time,
+      # that version can eventually age past 20 and be deleted from under you.
+      # Add its sha to `ignore-versions` while you are pinned to it.
+      - name: Prune old image versions
+        uses: actions/delete-package-versions@v5
+        # A failed cleanup must never fail a build whose image already pushed
+        # successfully. Also covers the very first run, when the package has
+        # fewer than 20 versions or the API shape surprises us.
+        continue-on-error: true
+        with:
+          owner: ${{ github.repository_owner }}
+          package-name: ${{ steps.meta.outputs.package }}
+          package-type: container
+          min-versions-to-keep: 20
+
+      - name: Summary
         run: |
-          # Verify the architecture images
-          echo "Verifying AMD64 image:"
-          docker buildx imagetools inspect ghcr.io/gitroomhq/postiz-app:${{ env.CONTAINERVER }}-amd64
-          
-          echo "Verifying ARM64 image:"
-          docker buildx imagetools inspect ghcr.io/gitroomhq/postiz-app:${{ env.CONTAINERVER }}-arm64
-          
-          # Try to remove any existing manifests first
-          docker manifest rm ghcr.io/gitroomhq/postiz-app:${{ env.CONTAINERVER }} || true
-          docker manifest rm ghcr.io/gitroomhq/postiz-app:latest || true
-          
-          # Create and push the version-specific manifest
-          docker manifest create ghcr.io/gitroomhq/postiz-app:${{ env.CONTAINERVER }} \
-            --amend ghcr.io/gitroomhq/postiz-app:${{ env.CONTAINERVER }}-amd64 \
-            --amend ghcr.io/gitroomhq/postiz-app:${{ env.CONTAINERVER }}-arm64
-
-          docker manifest push ghcr.io/gitroomhq/postiz-app:${{ env.CONTAINERVER }}
-
-          # Create and push the latest manifest
-          docker manifest create ghcr.io/gitroomhq/postiz-app:latest \
-            --amend ghcr.io/gitroomhq/postiz-app:${{ env.CONTAINERVER }}-amd64 \
-            --amend ghcr.io/gitroomhq/postiz-app:${{ env.CONTAINERVER }}-arm64
-
-          docker manifest push ghcr.io/gitroomhq/postiz-app:latest
-
-      - name: Verify Manifest
-        run: |
-          docker manifest inspect ghcr.io/gitroomhq/postiz-app:latest
+          {
+            echo "### Image pushed"
+            echo
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+            echo
+            echo "Deploy on the VM:"
+            echo '```bash'
+            echo "cd /opt/postiz/postiz-app"
+            echo "docker compose -p postiz pull postiz"
+            echo "docker compose -p postiz up -d postiz"
+            echo '```'
+            echo
+            echo "Or pin this exact build (works for any branch):"
+            echo '```bash'
+            echo "POSTIZ_IMAGE_TAG=${{ github.sha }} docker compose -p postiz up -d postiz"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

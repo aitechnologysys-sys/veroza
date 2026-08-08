@@ -161,6 +161,8 @@ silently. Background: [billing-current-state.md](./billing-current-state.md).
 | `docker-compose.yaml` | **Keep ours entirely** for the `postiz` service — we pull an image, upstream builds one. Take their changes to *other* services (Postgres/Redis/Temporal versions) |
 | `docker-compose.dev.yaml` | Usually take theirs; re-check ports |
 | `.github/workflows/build-containers.yml` | **Keep ours.** Theirs pushes to `gitroomhq`'s namespace and builds amd64 we don't use |
+| `.github/workflows/build.yml` | **Keep our `push: branches: [main]`.** Upstream's bare `push:` matches every branch and double-builds each commit once a PR is open |
+| `.github/workflows/eslint.yml` | Ours only. Upstream's copy is the extensionless `eslint` file that never ran — if a merge resurrects it, delete it |
 | `.env.example` | Take theirs for new variables, keep our clarified comments |
 
 Why: [CONTAINMENT-DEPLOYMENT-PLAN.md](./CONTAINMENT-DEPLOYMENT-PLAN.md) §6.

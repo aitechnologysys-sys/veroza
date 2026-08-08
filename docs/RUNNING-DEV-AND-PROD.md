@@ -26,8 +26,9 @@ pnpm run dev
 # stop it:
 docker compose -p postiz-dev -f docker-compose.dev.yaml down
 
-# PROD (everything in Docker)
-docker compose -p postiz-prod up -d --build
+# PROD (everything in Docker; pulls a CI-built image, does NOT build)
+docker compose -p postiz-prod pull postiz
+docker compose -p postiz-prod up -d
 # stop it:
 docker compose -p postiz-prod down
 ```
@@ -118,7 +119,8 @@ pnpm run dev
 docker compose -p postiz-dev -f docker-compose.dev.yaml down
 
 # ---- PROD ----
-docker compose -p postiz-prod up -d --build
+docker compose -p postiz-prod pull postiz
+docker compose -p postiz-prod up -d
 # ... verify at http://localhost:4007 ...
 docker compose -p postiz-prod down
 ```
@@ -141,7 +143,8 @@ pnpm run dev                   # Ctrl-C when done
 docker compose -p postiz-dev -f docker-compose.dev.yaml down
 
 # 2) PROD
-docker compose -p postiz-prod up -d --build   # builds its OWN db on first run
+docker compose -p postiz-prod pull postiz
+docker compose -p postiz-prod up -d            # creates its OWN db on first run
 # check http://localhost:4007
 docker compose -p postiz-prod down
 
@@ -173,7 +176,7 @@ name: postiz-dev
 
 After that:
 ```bash
-docker compose up -d --build                       # → project postiz-prod
+docker compose up -d                               # → project postiz-prod
 docker compose -f docker-compose.dev.yaml up -d    # → project postiz-dev
 ```
 No `-p` needed, and they can never share volumes.
@@ -229,7 +232,7 @@ docker compose -p postiz-prod down -v
 | Start dev deps | `docker compose -p postiz-dev -f docker-compose.dev.yaml up -d` |
 | Run dev apps | `pnpm run prisma-db-push` (first time) → `pnpm run dev` |
 | Stop dev | `docker compose -p postiz-dev -f docker-compose.dev.yaml down` |
-| Start/verify prod | `docker compose -p postiz-prod up -d --build` → http://localhost:4007 |
+| Start/verify prod | `docker compose -p postiz-prod pull postiz && docker compose -p postiz-prod up -d` → http://localhost:4007 |
 | Stop prod | `docker compose -p postiz-prod down` |
 | Never | run both stacks at the same time |
 | Never | use the default project for both (causes the auth error) |

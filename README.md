@@ -146,52 +146,54 @@ This repository's source code is available under the [AGPL-3.0 license](LICENSE)
   <img src="https://github.com/snyk-labs/secure-developer-sample-repo/raw/main/badge_full.svg" alt="Secure Developer Badge Full" width="150">
 </p>
 
-# DEV (deps in Docker, app on host)
+---
 
+# Postaryx — development & deployment runbook
 
-# Development
+Everything below is specific to **this fork** (product: **Postaryx**; repo:
+`aitechnologysys-sys/veroza`) and is not in upstream Postiz. This is the
+quick-reference; the linked docs hold the detail and the reasoning.
 
-## First time
+> **The one rule that prevents most pain:** always pass the same
+> `-p <project>` to every Compose command for a stack — `up`, `down`, `pull`,
+> `logs`, `ps`. Dev uses `postiz-dev`, local prod uses `postiz-prod`. Different
+> project names keep their volumes separate, which is what lets you switch back
+> and forth without Postgres auth errors or data loss. Never run both at once
+> (they collide on ports and hardcoded `container_name`s). Full explanation:
+> [docs/RUNNING-DEV-AND-PROD.md](docs/RUNNING-DEV-AND-PROD.md).
+
+## 1. Local development (hot reload)
+
+Dependencies in Docker, the three apps on the host.
+
+**First time:**
 
 ```bash
 pnpm install
-
-docker compose -p postiz-dev -f docker-compose.dev.yaml up -d
-
-pnpm run prisma-db-push
-
-pnpm run dev
+docker compose -p postiz-dev -f docker-compose.dev.yaml up -d   # Postgres, Redis, Temporal
+pnpm run prisma-db-push        # also after any schema change
+pnpm run dev                   # backend + frontend + orchestrator
+# → http://localhost:4200
 ```
 
-Open:
-
-```
-http://localhost:4200
-```
-
-## Daily
-
-Start dependencies:
+**Every day after that** — only these two:
 
 ```bash
 docker compose -p postiz-dev -f docker-compose.dev.yaml up -d
-```
-
-Start the app:
-
-```bash
 pnpm run dev
 ```
 
-## Stop
+**Stop:**
 
 ```bash
 docker compose -p postiz-dev -f docker-compose.dev.yaml down
 ```
 
-## Common issue (Linux)
+Testing a billing webhook? Expose the backend: `ngrok http 3000`
 
-If you get **"OS file watch limit reached"**:
+### Common issue on Linux
+
+If you get **"OS file watch limit reached"**, raise the inotify limits:
 
 ```bash
 echo "fs.inotify.max_user_watches=524288" | sudo tee /etc/sysctl.d/99-inotify.conf
@@ -199,18 +201,136 @@ echo "fs.inotify.max_user_instances=1024" | sudo tee -a /etc/sysctl.d/99-inotify
 sudo sysctl --system
 ```
 
-# PROD (everything in Docker)
+See [docs/LOCAL-DEVELOPMENT.md](docs/LOCAL-DEVELOPMENT.md).
 
-docker compose -p postiz-prod up -d --build (first time)
+## 2. Running the production stack locally
 
+Same `docker-compose.yaml` the server uses, so this is the honest rehearsal for
+a deploy.
+
+**This no longer builds.** The `postiz` service pulls a prebuilt image from
+GHCR — see §3 for why. So a plain `up -d` fetches whatever CI last published
+from `main`:
+
+```bash
+docker compose -p postiz-prod pull postiz
 docker compose -p postiz-prod up -d
-
-# ... verify at http://localhost:4007 ...
-
-# To test prod build with polar webhook
-
-ngrok http 4007
-
-# stop it:
+# → http://localhost:4007       (webhook testing: ngrok http 4007)
 
 docker compose -p postiz-prod down
+```
+
+To run **local, uncommitted** code in the prod stack, build it yourself and
+point the stack at it with env vars — never by editing `docker-compose.yaml`:
+
+```bash
+docker build -f Dockerfile.dev --build-arg NEXT_PUBLIC_VERSION=local -t postiz-app:local .
+POSTIZ_IMAGE=postiz-app POSTIZ_IMAGE_TAG=local docker compose -p postiz-prod up -d postiz
+```
+
+⚠️ That build needs **~4 GB of free RAM** and takes a while. It is exactly the
+spike we moved off the server; on a laptop it is merely slow.
+
+## 3. How images are built and deployed
+
+The server never builds. `Dockerfile.dev` compiles all three apps inside the
+image with a 4 GB Node heap, which spikes a 12 GB box to ~11.4 GB and can OOM
+the running stack. So CI builds, the server only pulls.
+
+```
+push to main  →  GitHub Actions (arm64 runner)  →  ghcr.io/aitechnologysys-sys/veroza  →  VM pulls
+                 .github/workflows/build-containers.yml
+```
+
+**Tags the workflow publishes:**
+
+| Tag | When | Purpose |
+|---|---|---|
+| `:<full-git-sha>` | every run | immutable rollback handle |
+| `:latest` | **`main` only** | what the VM pulls |
+| `:branch-<name>` | any other branch | manual test builds — deliberately cannot move `:latest` |
+
+**Deploy** (on the VM, after CI goes green):
+
+```bash
+cd /opt/postiz/postiz-app
+docker compose -p postiz pull postiz
+docker compose -p postiz up -d postiz
+```
+
+**Roll back** — no rebuild, the old image is already in GHCR:
+
+```bash
+POSTIZ_IMAGE_TAG=<full-git-sha> docker compose -p postiz pull postiz
+POSTIZ_IMAGE_TAG=<full-git-sha> docker compose -p postiz up -d postiz
+```
+
+Set the variable on **both** commands — `pull` and `up` read it independently.
+The `image:` line in `docker-compose.yaml` is
+`${POSTIZ_IMAGE:-ghcr.io/aitechnologysys-sys/veroza}:${POSTIZ_IMAGE_TAG:-latest}`
+precisely so rollback never requires editing a tracked file on the server.
+
+> **Note the project name changes between machines.** The **server** stack is
+> `-p postiz` (per [docs/ORACLE-VM-DEPLOYMENT.md](docs/ORACLE-VM-DEPLOYMENT.md),
+> which is what it was created with); your **laptop's** prod-rehearsal stack is
+> `-p postiz-prod` (§2) so it stays isolated from `postiz-dev`. If unsure which
+> a box is using, run `docker compose ls` — a wrong `-p` silently targets a
+> different, empty project instead of erroring.
+
+**Running the workflow by hand:** the *Run workflow* button only appears once a
+workflow containing `workflow_dispatch` exists on the **default branch**. Until
+`build-containers.yml` is merged to `main` there is no button anywhere. After
+that, Actions → *Build image* → *Run workflow* → pick any branch.
+
+## 4. GHCR package visibility — read this once
+
+**A new GHCR package is created PRIVATE, even when the repo is public.** It does
+not inherit the repository's visibility. This bites everyone exactly once, so:
+
+| | Package **private** (the default) | Package **public** |
+|---|---|---|
+| Storage | 500 MB free, then $0.25/GB/month | Unlimited, free |
+| Transfer out | 1 GB/month free, then $0.50/GB | Unlimited, free |
+| VM can pull | Only after `docker login ghcr.io` | Yes, unauthenticated |
+
+Our image is several GB, so on the private default you blow the free allowance
+immediately. **After the first successful build, flip it once:**
+
+`github.com/users/aitechnologysys-sys/packages/container/veroza/settings`
+→ *Danger Zone* → *Change visibility* → **Public**
+
+(That is the URL shape for a **user**-owned package. An org-owned one lives
+under `/orgs/<org>/packages/...`.)
+
+Two consequences worth holding onto:
+
+- **A public image publishes your source.** `Dockerfile.dev` copies the whole
+  repo in, so anyone can `docker pull` and read it. Fine while this repo is
+  public — but **if you ever make the repo private, make the package private in
+  the same sitting**, or you are still shipping your source to the world.
+- **If you keep the package private**, the VM needs a one-time login with a
+  token scoped to `read:packages` only (never a full PAT):
+
+  ```bash
+  echo "$GHCR_READ_ONLY_PAT" | docker login ghcr.io -u <github-username> --password-stdin
+  ```
+
+Old versions are pruned automatically (newest 20 kept) by the workflow's
+*Prune old image versions* step. That is hygiene, not cost — on a public
+package storage is free.
+
+## 5. Where the rest of it is written down
+
+| Doc | Covers |
+|---|---|
+| [docs/CI-BUILD-CUTOVER.md](docs/CI-BUILD-CUTOVER.md) | **Do this once**, right after the CI-build change merges: make the GHCR package public, then test and deploy step by step |
+| [docs/UPSTREAM-ISOLATION.md](docs/UPSTREAM-ISOLATION.md) | Proof that nothing of ours reaches Postiz, the one gap that was closed, and where we still link to them |
+| [docs/UPSTREAM-SYNC.md](docs/UPSTREAM-SYNC.md) | Pulling Postiz's fixes in: cherry-pick vs merge, the known conflict hotspots, and how to verify |
+| [docs/RUNNING-DEV-AND-PROD.md](docs/RUNNING-DEV-AND-PROD.md) | Switching stacks safely, Compose project isolation, the Postgres auth error |
+| [docs/LOCAL-DEVELOPMENT.md](docs/LOCAL-DEVELOPMENT.md) | Dev setup in depth |
+| [docs/PROD-DEPLOY-PREREQUISITE.md](docs/PROD-DEPLOY-PREREQUISITE.md) | What must exist before a deploy |
+| [docs/ORACLE-VM-DEPLOYMENT.md](docs/ORACLE-VM-DEPLOYMENT.md) | Server build-out: Nginx, Certbot, firewall, backups |
+| [docs/CONTAINMENT-DEPLOYMENT-PLAN.md](docs/CONTAINMENT-DEPLOYMENT-PLAN.md) | Fitting the stack in 2 OCPU / 12 GB; the CI-build rationale (§6) |
+| [docs/INFRASTRUCTURE-AND-DEPLOYMENT.md](docs/INFRASTRUCTURE-AND-DEPLOYMENT.md) | Architecture overview |
+| [docs/billing-current-state.md](docs/billing-current-state.md) | Stripe/Polar wiring, `BILLING_ENABLED` |
+| [CLAUDE.md](CLAUDE.md) | Repo conventions, the Postaryx rename policy, upstream-parity rule |

@@ -51,7 +51,7 @@ Two key takeaways:
 ## 2. What runs *inside* the `postiz` container
 
 > **This deployment builds the image from source**, not from the published
-> `ghcr.io/gitroomhq/postiz-app`. See [§2a](#2a-building-from-source-our-image).
+> `ghcr.io/gitroomhq/postiz-app`. See [§2a](#2a-our-image-built-in-ci-pulled-everywhere).
 
 The image is built from [Dockerfile.dev](../Dockerfile.dev): a Node 22 + nginx
 base, with `pnpm build` run for all three apps. At runtime the container does:
@@ -92,39 +92,54 @@ script) to sync the database schema — so the app self-migrates against
 
 ---
 
-## 2a. Building from source (our image)
+## 2a. Our image: built in CI, pulled everywhere
 
-This compose **builds the app from this repository** rather than pulling a
-prebuilt image. The `postiz` service uses a `build:` block:
+> **This section changed.** The compose file used to build the app in place. It
+> now **pulls** a prebuilt image, because building on a 12 GB server spikes it to
+> ~11.4 GB and can OOM the running stack. GitHub Actions builds instead. The
+> authoritative walkthrough is the runbook in [../README.md](../README.md) §3;
+> the rationale is [CONTAINMENT-DEPLOYMENT-PLAN.md](./CONTAINMENT-DEPLOYMENT-PLAN.md) §6.
+
+The `postiz` service resolves its image from two overridable variables:
 
 ```yaml
   postiz:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-      args:
-        NEXT_PUBLIC_VERSION: ${NEXT_PUBLIC_VERSION:-v1.47.0}
-    image: postiz-app:local
-    pull_policy: never
+    image: ${POSTIZ_IMAGE:-ghcr.io/aitechnologysys-sys/veroza}:${POSTIZ_IMAGE_TAG:-latest}
 ```
 
-**Why this is safe / prod-ready:** the official `ghcr.io/gitroomhq/postiz-app`
-image is produced from the *same* `Dockerfile.dev` with the *same* single build
-arg (see [.github/workflows/build-containers.yml](../.github/workflows/build-containers.yml)).
-So our local build is behavior-identical to upstream — we just own the bits.
-`pull_policy: never` guarantees Docker never silently falls back to a remote image.
+Defaults give you `ghcr.io/aitechnologysys-sys/veroza:latest` — the newest image
+built from `main`. Overriding `POSTIZ_IMAGE_TAG` with a git sha is how you roll
+back; overriding both is how you run a locally built image. Neither requires
+editing this tracked file, which matters on a server.
 
-### Build / run commands
+**Why this is safe / prod-ready:** the image is produced from the *same*
+`Dockerfile.dev` with the *same* single build arg as before (see
+[.github/workflows/build-containers.yml](../.github/workflows/build-containers.yml)),
+just on a CI runner instead of the target box — so it is behavior-identical to
+the old local build. Verified: `NEXT_PUBLIC_*` values are read in *server*
+components and threaded to the client at runtime, so nothing environment-specific
+is baked in.
+
+### Run commands
 ```bash
-# Build the image (first build is slow — see below)
-docker compose build
+# Fetch the newest CI-built image and start the whole stack
+docker compose -p postiz-prod pull postiz
+docker compose -p postiz-prod up -d
 
-# Build (if needed) and start the whole stack
-docker compose up -d --build
+# Update just the app after CI publishes a new image
+docker compose -p postiz-prod pull postiz && docker compose -p postiz-prod up -d postiz
 
-# Rebuild only the app after a code change
-docker compose build postiz && docker compose up -d postiz
+# Roll back to a specific build (no rebuild — set the var on BOTH commands)
+POSTIZ_IMAGE_TAG=<full-git-sha> docker compose -p postiz-prod pull postiz
+POSTIZ_IMAGE_TAG=<full-git-sha> docker compose -p postiz-prod up -d postiz
 ```
+
+### Building locally anyway (uncommitted code)
+```bash
+docker build -f Dockerfile.dev --build-arg NEXT_PUBLIC_VERSION=local -t postiz-app:local .
+POSTIZ_IMAGE=postiz-app POSTIZ_IMAGE_TAG=local docker compose -p postiz-prod up -d postiz
+```
+Fine on a dev machine with RAM to spare. **Never do this on the server.**
 
 ### Build resource notes
 - The Next.js build runs with `NODE_OPTIONS=--max-old-space-size=4096` — give
@@ -168,7 +183,7 @@ state working set, not a hard limit. These are estimates — see
 ### 3a. The application
 
 #### `postiz`
-- **Image:** `postiz-app:local` — **built from this source** via `Dockerfile.dev` (see [§2a](#2a-building-from-source-our-image)). `pull_policy: never`.
+- **Image:** `ghcr.io/aitechnologysys-sys/veroza:latest` by default — **built in CI** from this source via `Dockerfile.dev` (see [§2a](#2a-our-image-built-in-ci-pulled-everywhere)). Override with `POSTIZ_IMAGE` / `POSTIZ_IMAGE_TAG`.
 - **What:** The app itself (frontend + backend + orchestrator + nginx, see §2).
 - **Why:** This is the product.
 - **Ports:** `4007:5000` — the only user-facing port.
@@ -391,12 +406,14 @@ warm-up.
 
 The goal you stated is to deploy this. Here's the short version.
 
-### Build the image first
-This stack builds from source ([§2a](#2a-building-from-source-our-image)):
+### Pull the image first
+This stack pulls a CI-built image ([§2a](#2a-our-image-built-in-ci-pulled-everywhere)):
 ```bash
-docker compose up -d --build
+docker compose -p postiz-prod pull postiz
+docker compose -p postiz-prod up -d
 ```
-Ensure Docker has ≥4 GB build RAM and internet access for the first build.
+On the server, pull — never build. If you are building on a dev machine instead,
+ensure Docker has ≥4 GB build RAM and internet access.
 
 ### Required environment variables (set in `.env`; see [.env.example](../.env.example))
 - `JWT_SECRET` — **generate a long random string** (e.g. `openssl rand -base64 48`).
@@ -437,8 +454,10 @@ Ensure Docker has ≥4 GB build RAM and internet access for the first build.
    them (smaller attack surface + less RAM).
 5. Set `DISABLE_REGISTRATION=true` once your accounts exist, if it's a private
    instance.
-6. Rebuild on updates: `git pull && docker compose up -d --build`. Bump
-   `version.txt` / `NEXT_PUBLIC_VERSION` if you want the new version shown in the UI.
+6. Update by pulling, not rebuilding: merge to `main`, wait for the *Build
+   image* workflow, then `docker compose -p postiz-prod pull postiz && docker
+   compose -p postiz-prod up -d postiz`. Bump `version.txt` if you want a new
+   version string in the UI — CI stamps it as `<version.txt>-<short-sha>`.
 
 > The maintainers' canonical install guide is
 > <https://docs.postiz.com/installation/docker-compose> — cross-check version
@@ -446,9 +465,9 @@ Ensure Docker has ≥4 GB build RAM and internet access for the first build.
 > upstream `:latest` tag.
 
 
-**Production: docker compose up -d --build does everything**
+**Production: `pull` + `up -d` does everything**
 
-Yes — one command builds and runs the entire stack. But "everything" means the production way, not dev mode:
+Two commands fetch and run the entire stack. But "everything" means the production way, not dev mode:
 
 Builds the postiz image from source (Dockerfile.dev), which runs pnpm install + pnpm run build (compiles all 3 apps).
 Starts all 9 containers — the app + Postgres + Redis + the Temporal stack.
@@ -472,7 +491,7 @@ Prod	Local
 Who runs the apps?	The container (pm2)	You (pnpm run dev)
 Which mode?	Built apps (start)	Dev mode (dev, hot-reload)
 DB migration	Automatic on boot	Manual prisma-db-push
-Command count	1 (up -d --build)	2 (compose up + pnpm dev)
+Command count	2 (pull + up -d)	2 (compose up + pnpm dev)
 Why the difference? Prod wants one self-contained, optimized image that just runs. Local wants hot-reload and breakpoints, which means running the source on your host — so the apps stay out of Docker and you start them yourself.
 
 pnpm run dev ≠ what prod does. Prod's in-container pnpm run pm2 is the production counterpart to it.

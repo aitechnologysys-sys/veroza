@@ -5,6 +5,9 @@ dist
 tmp
 /out-tsc
 .env
+# Holds real credentials. Currently still TRACKED — this line alone does not
+# untrack it. Run: git rm --cached .env.prod   (and rotate the tokens in it).
+.env.prod
 # dependencies
 node_modules
 

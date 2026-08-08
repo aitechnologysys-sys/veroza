@@ -259,6 +259,50 @@ workflow containing `workflow_dispatch` exists on the **default branch**. Until
 `build-containers.yml` is merged to `main` there is no button anywhere. After
 that, Actions → *Build image* → *Run workflow* → pick any branch.
 
+### Where configuration comes from
+
+The image contains **no configuration at all** — verified: four environment
+variables total, of which the only meaningful one is the `NEXT_PUBLIC_VERSION`
+build stamp. Config arrives at container start, from three different places that
+are easy to confuse:
+
+| Source | Read by | Contains | Committed? |
+|---|---|---|---|
+| **`.env.prod`** via `env_file:` | injected into the container | every secret: `JWT_SECRET`, API keys, email, billing | **No** — gitignored, and `.dockerignore` excludes `.env*` |
+| **`environment:`** in `docker-compose.yaml` | injected into the container, **overrides `.env.prod`** | container-network wiring: `DATABASE_URL`, `REDIS_URL`, `TEMPORAL_ADDRESS`, `STORAGE_PROVIDER` | Yes |
+| **`.env`** (a *different* file) | **Compose itself**, not the container | `${POSTIZ_PUBLIC_URL}`, `${POSTIZ_IMAGE}`, `${POSTIZ_IMAGE_TAG}` substitutions | No |
+
+Three consequences:
+
+1. **`.env.prod` must be created on the server by hand, once.** Neither
+   `git pull` nor the image brings it. Without it, `up` fails. `chmod 600` it.
+2. **`environment:` beats `env_file:`.** Setting `DATABASE_URL` or
+   `STORAGE_PROVIDER` in `.env.prod` does nothing — change those in
+   `docker-compose.yaml` instead.
+3. **Config changes need no rebuild and no re-pull.** Edit `.env.prod`, then
+   `docker compose -p postiz up -d postiz` to recreate the container. Seconds.
+
+This runtime-config design is what makes a CI-built image safe: `NEXT_PUBLIC_*`
+values are read in *server* components and passed to the client through
+`VariableContextComponent`, so none of them are compiled into the bundle.
+
+> ⚠️ **`docker-compose.yaml` is committed to a public repo, so everything in its
+> `environment:` blocks is world-readable — including
+> `POSTGRES_PASSWORD: postiz-password` and Temporal's `POSTGRES_PASSWORD: temporal`.**
+> These are upstream's defaults and are currently contained: neither Postgres nor
+> Redis publishes a host port, so they are reachable only from inside the
+> `postiz-network` bridge. But they are publicly-known credentials guarding your
+> database, so a foothold anywhere on the box or in any container needs no
+> password guessing — and anyone who later adds `ports: - "5432:5432"` for
+> debugging exposes the DB with a documented password.
+>
+> **Fix while pre-launch:** replace them with `${POSTGRES_PASSWORD}` substitution
+> sourced from `.env`, and put the real value there. Note that
+> `POSTGRES_PASSWORD` only takes effect when the data directory is first
+> initialised — on an existing volume you must `ALTER USER` inside the database
+> or recreate the volume. That is cheap now and expensive after you have
+> customers.
+
 ## 4. GHCR package visibility — read this once
 
 **A new GHCR package is created PRIVATE, even when the repo is public.** It does

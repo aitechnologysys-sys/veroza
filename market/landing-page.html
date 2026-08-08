@@ -1,0 +1,838 @@
+<title>Clientside — Client-first social media management</title>
+<style>
+  :root{
+    --paper:#F7F8FA; --card:#FFFFFF; --ink:#101623; --muted:#5B6472;
+    --line:#E3E7ED; --accent:#2140E8; --accent-ink:#FFFFFF;
+    --approve:#178A50; --approve-bg:#E7F5EE; --warn:#B97324; --warn-bg:#FBF1E2;
+    --band:#0C0F16; --band-ink:#EDEFF4; --band-muted:#9AA3B2;
+    --shadow:0 1px 2px rgba(16,22,35,.05),0 12px 40px -12px rgba(16,22,35,.12);
+    --sans:"Avenir Next","Helvetica Neue",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    --serif:Georgia,"Iowan Old Style","Times New Roman",serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --paper:#0C0F16; --card:#131826; --ink:#EDEFF4; --muted:#9AA3B2;
+      --line:#232936; --accent:#6079FF; --accent-ink:#0C0F16;
+      --approve:#4CC38A; --approve-bg:#12291D; --warn:#E0A458; --warn-bg:#2B2113;
+      --band:#060810; --band-ink:#EDEFF4; --band-muted:#9AA3B2;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 16px 48px -12px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0C0F16; --card:#131826; --ink:#EDEFF4; --muted:#9AA3B2;
+    --line:#232936; --accent:#6079FF; --accent-ink:#0C0F16;
+    --approve:#4CC38A; --approve-bg:#12291D; --warn:#E0A458; --warn-bg:#2B2113;
+    --band:#060810; --band-ink:#EDEFF4; --band-muted:#9AA3B2;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 16px 48px -12px rgba(0,0,0,.55);
+  }
+  :root[data-theme="light"]{
+    --paper:#F7F8FA; --card:#FFFFFF; --ink:#101623; --muted:#5B6472;
+    --line:#E3E7ED; --accent:#2140E8; --accent-ink:#FFFFFF;
+    --approve:#178A50; --approve-bg:#E7F5EE; --warn:#B97324; --warn-bg:#FBF1E2;
+    --band:#0C0F16; --band-ink:#EDEFF4; --band-muted:#9AA3B2;
+    --shadow:0 1px 2px rgba(16,22,35,.05),0 12px 40px -12px rgba(16,22,35,.12);
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);
+    font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  img{max-width:100%}
+  .wrap{max-width:1120px;margin-inline:auto;padding-inline:24px}
+  .sect{padding-block:clamp(72px,9vw,120px)}
+  .kicker{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted)}
+  h1,h2,h3{font-weight:600;letter-spacing:-.02em;text-wrap:balance;line-height:1.12}
+  h2{font-size:clamp(1.7rem,3.4vw,2.4rem);margin-top:10px}
+  .lede{color:var(--muted);max-width:58ch;margin-top:14px}
+  .serif-i{font-family:var(--serif);font-style:italic;font-weight:500;letter-spacing:0}
+
+  .btn{display:inline-flex;align-items:center;gap:8px;font:inherit;font-weight:600;
+    font-size:.95rem;padding:12px 22px;border-radius:10px;border:1px solid transparent;
+    cursor:pointer;transition:transform .12s ease,box-shadow .12s ease}
+  .btn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+  .btn-primary{background:var(--accent);color:var(--accent-ink)}
+  .btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 24px -8px var(--accent)}
+  .btn-outline{border-color:var(--line);color:var(--ink);background:transparent}
+  .btn-outline:hover{border-color:var(--muted)}
+  .micro{font-size:.78rem;color:var(--muted);margin-top:8px}
+
+  /* ---------- nav ---------- */
+  .nav{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--paper) 82%,transparent);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid transparent;
+    transition:border-color .2s}
+  .nav.scrolled{border-bottom-color:var(--line)}
+  .nav-in{display:flex;align-items:center;gap:28px;height:64px}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:700;font-size:1.05rem;letter-spacing:-.01em}
+  .logo-mark{width:22px;height:22px;border-radius:6px;background:var(--accent);position:relative;flex:none}
+  .logo-mark::after{content:"";position:absolute;inset:0;margin:auto;width:10px;height:5px;
+    border-left:2.5px solid var(--accent-ink);border-bottom:2.5px solid var(--accent-ink);
+    transform:rotate(-45deg) translate(0,-1px)}
+  .nav-links{display:flex;gap:24px;font-size:.92rem;color:var(--muted);margin-inline:auto}
+  .nav-links a:hover{color:var(--ink)}
+  .nav-cta{display:flex;align-items:center;gap:16px;margin-left:auto}
+  .nav-cta .login{font-size:.92rem;color:var(--muted)}
+  .nav-cta .login:hover{color:var(--ink)}
+  .nav .btn{padding:9px 16px;font-size:.88rem}
+  @media(max-width:760px){.nav-links{display:none}.nav-cta{margin-left:auto}}
+
+  /* ---------- hero ---------- */
+  .hero{text-align:center;padding-top:clamp(56px,8vw,96px)}
+  .hero .kicker{color:var(--accent)}
+  .hero h1{font-size:clamp(2.3rem,5.6vw,3.9rem);max-width:21ch;margin:16px auto 0}
+  .hero .sub{font-size:clamp(1.05rem,2vw,1.3rem);color:var(--muted);max-width:44ch;margin:20px auto 0;text-wrap:balance}
+  .hero-ctas{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:32px}
+  .hero-ctas .col{display:flex;flex-direction:column;align-items:center}
+
+  /* ---------- product shot (pure CSS mockup) ---------- */
+  .shot-zone{position:relative;margin-top:clamp(48px,6vw,72px)}
+  .shot-zone::before{content:"";position:absolute;inset:-8% -20% auto;height:120%;z-index:-1;
+    background:radial-gradient(48% 55% at 50% 32%,color-mix(in srgb,var(--accent) 9%,transparent),transparent 70%)}
+  .shot{position:relative;max-width:980px;margin-inline:auto;background:var(--card);
+    border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;text-align:left}
+  .chrome{display:flex;align-items:center;gap:8px;padding:11px 16px;border-bottom:1px solid var(--line)}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--line)}
+  .addr{font-family:var(--mono);font-size:.72rem;color:var(--muted);background:var(--paper);
+    border:1px solid var(--line);border-radius:7px;padding:4px 14px;margin-inline:auto}
+  .app{display:grid;grid-template-columns:216px 1fr;min-height:340px}
+  .side{border-right:1px solid var(--line);padding:16px 12px;background:color-mix(in srgb,var(--paper) 60%,var(--card))}
+  .side-label{font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--muted);padding:0 10px 10px}
+  .client{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;
+    font-size:.84rem;font-weight:500;color:var(--muted)}
+  .client .sw{width:9px;height:9px;border-radius:3px;background:var(--c,#999);flex:none}
+  .client .n{margin-left:auto;font-family:var(--mono);font-size:.68rem;color:var(--muted)}
+  .client.on{background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--ink)}
+  .main{padding:18px 20px}
+  .main-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .main-head b{font-size:.95rem;letter-spacing:-.01em}
+  .main-head span{font-family:var(--mono);font-size:.7rem;color:var(--muted)}
+  .cal{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px}
+  .day{border:1px solid var(--line);border-radius:10px;min-height:190px;padding:8px;background:var(--card)}
+  .day .d{font-family:var(--mono);font-size:.64rem;color:var(--muted);margin-bottom:8px}
+  .chip{border-radius:7px;padding:6px 8px;font-size:.68rem;line-height:1.35;margin-bottom:6px;
+    border:1px solid var(--line);background:var(--paper)}
+  .chip b{display:block;font-size:.66rem;font-weight:600}
+  .chip .st{display:inline-block;margin-top:4px;font-family:var(--mono);font-size:.58rem;
+    padding:1px 7px;border-radius:99px}
+  .st.ok{background:var(--approve-bg);color:var(--approve)}
+  .st.wait{background:var(--warn-bg);color:var(--warn)}
+  .st.live{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent)}
+
+  .phone{position:absolute;right:clamp(-10px,1vw,28px);bottom:-34px;width:238px;background:var(--card);
+    border:1px solid var(--line);border-radius:26px;box-shadow:var(--shadow);padding:14px 13px 16px;z-index:2}
+  .ph-bar{width:64px;height:5px;border-radius:99px;background:var(--line);margin:0 auto 12px}
+  .ph-head{font-size:.78rem;font-weight:600;letter-spacing:-.01em}
+  .ph-sub{font-family:var(--mono);font-size:.62rem;color:var(--muted);margin-top:2px}
+  .ph-post{border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:10px}
+  .ph-post p{font-size:.68rem;line-height:1.4;color:var(--muted)}
+  .ph-thumb{height:52px;border-radius:8px;margin-bottom:8px;
+    background:linear-gradient(120deg,color-mix(in srgb,var(--accent) 22%,var(--line)),var(--line))}
+  .ph-actions{display:flex;gap:6px;margin-top:9px}
+  .ph-btn{flex:1;text-align:center;font-size:.66rem;font-weight:600;padding:6px 0;border-radius:8px}
+  .ph-approve{background:var(--accent);color:var(--accent-ink)}
+  .ph-comment{border:1px solid var(--line);color:var(--muted)}
+  .ph-done{display:flex;align-items:center;gap:7px;background:var(--approve-bg);color:var(--approve);
+    font-size:.7rem;font-weight:600;border:1px solid transparent;border-radius:12px;padding:11px 12px;margin-top:10px}
+  @media(max-width:900px){
+    .app{grid-template-columns:1fr}.side{display:none}
+    .phone{position:static;width:min(260px,88%);margin:-26px auto 20px;bottom:auto}
+    .cal{grid-template-columns:repeat(2,1fr)}.day:nth-child(n+3){display:none}
+  }
+
+  /* ---------- trust strip ---------- */
+  .trust{padding-block:56px;border-block:1px solid var(--line);margin-top:64px}
+  .trust-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:28px}
+  .t-item .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:1.22rem;font-weight:600}
+  .t-item .v .hl{color:var(--accent)}
+  .t-item p{font-size:.8rem;color:var(--muted);margin-top:4px;line-height:1.45}
+  .trust-cap{font-size:.78rem;color:var(--muted);margin-top:26px;font-family:var(--serif);font-style:italic}
+  @media(max-width:760px){.trust-grid{grid-template-columns:1fr 1fr;gap:22px}}
+
+  /* ---------- problem ---------- */
+  .band-tint{background:color-mix(in srgb,var(--ink) 3.5%,var(--paper))}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:40px}
+  @media(max-width:760px){.grid-2{grid-template-columns:1fr}}
+  .pain{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:26px}
+  .pain h3{font-size:1.02rem}
+  .pain blockquote{font-family:var(--serif);font-style:italic;color:var(--muted);
+    font-size:.98rem;line-height:1.55;margin-top:10px}
+  .prob-close{margin-top:36px;max-width:52ch;color:var(--muted)}
+  .prob-close b{color:var(--ink);font-weight:600}
+
+  /* ---------- solution rows ---------- */
+  .sol-row{display:grid;grid-template-columns:1fr 1fr;gap:clamp(28px,5vw,64px);align-items:center;
+    padding-block:34px}
+  .sol-row + .sol-row{border-top:1px solid var(--line)}
+  .sol-row:nth-child(even) .sol-copy{order:2}
+  @media(max-width:820px){.sol-row{grid-template-columns:1fr}.sol-row:nth-child(even) .sol-copy{order:0}}
+  .sol-tag{display:inline-block;font-family:var(--mono);font-size:.64rem;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:3px 11px}
+  .sol-copy h3{font-size:1.35rem;margin-top:14px}
+  .sol-copy p{color:var(--muted);margin-top:10px;max-width:46ch}
+  .sol-copy .why{margin-top:12px;font-size:.9rem}
+  .sol-copy .why b{font-weight:600}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    box-shadow:var(--shadow);padding:20px;font-size:.8rem}
+  .panel .p-label{font-family:var(--mono);font-size:.62rem;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+  .math{display:flex;align-items:center;gap:16px;justify-content:center;padding:14px 0}
+  .math .old,.math .new{text-align:center}
+  .math .num{font-family:var(--mono);font-size:1.7rem;font-weight:600;font-variant-numeric:tabular-nums}
+  .math .old .num{color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px;
+    text-decoration-color:color-mix(in srgb,var(--warn) 70%,transparent)}
+  .math .new .num{color:var(--accent)}
+  .math .cap{font-size:.66rem;color:var(--muted);margin-top:2px}
+  .math .arrow{color:var(--muted);font-size:1.2rem}
+  .alert-line{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--line);
+    border-radius:10px;margin-top:8px}
+  .alert-line .t{font-family:var(--mono);font-size:.62rem;color:var(--muted);flex:none;padding-top:2px}
+  .alert-line p{font-size:.74rem;line-height:1.45}
+  .alert-line.good{border-color:color-mix(in srgb,var(--approve) 35%,var(--line));background:var(--approve-bg)}
+  .report-cover{border:1px solid var(--line);border-radius:10px;padding:18px;background:var(--paper)}
+  .report-cover .rc-logo{width:26px;height:26px;border-radius:7px;background:#E8623D;margin-bottom:12px}
+  .report-cover h4{font-size:.9rem;letter-spacing:-.01em}
+  .report-cover .rc-sub{font-family:var(--mono);font-size:.62rem;color:var(--muted);margin-top:3px}
+  .rc-bars{display:flex;gap:6px;align-items:flex-end;height:56px;margin-top:14px}
+  .rc-bars i{flex:1;background:color-mix(in srgb,var(--accent) 30%,var(--line));border-radius:3px 3px 0 0}
+  .rc-bars i:last-child{background:var(--accent)}
+
+  /* ---------- benefits ---------- */
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:40px}
+  @media(max-width:900px){.grid-3{grid-template-columns:1fr 1fr}}
+  @media(max-width:600px){.grid-3{grid-template-columns:1fr}}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:26px}
+  .stat .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:1.55rem;
+    font-weight:600;letter-spacing:-.02em}
+  .stat p{font-size:.88rem;color:var(--muted);margin-top:8px;line-height:1.5}
+  .stat a{color:var(--accent);font-weight:600}
+  .stat a:hover{text-decoration:underline}
+
+  /* ---------- features ---------- */
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:40px}
+  @media(max-width:980px){.grid-4{grid-template-columns:1fr 1fr}}
+  @media(max-width:560px){.grid-4{grid-template-columns:1fr}}
+  .feat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;
+    transition:border-color .15s}
+  .feat:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+  .feat .ic{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;
+    background:color-mix(in srgb,var(--accent) 9%,transparent);color:var(--accent);margin-bottom:14px}
+  .feat .ic svg{width:17px;height:17px}
+  .feat h3{font-size:.95rem}
+  .feat p{font-size:.82rem;color:var(--muted);margin-top:7px;line-height:1.5}
+  .feat p b{color:var(--ink);font-weight:600}
+
+  /* ---------- workflow ---------- */
+  .flow{display:grid;grid-template-columns:repeat(5,1fr);gap:0;margin-top:52px;
+    list-style:none;counter-reset:step}
+  @media(max-width:760px){.flow{grid-template-columns:1fr;gap:0}}
+  .step{position:relative;text-align:center;padding:0 12px}
+  .step::before{content:"";position:absolute;top:21px;left:calc(-50% + 22px);right:calc(50% + 22px);
+    height:2px;background:var(--line)}
+  .step:first-child::before{display:none}
+  @media(max-width:760px){
+    .step{display:grid;grid-template-columns:44px 1fr;text-align:left;gap:14px;padding:14px 0;align-items:center}
+    .step::before{top:-8px;left:21px;right:auto;width:2px;height:16px}
+  }
+  .step .node{width:44px;height:44px;border-radius:50%;border:2px solid var(--line);background:var(--card);
+    display:grid;place-items:center;margin:0 auto 12px;font-family:var(--mono);font-size:.8rem;color:var(--muted)}
+  @media(max-width:760px){.step .node{margin:0}}
+  .step h3{font-size:.95rem}
+  .step p{font-size:.76rem;color:var(--muted);margin-top:4px;line-height:1.45}
+  .step.key .node{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+  .step.key .tagline{display:block;font-family:var(--serif);font-style:italic;font-size:.76rem;
+    color:var(--accent);margin-top:5px}
+
+  /* ---------- comparison ---------- */
+  .tbl-wrap{overflow-x:auto;margin-top:40px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+  table{border-collapse:collapse;width:100%;min-width:760px;font-size:.85rem}
+  th,td{text-align:left;padding:14px 18px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  th{font-size:.72rem;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted);font-weight:600}
+  td:first-child{font-weight:600;color:var(--ink)}
+  td{color:var(--muted)}
+  .us{background:color-mix(in srgb,var(--accent) 5%,transparent)}
+  th.us{color:var(--accent);border-top:3px solid var(--accent)}
+  td.us{color:var(--ink);font-weight:600}
+  .tbl-note{font-size:.78rem;color:var(--muted);margin-top:16px;max-width:64ch}
+  .tbl-note a{color:var(--accent);font-weight:600}
+
+  /* ---------- pricing ---------- */
+  .plans{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:44px;align-items:stretch}
+  @media(max-width:860px){.plans{grid-template-columns:1fr;max-width:440px;margin-inline:auto}}
+  .plan{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:30px;
+    display:flex;flex-direction:column}
+  .plan.pro{border-color:var(--accent);box-shadow:var(--shadow);position:relative}
+  .plan .badge{position:absolute;top:-12px;left:26px;background:var(--accent);color:var(--accent-ink);
+    font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;
+    border-radius:99px;padding:4px 12px;font-weight:700}
+  .plan h3{font-size:1.05rem}
+  .plan .for{font-size:.82rem;color:var(--muted);margin-top:3px}
+  .plan .price{font-family:var(--mono);font-size:2.1rem;font-weight:600;margin-top:18px;
+    font-variant-numeric:tabular-nums}
+  .plan .price span{font-size:.85rem;color:var(--muted);font-weight:400}
+  .plan .frame{font-family:var(--serif);font-style:italic;font-size:.85rem;color:var(--accent);margin-top:4px}
+  .plan ul{list-style:none;margin:20px 0 26px;display:grid;gap:9px}
+  .plan li{font-size:.86rem;color:var(--muted);padding-left:22px;position:relative}
+  .plan li::before{content:"";position:absolute;left:2px;top:7px;width:9px;height:5px;
+    border-left:2px solid var(--approve);border-bottom:2px solid var(--approve);transform:rotate(-45deg)}
+  .plan .btn{margin-top:auto;justify-content:center}
+  .kindness{display:flex;flex-wrap:wrap;gap:10px 26px;justify-content:center;margin-top:30px;
+    font-size:.8rem;color:var(--muted)}
+  .kindness span{display:flex;align-items:center;gap:7px}
+  .kindness i{width:5px;height:5px;border-radius:50%;background:var(--accent);flex:none;font-style:normal}
+  .price-note{text-align:center;font-size:.72rem;color:var(--muted);margin-top:18px;
+    font-family:var(--serif);font-style:italic}
+
+  /* ---------- faq ---------- */
+  .faq{max-width:760px;margin:44px auto 0}
+  .faq details{border-bottom:1px solid var(--line)}
+  .faq summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:20px;
+    align-items:center;padding:20px 4px;font-weight:600;font-size:.98rem}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary::after{content:"+";font-family:var(--mono);font-size:1.15rem;color:var(--muted);
+    transition:transform .18s;flex:none}
+  .faq details[open] summary::after{transform:rotate(45deg)}
+  .faq .a{padding:0 4px 22px;color:var(--muted);font-size:.92rem;max-width:62ch}
+  .faq .a b{color:var(--ink);font-weight:600}
+
+  /* ---------- final band + footer ---------- */
+  .final{background:var(--band);color:var(--band-ink);text-align:center}
+  .final h2{font-size:clamp(2rem,4.6vw,3.1rem);max-width:16ch;margin-inline:auto}
+  .final .lede{color:var(--band-muted);margin-inline:auto;text-wrap:balance}
+  .final .btn-outline{border-color:color-mix(in srgb,var(--band-ink) 28%,transparent);color:var(--band-ink)}
+  .final .btn-primary{box-shadow:0 0 60px -12px var(--accent)}
+  .final .micro{color:var(--band-muted)}
+  .final .made{margin-top:56px;font-size:.8rem;color:var(--band-muted)}
+  .final .made a{color:var(--band-ink);border-bottom:1px solid color-mix(in srgb,var(--band-ink) 30%,transparent)}
+  .footer{background:var(--band);color:var(--band-muted);border-top:1px solid color-mix(in srgb,var(--band-ink) 10%,transparent);
+    padding-block:44px;font-size:.82rem}
+  .foot-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px}
+  @media(max-width:760px){.foot-grid{grid-template-columns:1fr 1fr}}
+  .footer h4{font-family:var(--mono);font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--band-muted);margin-bottom:14px;font-weight:600}
+  .footer ul{list-style:none;display:grid;gap:9px}
+  .footer a:hover{color:var(--band-ink)}
+  .foot-note{margin-top:36px;padding-top:24px;border-top:1px solid color-mix(in srgb,var(--band-ink) 10%,transparent);
+    display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:.76rem}
+
+  /* ---------- reveal ---------- */
+  .rv{opacity:0;transform:translateY(12px);transition:opacity .5s ease,transform .5s ease}
+  .rv.in{opacity:1;transform:none}
+  @media (prefers-reduced-motion: reduce){
+    .rv{opacity:1;transform:none;transition:none}
+    html{scroll-behavior:auto}
+  }
+</style>
+
+<!-- ============ NAV ============ -->
+<header class="nav" id="nav">
+  <div class="wrap nav-in">
+    <a class="logo" href="#top"><span class="logo-mark"></span>Clientside</a>
+    <nav class="nav-links">
+      <a href="#solution">Product</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#compare">Compare</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="login" href="#faq">Log in</a>
+      <a class="btn btn-primary" href="#pricing">Start Free Trial</a>
+    </div>
+  </div>
+</header>
+
+<!-- ============ HERO ============ -->
+<section class="hero wrap" id="top">
+  <p class="kicker">For agencies and social media managers</p>
+  <h1>Run every client's social media from one place. Without paying for it twice.</h1>
+  <p class="sub">Client workspaces. One-link approvals. Flat pricing that doesn't grow
+    every time you win a client. Built for people who run social for
+    <span class="serif-i">other people</span>.</p>
+  <div class="hero-ctas">
+    <div class="col">
+      <a class="btn btn-primary" href="#pricing">Start Free Trial</a>
+      <p class="micro">No card required · Free migration included</p>
+    </div>
+    <div class="col">
+      <a class="btn btn-outline" href="#compare">Book a Demo</a>
+      <p class="micro">20 minutes, with a founder</p>
+    </div>
+  </div>
+
+  <!-- product mockup -->
+  <div class="shot-zone rv">
+    <div class="shot" role="img" aria-label="Clientside dashboard: client workspaces on the left, a weekly content calendar in the center, and a phone showing the client approval link">
+      <div class="chrome">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="addr">app.clientside.com/fig-and-vine</span>
+      </div>
+      <div class="app">
+        <aside class="side">
+          <div class="side-label">Clients</div>
+          <div class="client on"><span class="sw" style="--c:#E8623D"></span>Fig &amp; Vine<span class="n">4</span></div>
+          <div class="client"><span class="sw" style="--c:#3E8ED0"></span>Harbor Dental<span class="n">2</span></div>
+          <div class="client"><span class="sw" style="--c:#7A5AF8"></span>Atlas Fitness<span class="n">6</span></div>
+          <div class="client"><span class="sw" style="--c:#D0A23E"></span>Marlowe Realty<span class="n">3</span></div>
+          <div class="client"><span class="sw" style="--c:#2FA37C"></span>Bloom Coffee<span class="n">5</span></div>
+          <div class="client"><span class="sw" style="--c:#C4527E"></span>Northside Legal<span class="n">2</span></div>
+        </aside>
+        <div class="main">
+          <div class="main-head"><b>Fig &amp; Vine — Restaurant Group</b><span>Week of Jul 6 · 4 channels</span></div>
+          <div class="cal">
+            <div class="day"><div class="d">MON 6</div>
+              <div class="chip"><b>Summer menu reveal</b>IG + FB<span class="st ok">Approved</span></div>
+              <div class="chip"><b>Chef's table promo</b>LinkedIn<span class="st live">Published</span></div>
+            </div>
+            <div class="day"><div class="d">TUE 7</div>
+              <div class="chip"><b>Behind the pass — reel</b>IG + TikTok<span class="st wait">Awaiting sign-off</span></div>
+            </div>
+            <div class="day"><div class="d">WED 8</div>
+              <div class="chip"><b>Wine pairing night</b>IG + GBP<span class="st ok">Approved</span></div>
+              <div class="chip"><b>Staff spotlight: Dana</b>FB<span class="st wait">Awaiting sign-off</span></div>
+            </div>
+            <div class="day"><div class="d">THU 9</div>
+              <div class="chip"><b>Weekend brunch teaser</b>IG<span class="st ok">Approved</span></div>
+            </div>
+            <div class="day"><div class="d">FRI 10</div>
+              <div class="chip"><b>Live jazz announcement</b>IG + FB + GBP<span class="st wait">Awaiting sign-off</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="phone" aria-hidden="true">
+        <div class="ph-bar"></div>
+        <div class="ph-head">Fig &amp; Vine · Approvals</div>
+        <div class="ph-sub">3 posts awaiting your sign-off</div>
+        <div class="ph-post">
+          <div class="ph-thumb"></div>
+          <p>Behind the pass — 30s reel. Goes live Tue 6:00 PM on Instagram &amp; TikTok.</p>
+          <div class="ph-actions">
+            <span class="ph-btn ph-approve">Approve</span>
+            <span class="ph-btn ph-comment">Comment</span>
+          </div>
+        </div>
+        <div class="ph-done">✓&nbsp; Wine pairing night — Approved just now</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TRUST (v1: live numbers, not logos) ============ -->
+<section class="trust">
+  <div class="wrap">
+    <div class="trust-grid rv">
+      <div class="t-item"><div class="v"><span class="hl">99.7%</span></div>
+        <p>Publishing success, last 30 days — on our public reliability dashboard.</p></div>
+      <div class="t-item"><div class="v">&lt; 2h</div>
+        <p>Support response, answered by the founders. Not a chatbot, not a Discord.</p></div>
+      <div class="t-item"><div class="v">Open core</div>
+        <p>Built on an open-source engine. Your data is exportable — never hostage.</p></div>
+      <div class="t-item"><div class="v">Monthly</div>
+        <p>Cancel anytime, self-serve. Renewal price = the price on this page.</p></div>
+    </div>
+    <p class="trust-cap rv">We're new. So we prove it with live numbers, not logos.</p>
+  </div>
+</section>
+
+<!-- ============ PROBLEM ============ -->
+<section class="sect band-tint" id="problem">
+  <div class="wrap">
+    <p class="kicker rv">The day job</p>
+    <h2 class="rv">You didn't start an agency to do this all day.</h2>
+    <div class="grid-2">
+      <div class="pain rv"><h3>The approval chase</h3>
+        <blockquote>"Client approvals are screenshots in WhatsApp. Someone approves the wrong
+        version, it publishes, and it's my fault."</blockquote></div>
+      <div class="pain rv"><h3>The growth tax</h3>
+        <blockquote>"Every new client raises my software bill $20–40 a month — before I've
+        earned a dollar from them."</blockquote></div>
+      <div class="pain rv"><h3>The 3pm dread</h3>
+        <blockquote>"Did the post go out? I check. Every time. Because once, it didn't."</blockquote></div>
+      <div class="pain rv"><h3>Reporting week</h3>
+        <blockquote>"Two days a month copy-pasting screenshots into slide decks. Per client."</blockquote></div>
+    </div>
+    <p class="prob-close rv">Every tool you've tried was built for a brand posting its own content —
+      then stretched to fit you. <b>The stretch marks are your Tuesday.</b></p>
+  </div>
+</section>
+
+<!-- ============ SOLUTION ============ -->
+<section class="sect" id="solution">
+  <div class="wrap">
+    <p class="kicker rv">How it works</p>
+    <h2 class="rv">Built around your clients. Because your business is.</h2>
+    <p class="lede rv">Not a scheduler with client features taped on. Every part of the product
+      starts from the client relationship.</p>
+
+    <div class="sol-row rv">
+      <div class="sol-copy">
+        <span class="sol-tag">Kills: the approval chase</span>
+        <h3>One-link approvals</h3>
+        <p>Send your client a link. They see their posts — only theirs — approve or comment,
+          on their phone. Nothing publishes without sign-off.</p>
+        <p class="why"><b>Why it matters:</b> the wrong-version disaster becomes structurally impossible.</p>
+      </div>
+      <div class="panel">
+        <div class="p-label">Client view · no login needed</div>
+        <div class="ph-head">This week's posts — Fig &amp; Vine</div>
+        <div class="ph-post"><p><b style="color:var(--ink)">Live jazz announcement</b> · Fri 5:30 PM ·
+          Instagram, Facebook, Google Business</p>
+          <div class="ph-actions"><span class="ph-btn ph-approve">Approve</span>
+          <span class="ph-btn ph-comment">Request a change</span></div></div>
+        <div class="ph-done">✓&nbsp; Approved by Maria (owner) · logged 2:14 PM</div>
+      </div>
+    </div>
+
+    <div class="sol-row rv">
+      <div class="sol-copy">
+        <span class="sol-tag">Kills: the growth tax</span>
+        <h3>Flat pricing</h3>
+        <p>One price. Generous channel limits. Client #11 costs you $0 more.</p>
+        <p class="why"><b>Why it matters:</b> your next client is margin, not overhead.</p>
+      </div>
+      <div class="panel">
+        <div class="p-label">10 clients · 40 channels · per month</div>
+        <div class="math">
+          <div class="old"><div class="num">$240</div><div class="cap">per-channel scheduler</div></div>
+          <div class="arrow">→</div>
+          <div class="new"><div class="num">$79</div><div class="cap">Clientside, flat</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sol-row rv">
+      <div class="sol-copy">
+        <span class="sol-tag">Kills: the 3pm dread</span>
+        <h3>Reliability you can watch</h3>
+        <p>A public success-rate dashboard, and an alert within 60 seconds if anything fails —
+          so you know before your client does.</p>
+        <p class="why"><b>Why it matters:</b> you stop checking. That's the product.</p>
+      </div>
+      <div class="panel">
+        <div class="p-label">Publish log · today</div>
+        <div class="alert-line"><span class="t">14:00:02</span><p>Atlas Fitness · Instagram reel published.</p></div>
+        <div class="alert-line"><span class="t">15:00:11</span><p>Marlowe Realty · LinkedIn publish failed — token expired. Alert sent to you.</p></div>
+        <div class="alert-line good"><span class="t">15:00:52</span><p>Reconnected &amp; republished automatically. Recovered in 41s.</p></div>
+      </div>
+    </div>
+
+    <div class="sol-row rv">
+      <div class="sol-copy">
+        <span class="sol-tag">Kills: reporting week</span>
+        <h3>Reports that build themselves</h3>
+        <p>Per-client, your logo, generated from live data — sent on schedule or shared as a link.</p>
+        <p class="why"><b>Why it matters:</b> reporting day becomes reporting minute.</p>
+      </div>
+      <div class="panel">
+        <div class="p-label">Generated 1 Jul · sent to client</div>
+        <div class="report-cover">
+          <div class="rc-logo"></div>
+          <h4>Fig &amp; Vine — June Performance</h4>
+          <div class="rc-sub">Prepared by Meridian Social · 4 channels · 62 posts</div>
+          <div class="rc-bars"><i style="height:36%"></i><i style="height:52%"></i><i style="height:44%"></i>
+            <i style="height:68%"></i><i style="height:58%"></i><i style="height:88%"></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BENEFITS ============ -->
+<section class="sect band-tint">
+  <div class="wrap">
+    <p class="kicker rv">Outcomes</p>
+    <h2 class="rv">What changes in your first month</h2>
+    <div class="grid-3">
+      <div class="stat rv"><div class="v">$240 → $79</div>
+        <p>What a 10-client, 40-channel agency pays on a per-channel scheduler vs. here.
+          <a href="#compare">See the math →</a></p></div>
+      <div class="stat rv"><div class="v">Hours, not days</div>
+        <p>Approval turnaround. A link your client can tap beats a screenshot they scroll past.</p></div>
+      <div class="stat rv"><div class="v">2 days → 20 min</div>
+        <p>Monthly reporting. Generated, branded, sent.</p></div>
+      <div class="stat rv"><div class="v">0</div>
+        <p>Midnight "did it post?" checks. Alerts find you; you don't go looking.</p></div>
+      <div class="stat rv"><div class="v">∞ seats</div>
+        <p>Your VA, your designer, your new hire — no per-seat math, ever.</p></div>
+      <div class="stat rv"><div class="v">1 afternoon</div>
+        <p>Migration, done with you on a call, free. Old tool runs in parallel until you're sure.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FEATURES ============ -->
+<section class="sect">
+  <div class="wrap">
+    <p class="kicker rv">The full kit</p>
+    <h2 class="rv">Everything the day job needs. Nothing you'll have to explain to your client.</h2>
+    <div class="grid-4">
+      <div class="feat rv">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <h3>Nothing publishes without sign-off</h3>
+        <p><b>Approval links with an audit trail.</b> Your CYA record when "who approved this?" happens.</p></div>
+      <div class="feat rv">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+        <h3>Eleven clients. Eleven clean rooms.</h3>
+        <p><b>Workspaces scope everything</b> — channels, calendars, media, team access — per client.</p></div>
+      <div class="feat rv">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></div>
+        <h3>Plan a month in one afternoon</h3>
+        <p><b>Calendar, queues, best-slot suggestions</b> per client. Batching becomes your default speed.</p></div>
+      <div class="feat rv">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg></div>
+        <h3>Reports with your logo, not ours</h3>
+        <p><b>Per-client analytics</b> composed into the branded deliverable your retainer is judged on.</p></div>
+      <div class="feat rv">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.6 3 14.4 0 18M12 3c-3 3.6-3 14.4 0 18"/></svg></div>
+        <h3>Publish everywhere your clients are</h3>
+        <p><b>Instagram, Facebook, LinkedIn, TikTok, YouTube, Google Business, Pinterest</b> and more — one composer, per-platform formatting handled.</p></div>
+      <div class="feat rv">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg></div>
+        <h3>First drafts in the client's voice</h3>
+        <p><b>AI drafting inside the workflow</b>, not a gimmick beside it. The approval step keeps humans in charge.</p></div>
+      <div class="feat rv">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10l7.5 4.5a3 3 0 0 0 3 0L21 10"/></svg></div>
+        <h3>A media library per client</h3>
+        <p><b>Assets and brand files scoped</b> to each workspace. No more Drive-folder archaeology.</p></div>
+      <div class="feat rv">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></div>
+        <h3>Plugs into your ops</h3>
+        <p><b>API, webhooks, Zapier and n8n</b> — schedule from wherever work actually starts.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WORKFLOW ============ -->
+<section class="sect band-tint">
+  <div class="wrap">
+    <p class="kicker rv">The loop</p>
+    <h2 class="rv">Five steps. One place. Every client.</h2>
+    <ol class="flow rv">
+      <li class="step"><div class="node">1</div><h3>Plan</h3><p>Calendar per client</p></li>
+      <li class="step"><div class="node">2</div><h3>Create</h3><p>Drafts, AI assist, media</p></li>
+      <li class="step key"><div class="node">3</div><h3>Approve</h3><p>Client taps a link</p>
+        <span class="tagline">the step every other tool forgot</span></li>
+      <li class="step"><div class="node">4</div><h3>Publish</h3><p>Every channel, watched</p></li>
+      <li class="step"><div class="node">5</div><h3>Report</h3><p>Branded, automatic</p></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ COMPARISON ============ -->
+<section class="sect" id="compare">
+  <div class="wrap">
+    <p class="kicker rv">The honest comparison</p>
+    <h2 class="rv">What a 10-client agency's week looks like on each setup</h2>
+    <p class="lede rv">No tool bashing — just the workflow, side by side.</p>
+    <div class="tbl-wrap rv">
+      <table>
+        <thead><tr>
+          <th></th><th>Manual posting</th><th>Spreadsheets + 4 tools</th>
+          <th>Per-channel schedulers</th><th class="us">Clientside</th>
+        </tr></thead>
+        <tbody>
+          <tr><td>Client workspaces</td><td>—</td><td>Folders, if disciplined</td>
+            <td>Bolted on, extra cost</td><td class="us">Built in</td></tr>
+          <tr><td>Client approvals</td><td>Screenshots in chat</td><td>Sheet comments, lost</td>
+            <td>Rare, or $33/client extra</td><td class="us">One link, audit trail</td></tr>
+          <tr><td>Cost at 10 clients / 40 channels</td><td>Your evenings</td><td>$150+ across tools</td>
+            <td>~$200–380 / mo</td><td class="us">Flat $79 / mo</td></tr>
+          <tr><td>Failure alerts</td><td>The client tells you</td><td>The client tells you</td>
+            <td>Buried in a dashboard</td><td class="us">Under 60 seconds</td></tr>
+          <tr><td>Monthly reports</td><td>2 days of copy-paste</td><td>2 days of copy-paste</td>
+            <td>Extra tier, extra cost</td><td class="us">Generated, branded</td></tr>
+          <tr><td>Team seats</td><td>—</td><td>Free but chaotic</td>
+            <td>Per-seat fees</td><td class="us">Unlimited</td></tr>
+          <tr><td>Billing</td><td>—</td><td>Death by subscriptions</td>
+            <td>Renewal surprises</td><td class="us">Monthly · cancel anytime · sticker price</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="tbl-note rv">Prices are what we verified in July 2026 — sources on our
+      <a href="#faq">brand-by-brand comparison pages</a>. If a competitor fits you better,
+      those pages say so.</p>
+  </div>
+</section>
+
+<!-- ============ PRICING ============ -->
+<section class="sect band-tint" id="pricing">
+  <div class="wrap">
+    <p class="kicker rv" style="text-align:center">Pricing</p>
+    <h2 class="rv" style="text-align:center">One flat price. It stays flat when you grow.</h2>
+    <p class="lede rv" style="text-align:center;margin-inline:auto">No per-channel fees. No per-seat fees.
+      No renewal surprises.</p>
+    <div class="plans">
+      <div class="plan rv">
+        <h3>Starter</h3><p class="for">For freelancers</p>
+        <div class="price">$29<span> / mo</span></div>
+        <p class="frame">about $7 per client, per month</p>
+        <ul>
+          <li>4 client workspaces</li><li>16 channels</li><li>One-link client approvals</li>
+          <li>Unlimited posts</li><li>Media library per client</li>
+        </ul>
+        <a class="btn btn-outline" href="#top">Start Free Trial</a>
+      </div>
+      <div class="plan pro rv">
+        <span class="badge">Recommended</span>
+        <h3>Pro</h3><p class="for">For agencies</p>
+        <div class="price">$79<span> / mo</span></div>
+        <p class="frame">your next client costs $0 more</p>
+        <ul>
+          <li>Unlimited client workspaces</li><li>50 channels</li><li>Unlimited team members</li>
+          <li>Approvals with audit trail</li><li>Branded client reports</li><li>Priority support</li>
+        </ul>
+        <a class="btn btn-primary" href="#top">Start Free Trial</a>
+      </div>
+      <div class="plan rv">
+        <h3>Business</h3><p class="for">For agencies whose clients see everything</p>
+        <div class="price">$129<span> / mo</span></div>
+        <p class="frame">the client portal wears your brand</p>
+        <ul>
+          <li>Everything in Pro</li><li>100 channels</li><li>White-label portal &amp; reports</li>
+          <li>Custom domain</li><li>Migration done for you</li><li>Direct founder line</li>
+        </ul>
+        <a class="btn btn-outline" href="#top">Book a Demo</a>
+      </div>
+    </div>
+    <div class="kindness rv">
+      <span><i></i>Monthly billing</span>
+      <span><i></i>Cancel anytime, self-serve</span>
+      <span><i></i>Renewal price = the price on this page</span>
+      <span><i></i>Free trial, no card</span>
+    </div>
+    <p class="price-note rv">Illustrative pricing — final numbers pending our published pricing research.</p>
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section class="sect" id="faq">
+  <div class="wrap">
+    <p class="kicker rv" style="text-align:center">Before you ask</p>
+    <h2 class="rv" style="text-align:center">Fair questions, straight answers</h2>
+    <div class="faq rv">
+      <details open>
+        <summary>Which social platforms are supported?</summary>
+        <div class="a"><b>Instagram, Facebook, LinkedIn (profiles and pages), TikTok, YouTube, Pinterest,
+        Google Business Profile, Threads</b> — plus community channels like Discord, Telegram, and Bluesky.
+        We publish an honest per-platform capability matrix rather than a long logo list. X (Twitter) is on
+        the roadmap — X charges tools $200+/month for API access, and we'd rather add it sustainably than
+        bill you a surprise add-on for it.</div>
+      </details>
+      <details>
+        <summary>Can I manage multiple clients?</summary>
+        <div class="a"><b>It's the whole point.</b> Every client gets a workspace — their channels, calendar,
+        media, and approvals, fully separated. Your client never sees another client's content. Neither does
+        the freelancer you offboarded last month.</div>
+      </details>
+      <details>
+        <summary>Is there an approval workflow?</summary>
+        <div class="a"><b>Yes — the real one.</b> You send your client a link; they approve or comment from
+        any device; nothing publishes without sign-off (per client, your choice). Every approval is logged,
+        so "who approved this?" always has an answer.</div>
+      </details>
+      <details>
+        <summary>Can my team collaborate?</summary>
+        <div class="a"><b>Unlimited team members</b> on every agency plan — no per-seat fees. Assign people
+        to specific clients, so your VA sees exactly what they should and nothing else.</div>
+      </details>
+      <details>
+        <summary>Is there a free trial?</summary>
+        <div class="a"><b>Yes — full product, no card required.</b> We also migrate your channels and queue
+        with you on a call, free, during the trial. Run us alongside your current tool and judge the difference.</div>
+      </details>
+      <details>
+        <summary>Can I cancel anytime?</summary>
+        <div class="a"><b>Yes, self-serve, in two clicks</b> — no email to support required. Monthly billing
+        is the default, and your renewal price is the price on this page. We know why you're asking; we read
+        the same Trustpilot pages you do.</div>
+      </details>
+      <details>
+        <summary>Is white-label supported?</summary>
+        <div class="a"><b>Branded (your logo) client reports are on Pro.</b> The fully white-labeled client
+        portal with your own domain is rolling out on Business — book a demo and we'll show you where it
+        stands, honestly.</div>
+      </details>
+      <details>
+        <summary>How secure is my data?</summary>
+        <div class="a"><b>Tokens encrypted at rest, workspaces isolated per organization,</b> and we'll sign
+        a DPA. The core of our platform is open source — you can audit what runs, and your data is exportable.
+        Lock-in isn't part of the business model.</div>
+      </details>
+      <details>
+        <summary>Can I migrate from another platform?</summary>
+        <div class="a"><b>Yes — and you don't do it alone.</b> Send us your client list and 30 minutes for the
+        connection screens; we move your channels and scheduled queue with you, usually the same day. Keep
+        your old tool running in parallel until you're sure.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FINAL CTA ============ -->
+<section class="final sect">
+  <div class="wrap">
+    <h2 class="rv">The screenshot era is <span class="serif-i">over</span>.</h2>
+    <p class="lede rv" style="max-width:46ch">Set up your first client tonight — or let us migrate everything
+      with you tomorrow. Either way, your next client won't raise your software bill.</p>
+    <div class="hero-ctas rv">
+      <div class="col">
+        <a class="btn btn-primary" href="#pricing">Start Free Trial</a>
+        <p class="micro">No card · Full product · Free migration</p>
+      </div>
+      <div class="col">
+        <a class="btn btn-outline" href="#pricing">Book a Demo</a>
+        <p class="micro">20 minutes with a founder, not an SDR</p>
+      </div>
+    </div>
+    <p class="made rv">Built by two founders who answer their own support. <a href="#faq">Changelog →</a></p>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <a class="logo" href="#top" style="color:var(--band-ink)">
+          <span class="logo-mark"></span>Clientside</a>
+        <p style="margin-top:14px;max-width:30ch">Client-first social media management for agencies
+          and freelance social media managers.</p>
+      </div>
+      <div><h4>Product</h4><ul>
+        <li><a href="#solution">Approvals</a></li><li><a href="#solution">Workspaces</a></li>
+        <li><a href="#solution">Reports</a></li><li><a href="#pricing">Pricing</a></li></ul></div>
+      <div><h4>Compare</h4><ul>
+        <li><a href="#compare">vs Buffer</a></li><li><a href="#compare">vs Later</a></li>
+        <li><a href="#compare">vs Hootsuite</a></li><li><a href="#compare">The Cost Report 2026</a></li></ul></div>
+      <div><h4>Company</h4><ul>
+        <li><a href="#faq">Support SLA</a></li><li><a href="#faq">Security</a></li>
+        <li><a href="#faq">Open source</a></li><li><a href="#faq">Changelog</a></li></ul></div>
+    </div>
+    <div class="foot-note">
+      <span>© 2026 Clientside. All prices verified July 2026.</span>
+      <span>Not an agency? <a href="#top" style="color:var(--band-ink)">Clientside for your own brand →</a></span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // sticky nav border on scroll
+  const nav = document.getElementById('nav');
+  addEventListener('scroll', () => nav.classList.toggle('scrolled', scrollY > 24), {passive:true});
+
+  // reveal-on-scroll (once), respecting reduced motion
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const els = document.querySelectorAll('.rv');
+  if (reduce || !('IntersectionObserver' in window)) {
+    els.forEach(el => el.classList.add('in'));
+  } else {
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, {threshold: .12, rootMargin: '0px 0px -40px'});
+    els.forEach(el => io.observe(el));
+  }
+</script>

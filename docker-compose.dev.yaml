@@ -70,7 +70,7 @@ services:
     expose:
       - 9200
     volumes:
-      - /var/lib/elasticsearch/data
+      - temporal-es-volume:/var/lib/elasticsearch/data
 
   temporal-postgresql:
     container_name: temporal-postgresql
@@ -83,7 +83,7 @@ services:
     expose:
       - 5432
     volumes:
-      - /var/lib/postgresql/data
+      - temporal-postgres-volume:/var/lib/postgresql/data
 
   temporal:
     container_name: temporal
@@ -138,6 +138,13 @@ services:
 volumes:
   redisinsight:
   postgres-volume:
+    external: false
+
+  # Named so Temporal workflow state / visibility survives container recreates.
+  temporal-postgres-volume:
+    external: false
+
+  temporal-es-volume:
     external: false
 
 networks:

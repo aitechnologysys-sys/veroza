@@ -11,11 +11,23 @@ import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
+import { IBillingProvider } from '@gitroom/nestjs-libraries/services/billing.provider.interface';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing');
+// Pinned explicitly rather than inheriting whatever the installed stripe-node
+// happens to pin. The Stripe webhook endpoint must be configured with this same
+// version — event payload shapes are version-dependent, and a mismatch fails
+// silently (e.g. paymentSucceeded() reads invoice.parent.subscription_details,
+// which does not exist on older versions, so it early-returns { ok: true }).
+// Bumping this means bumping the webhook endpoint's API version in the Stripe
+// dashboard in the same change. See docs/billing-current-state.md.
+const STRIPE_API_VERSION = '2026-02-25.clover';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing', {
+  apiVersion: STRIPE_API_VERSION,
+});
 
 @Injectable()
-export class StripeService {
+export class StripeService implements IBillingProvider {
   constructor(
     private _subscriptionService: SubscriptionService,
     private _organizationService: OrganizationService,
@@ -351,9 +363,9 @@ export class StripeService {
     };
   }
 
-  async getCustomerByOrganizationId(organizationId: string) {
+  async getCustomerByOrganizationId(organizationId: string): Promise<string | null> {
     const org = (await this._organizationService.getOrgById(organizationId))!;
-    return org.paymentId;
+    return org.paymentId ?? null;
   }
 
   async createBillingPortalLink(customer: string) {

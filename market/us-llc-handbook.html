@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Foreign Founder's Field Manual — US LLC for Bangladeshi SaaS Founders</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAF7F1;
+    --paper:#FEFCF8;
+    --ink:#17140F;
+    --ink-soft:#4A453C;
+    --ink-faint:#79726551;
+    --rule:#E1DACC;
+    --rule-strong:#CDC4B2;
+    --green:#00674A;
+    --green-soft:#E4EFE9;
+    --green-line:#B9D5C9;
+    --warn:#A32B1C;
+    --warn-soft:#F7E9E4;
+    --warn-line:#E7C3B8;
+    --gold:#8A5A00;
+    --gold-soft:#F4EAD6;
+    --maxread:70ch;
+    --shadow:0 1px 2px rgba(23,20,15,.05), 0 8px 24px rgba(23,20,15,.05);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{animation:none !important;transition:none !important}}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Newsreader",Georgia,serif;font-size:19px;line-height:1.72;
+    font-optical-sizing:auto;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  }
+
+  /* progress bar */
+  #progress{position:fixed;top:0;left:0;height:3px;width:0;background:var(--green);z-index:120;transition:width .1s linear}
+
+  /* layout */
+  .shell{max-width:1240px;margin:0 auto;padding:0 24px;display:grid;grid-template-columns:270px minmax(0,1fr);gap:56px}
+  @media(max-width:960px){.shell{grid-template-columns:1fr;gap:0}}
+
+  /* sidebar nav */
+  nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:34px 0 60px;border-right:1px solid var(--rule)}
+  nav.toc .brand{font-family:"Fraunces";font-weight:600;font-size:15px;letter-spacing:.01em;line-height:1.25;margin-bottom:4px}
+  nav.toc .brandsub{font-family:"IBM Plex Mono";font-size:10.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink-soft);margin-bottom:22px}
+  nav.toc a{display:block;font-family:"IBM Plex Mono";font-size:12.5px;line-height:1.35;color:var(--ink-soft);text-decoration:none;padding:5px 14px 5px 0;border-left:2px solid transparent;padding-left:12px;transition:color .15s,border-color .15s}
+  nav.toc a .n{color:var(--green);opacity:.6;margin-right:8px}
+  nav.toc a:hover{color:var(--ink)}
+  nav.toc a.active{color:var(--green);border-left-color:var(--green);font-weight:600}
+  nav.toc a.active .n{opacity:1}
+
+  /* mobile nav */
+  .mobilebar{display:none}
+  @media(max-width:960px){
+    nav.toc{position:fixed;top:0;left:0;width:min(85vw,340px);height:100vh;background:var(--paper);z-index:110;transform:translateX(-102%);transition:transform .28s cubic-bezier(.4,0,.2,1);padding:24px 22px 60px;border-right:1px solid var(--rule-strong);box-shadow:var(--shadow)}
+    nav.toc.open{transform:translateX(0)}
+    .mobilebar{display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:90;background:rgba(250,247,241,.9);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule);padding:10px 18px;margin:0 -24px 0}
+    .mobilebar button{font-family:"IBM Plex Mono";font-size:12px;letter-spacing:.06em;text-transform:uppercase;background:none;border:1px solid var(--rule-strong);border-radius:6px;padding:8px 12px;color:var(--ink);cursor:pointer}
+    .mobilebar .mt{font-family:"Fraunces";font-weight:600;font-size:15px}
+    #scrim{display:none;position:fixed;inset:0;background:rgba(23,20,15,.32);z-index:105}
+    #scrim.show{display:block}
+  }
+
+  main{padding:40px 0 120px;min-width:0}
+  @media(max-width:960px){main{padding:26px 0 90px}}
+
+  /* hero */
+  header.hero{border-bottom:2px solid var(--ink);padding-bottom:34px;margin-bottom:12px}
+  .eyebrow{font-family:"IBM Plex Mono";font-size:12px;text-transform:uppercase;letter-spacing:.2em;color:var(--green);margin-bottom:20px}
+  h1.title{font-family:"Fraunces";font-weight:600;font-size:clamp(34px,6vw,58px);line-height:1.02;letter-spacing:-.02em;margin:0 0 18px}
+  .lede{font-size:clamp(19px,2.4vw,23px);color:var(--ink-soft);max-width:60ch;margin:0 0 26px}
+  .herometa{display:flex;flex-wrap:wrap;gap:8px 10px;font-family:"IBM Plex Mono";font-size:11.5px}
+  .herometa span{border:1px solid var(--rule-strong);border-radius:100px;padding:5px 12px;color:var(--ink-soft);letter-spacing:.03em}
+  .herometa span b{color:var(--green);font-weight:600}
+
+  /* disclaimer */
+  .disclaimer{background:var(--gold-soft);border:1px solid #E4CE9E;border-radius:12px;padding:20px 22px;margin:30px 0;font-size:16px;line-height:1.6;color:#5c4410}
+  .disclaimer strong{color:#4a3607}
+
+  /* section parts */
+  section.part{padding-top:64px;scroll-margin-top:70px}
+  .parthead{display:flex;align-items:baseline;gap:18px;border-bottom:1px solid var(--rule-strong);padding-bottom:12px;margin-bottom:8px}
+  .partnum{font-family:"Fraunces";font-weight:600;font-size:clamp(30px,5vw,46px);color:var(--green);line-height:1;flex:none}
+  .parttitle{font-family:"Fraunces";font-weight:600;font-size:clamp(22px,3.4vw,32px);line-height:1.08;letter-spacing:-.01em;margin:0}
+  .parttag{font-family:"IBM Plex Mono";font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:var(--ink-soft);margin:14px 0 0}
+
+  /* spec strip signature element */
+  .spec{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--rule-strong);border-radius:10px;overflow:hidden;margin:22px 0 6px;background:var(--paper)}
+  .spec .cell{flex:1 1 140px;padding:11px 15px;border-right:1px solid var(--rule);min-width:0}
+  .spec .cell:last-child{border-right:none}
+  .spec .k{font-family:"IBM Plex Mono";font-size:9.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink-soft);margin-bottom:3px}
+  .spec .v{font-family:"IBM Plex Mono";font-size:13px;font-weight:500;color:var(--ink);line-height:1.25}
+  .spec .v.yes{color:var(--green)} .spec .v.no{color:var(--warn)}
+
+  main :where(h3){font-family:"Fraunces";font-weight:600;font-size:22px;letter-spacing:-.01em;margin:38px 0 6px}
+  main :where(h4){font-family:"Fraunces";font-weight:600;font-size:18px;margin:26px 0 4px}
+  main p{max-width:var(--maxread)}
+  main ul,main ol{max-width:var(--maxread);padding-left:1.3em}
+  main li{margin:6px 0}
+  main a{color:var(--green);text-decoration:underline;text-decoration-color:var(--green-line);text-underline-offset:3px}
+  main a:hover{text-decoration-color:var(--green)}
+  strong{font-weight:600}
+  code{font-family:"IBM Plex Mono";font-size:.85em;background:#efe9dc;padding:1px 6px;border-radius:5px;color:#3a352b}
+
+  /* callouts */
+  .call{border-radius:11px;padding:16px 18px 16px 20px;margin:18px 0;max-width:var(--maxread);border:1px solid var(--rule);background:var(--paper);position:relative}
+  .call .lab{font-family:"IBM Plex Mono";font-size:10.5px;text-transform:uppercase;letter-spacing:.14em;font-weight:600;display:inline-flex;align-items:center;gap:7px;margin-bottom:7px}
+  .call p{margin:.35em 0}.call p:first-of-type{margin-top:0}.call p:last-child{margin-bottom:0}
+  .call ul{margin:.4em 0}
+  .call.why{border-left:3px solid var(--green);background:var(--green-soft);border-color:var(--green-line)} .call.why .lab{color:var(--green)}
+  .call.warn{border-left:3px solid var(--warn);background:var(--warn-soft);border-color:var(--warn-line)} .call.warn .lab{color:var(--warn)}
+  .call.mistake{border-left:3px solid var(--warn);background:var(--paper)} .call.mistake .lab{color:var(--warn)}
+  .call.cost{border-left:3px solid var(--gold);background:var(--gold-soft);border-color:#E4CE9E} .call.cost .lab{color:var(--gold)}
+  .call.when{border-left:3px solid var(--ink-soft)} .call.when .lab{color:var(--ink-soft)}
+  .call.alt{border-left:3px solid var(--ink-soft);border-style:dashed} .call.alt .lab{color:var(--ink-soft)}
+  .call.example{border-left:3px solid var(--green-line);background:#f6f2e9} .call.example .lab{color:var(--green)}
+
+  /* tables */
+  .tablewrap{overflow-x:auto;margin:20px 0;border:1px solid var(--rule-strong);border-radius:10px}
+  table{border-collapse:collapse;width:100%;font-size:15.5px;background:var(--paper)}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{font-family:"IBM Plex Mono";font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);background:#f4efe4;font-weight:600}
+  tr:last-child td{border-bottom:none}
+  td b{color:var(--green)}
+  .tick{color:var(--green);font-weight:700}.cross{color:var(--warn);font-weight:700}
+
+  /* templates */
+  details.tpl{border:1px solid var(--rule-strong);border-radius:11px;margin:20px 0;background:var(--paper);overflow:hidden}
+  details.tpl summary{cursor:pointer;list-style:none;padding:15px 18px;font-family:"IBM Plex Mono";font-size:13px;font-weight:600;letter-spacing:.02em;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  details.tpl summary::-webkit-details-marker{display:none}
+  details.tpl summary .chev{transition:transform .2s;color:var(--green)}
+  details.tpl[open] summary .chev{transform:rotate(90deg)}
+  details.tpl summary:hover{background:var(--green-soft)}
+  .tplbody{border-top:1px solid var(--rule);padding:6px 4px 4px}
+  .copybar{display:flex;justify-content:flex-end;padding:8px 12px 0}
+  .copybtn{font-family:"IBM Plex Mono";font-size:11px;letter-spacing:.05em;text-transform:uppercase;background:var(--green);color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer}
+  .copybtn:hover{background:#00543c} .copybtn.done{background:var(--gold)}
+  pre{font-family:"IBM Plex Mono";font-size:12.5px;line-height:1.6;white-space:pre-wrap;padding:8px 18px 20px;margin:0;color:#2c2820;overflow-x:auto}
+
+  /* checklist */
+  .checklist{max-width:var(--maxread);margin:18px 0;border:1px solid var(--rule-strong);border-radius:11px;background:var(--paper);padding:6px 4px}
+  .checklist .cl-head{font-family:"IBM Plex Mono";font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-soft);padding:12px 16px 8px;border-bottom:1px solid var(--rule)}
+  .checklist label{display:flex;gap:11px;align-items:flex-start;padding:9px 16px;font-size:16px;line-height:1.45;cursor:pointer;border-bottom:1px solid #efe9dc}
+  .checklist label:last-child{border-bottom:none}
+  .checklist input{margin-top:5px;width:16px;height:16px;accent-color:var(--green);flex:none;cursor:pointer}
+  .checklist input:checked + span{color:var(--ink-faint);text-decoration:line-through}
+
+  /* step cards (roadmap) */
+  .step{border:1px solid var(--rule-strong);border-radius:12px;background:var(--paper);padding:18px 20px;margin:16px 0;position:relative}
+  .step .sn{font-family:"IBM Plex Mono";font-weight:600;font-size:12px;color:var(--green);letter-spacing:.06em;text-transform:uppercase}
+  .step h4{margin:2px 0 8px}
+  .step .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:2px 18px;font-family:"IBM Plex Mono";font-size:12px;color:var(--ink-soft);border-top:1px dashed var(--rule-strong);padding-top:10px;margin-top:6px}
+  .step .grid b{color:var(--ink);font-weight:600}
+
+  hr.soft{border:none;border-top:1px solid var(--rule);margin:36px 0;max-width:var(--maxread)}
+  .backtop{font-family:"IBM Plex Mono";font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);text-decoration:none;display:inline-block;margin-top:18px}
+  .backtop:hover{color:var(--green)}
+
+  footer{border-top:2px solid var(--ink);margin-top:80px;padding-top:26px;font-size:15px;color:var(--ink-soft)}
+  .printbtn{position:fixed;right:20px;bottom:20px;z-index:80;font-family:"IBM Plex Mono";font-size:11px;text-transform:uppercase;letter-spacing:.08em;background:var(--ink);color:var(--bg);border:none;border-radius:100px;padding:11px 18px;cursor:pointer;box-shadow:var(--shadow)}
+  .printbtn:hover{background:var(--green)}
+
+  @media print{
+    nav.toc,.mobilebar,#progress,.printbtn,#scrim{display:none !important}
+    .shell{grid-template-columns:1fr;max-width:none}
+    body{font-size:11pt;background:#fff}
+    section.part{page-break-inside:auto}
+    details.tpl{border:1px solid #999} details.tpl[open] .tplbody{display:block}
+    .call,.step,.checklist,.tablewrap{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div id="scrim"></div>
+
+<div class="shell">
+  <!-- ================= NAV ================= -->
+  <nav class="toc" id="toc" aria-label="Table of contents">
+    <div class="brand">The Foreign Founder's Field Manual</div>
+    <div class="brandsub">WY LLC · BD Founders · v2026</div>
+    <a href="#start"><span class="n">00</span>Start here</a>
+    <a href="#p1"><span class="n">01</span>Before formation</a>
+    <a href="#p2"><span class="n">02</span>Info before filing</a>
+    <a href="#p3"><span class="n">03</span>Registering it yourself</a>
+    <a href="#p4"><span class="n">04</span>Registered agent</a>
+    <a href="#p5"><span class="n">05</span>EIN without an SSN</a>
+    <a href="#p6"><span class="n">06</span>Operating agreement</a>
+    <a href="#p7"><span class="n">07</span>Founders agreement</a>
+    <a href="#p8"><span class="n">08</span>IP assignment</a>
+    <a href="#p9"><span class="n">09</span>US business address</a>
+    <a href="#p10"><span class="n">10</span>Business phone</a>
+    <a href="#p11"><span class="n">11</span>Bank account</a>
+    <a href="#p12"><span class="n">12</span>Stripe &amp; Polar</a>
+    <a href="#p13"><span class="n">13</span>Taxes</a>
+    <a href="#p14"><span class="n">14</span>Annual compliance</a>
+    <a href="#p15"><span class="n">15</span>Costs</a>
+    <a href="#p16"><span class="n">16</span>Timeline</a>
+    <a href="#p17"><span class="n">17</span>50+ mistakes</a>
+    <a href="#p18"><span class="n">18</span>Checklists</a>
+    <a href="#p19"><span class="n">19</span>Future growth</a>
+    <a href="#p20"><span class="n">20</span>Master roadmap</a>
+  </nav>
+
+  <!-- ================= MAIN ================= -->
+  <main>
+    <div class="mobilebar">
+      <button id="menubtn" aria-expanded="false">☰ Contents</button>
+      <span class="mt">Field Manual</span>
+    </div>
+
+    <header class="hero" id="start">
+      <div class="eyebrow">Permanent formation handbook · Wyoming LLC · Two Bangladeshi co-founders</div>
+      <h1 class="title">From "no company exists" to accepting payments worldwide.</h1>
+      <p class="lede">A complete, do-it-yourself implementation manual for two technical founders in Bangladesh building a global B2B SaaS company — every step, every form, every filing, and every yearly obligation, written for people who have never done this before.</p>
+      <div class="herometa">
+        <span>Entity: <b>Multi-member LLC</b></span>
+        <span>State: <b>Wyoming</b></span>
+        <span>Founders: <b>2 × non-US</b></span>
+        <span>Payments: <b>Stripe / Polar</b></span>
+        <span>Reviewed: <b>2026</b></span>
+      </div>
+    </header>
+
+    <div class="disclaimer">
+      <strong>Read this first.</strong> I'm an AI assistant, not your attorney or accountant, and this handbook is educational — not legal, tax, or financial advice for your specific situation. The templates here are starting drafts to adapt, not finished legal documents. Government fees, bank policies, and IRS procedures change; verify every number and rule against the official source (linked throughout) before you act. Because a two-member foreign-owned LLC has genuinely tricky US tax mechanics, budget for <strong>one consultation with a US CPA who specializes in foreign-owned partnerships</strong> before your first tax season. That single step prevents the most expensive mistakes in this document.
+    </div>
+
+    <!-- =================================================== PART 1 -->
+    <section class="part" id="p1">
+      <div class="parthead"><span class="partnum">01</span><h2 class="parttitle">Before Formation — the decisions that shape everything else</h2></div>
+      <p class="parttag">Decide these before you spend a single dollar</p>
+
+      <p>Everything downstream — your taxes, your bank options, your ability to raise money later — is determined by choices you make now. Do not skip this part to "just get the company formed." A wrong entity or state choice is annoying and expensive to unwind.</p>
+
+      <h3>Which state: Wyoming vs. Delaware vs. New Mexico</h3>
+      <p>For two non-US founders bootstrapping a SaaS company that will <em>not</em> immediately raise venture capital, <strong>Wyoming is the right default.</strong> Here's the honest comparison.</p>
+      <div class="tablewrap">
+      <table>
+        <thead><tr><th>Factor</th><th>Wyoming</th><th>Delaware</th><th>New Mexico</th></tr></thead>
+        <tbody>
+          <tr><td>Formation fee</td><td><b>$100</b></td><td>$110 (LLC)</td><td>$50</td></tr>
+          <tr><td>Annual state cost</td><td><b>$60/yr</b> report</td><td>$300/yr franchise tax</td><td><b>$0</b> (no annual report)</td></tr>
+          <tr><td>State income / franchise tax</td><td class="tick">None</td><td class="tick">None on income; $300 flat</td><td class="tick">None</td></tr>
+          <tr><td>Owner privacy on public record</td><td class="tick">Members not listed</td><td class="tick">Members not listed</td><td class="tick">Strongest — nothing public</td></tr>
+          <tr><td>Reputation with banks / Stripe / investors</td><td class="tick">Very good</td><td class="tick">Best (VC standard)</td><td class="cross">Weakest; sometimes flagged</td></tr>
+          <tr><td>Ease of DIY online filing</td><td class="tick">Instant, simple portal</td><td>OK</td><td>OK</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="call why"><div class="lab">◆ Why Wyoming</div>
+        <p>Lowest predictable running cost of any credible state ($60/yr), no state income or franchise tax, real member privacy, near-instant online formation, and a strong enough reputation that Wise, Payoneer, Stripe, and most fintechs onboard Wyoming LLCs without friction. Delaware's advantages (the Court of Chancery, investor familiarity) matter mostly to <em>C-Corps raising VC</em> — not to a bootstrapped LLC. New Mexico is cheaper on paper but its extreme anonymity gets it extra compliance scrutiny from banks; for a company that needs banking and Stripe, that trade-off is not worth $60/yr.</p>
+      </div>
+      <div class="call when"><div class="lab">◷ Now or later</div><p>Choose <strong>now</strong> and don't overthink it. You can re-domesticate to Delaware later (Part 19) if you raise money. Starting in Wyoming costs you nothing if you convert.</p></div>
+
+      <h3>LLC or C-Corp?</h3>
+      <p>An <strong>LLC</strong> for now. A C-Corp is only worth its double taxation and heavier compliance if you are raising priced venture rounds or granting equity to US employees on standard terms. For two founders selling SaaS and keeping the profits, the LLC's pass-through treatment is simpler and cheaper.</p>
+      <div class="call why"><div class="lab">◆ Why not a C-Corp yet</div><p>A C-Corp pays 21% federal corporate tax on profits, and then you're taxed again when money reaches you. As non-residents you'd also wade into dividend withholding. An LLC "passes through" — the company itself generally pays no federal income tax; the tax picture lands on the members. And if operations run from Bangladesh, that picture is often <em>no US income tax at all</em> (Part 13). Convert to a C-Corp the moment a real investor asks you to — not before.</p></div>
+
+      <h3>Why a multi-member LLC (and not two single-member LLCs)</h3>
+      <p>Because there are two of you and you want to own <em>one</em> business together, a single multi-member LLC is correct. Two single-member LLCs would mean two of everything (two EINs, two bank accounts, two Stripe accounts) and no clean shared ownership. One multi-member LLC gives you shared ownership, one bank account, one Stripe, and one tax return.</p>
+      <div class="call warn"><div class="lab">▲ Critical: this changes your tax forms</div><p>A <strong>multi-member</strong> foreign-owned LLC is taxed as a <strong>partnership</strong> and files <strong>Form 1065 + a Schedule K-1 per member + Schedules K-2/K-3</strong>. It does <em>not</em> file Form 5472 + pro-forma 1120 — that's the single-member rule. Filing the wrong form is the #1 fatal mistake foreign founders make. See Part 13.</p></div>
+
+      <h3>Tax implications for two non-US founders (the short version)</h3>
+      <p>Full detail is in Part 13, but decide with these facts in mind:</p>
+      <ul>
+        <li>The LLC-partnership itself usually owes <strong>no US federal income tax</strong>.</li>
+        <li>Whether <em>you</em> owe US income tax depends on whether the company has <strong>Effectively Connected Income (ECI)</strong> — income from a US trade or business. If both of you do all the work <em>from Bangladesh</em> and you have no US employees/office/inventory, your SaaS revenue is generally <strong>not</strong> ECI, so generally <strong>no US income tax</strong> for you personally.</li>
+        <li>You must still <strong>file the partnership return every year</strong> even with zero US tax due. Filing is mandatory; tax may be $0.</li>
+        <li>The US and Bangladesh have <strong>no income tax treaty</strong> — so there's no treaty rate to fall back on. Confirm your Bangladesh (NBR) obligations locally.</li>
+      </ul>
+
+      <h3>Should both founders appear from day one?</h3>
+      <p>Yes. If you both own the company, both should be members from formation. Adding a member later is possible but creates paperwork and, in edge cases, tax events. Put the real ownership on paper from the start.</p>
+
+      <h3>How ownership percentages work</h3>
+      <p>Ownership = "membership interest," expressed as a percentage or as "units." Two equal founders are usually 50/50, or 50 units each of 100. Ownership drives three things: share of profits, share of losses, and (unless you separate them) voting power.</p>
+      <div class="call example"><div class="lab">◆ Example</div><p>Rahim and Karim each contribute equal work and a little cash. They set <strong>50/50</strong>. Later a technical advisor joins for 10%; they each drop to 45%. All of this is defined in the Operating Agreement (Part 6), not the state filing.</p></div>
+      <div class="call mistake"><div class="lab">✕ Common mistake</div><p>Doing a "handshake 50/50" and never writing it down. When one founder leaves, disappears, or dies, an undocumented split becomes a legal nightmare. Write it down (Parts 6–7).</p></div>
+
+      <h3>How voting rights work</h3>
+      <p>By default voting usually tracks ownership (50/50 = a possible deadlock). You can decouple them: e.g., each founder gets one vote regardless of %, or certain "major decisions" (selling the company, taking on debt, admitting a member) require unanimous consent while day-to-day decisions need a simple majority. Decide and record a <strong>deadlock-breaker</strong> now — this is the single most valuable clause for a two-person company.</p>
+
+      <h4>What to decide before forming</h4>
+      <ul>
+        <li>Company name (and a backup)</li>
+        <li>Ownership split and whether it can change (vesting?)</li>
+        <li>Who is the "Responsible Party" for the IRS (one of you)</li>
+        <li>Voting rules + deadlock-breaker</li>
+        <li>What happens if a founder leaves, dies, or wants out (buyback)</li>
+        <li>That <em>all</em> code/IP belongs to the LLC, not to either of you personally (Part 8)</li>
+      </ul>
+      <a class="backtop" href="#start">↑ top</a>
+    </section>
+
+    <!-- =================================================== PART 2 -->
+    <section class="part" id="p2">
+      <div class="parthead"><span class="partnum">02</span><h2 class="parttitle">Required Information Before Filing</h2></div>
+      <p class="parttag">Gather everything into one document before you touch the filing site</p>
+      <p>The Wyoming filing takes about 15 minutes <em>if</em> you have everything ready. Prepare this list first so you never guess mid-form.</p>
+      <div class="tablewrap">
+      <table>
+        <thead><tr><th>Field</th><th>What it means</th><th>What you enter</th></tr></thead>
+        <tbody>
+          <tr><td><b>Full legal names</b></td><td>Exactly as on your passport</td><td>Both founders' names, matching passports character-for-character</td></tr>
+          <tr><td><b>Passport</b></td><td>ID + for the IRS/bank later</td><td>Keep clear scans (PDF, 300 DPI) of both</td></tr>
+          <tr><td><b>Home address</b></td><td>Your real residential address in Bangladesh</td><td>Your actual address — used by IRS &amp; banks</td></tr>
+          <tr><td><b>Emails</b></td><td>Where official notices go</td><td>Use a company email (see Part 15 / Google Workspace)</td></tr>
+          <tr><td><b>Ownership %</b></td><td>Membership interest split</td><td>e.g. 50% / 50% (recorded in Operating Agreement, not the state form)</td></tr>
+          <tr><td><b>Company name</b></td><td>Must end in "LLC" and be unique in WY</td><td>Check availability first (Part 3)</td></tr>
+          <tr><td><b>NAICS code</b></td><td>US industry classification code</td><td><b>511210</b> Software Publishers (SaaS) — most common; or 541511 custom programming</td></tr>
+          <tr><td><b>Business purpose</b></td><td>What the company does</td><td>"Software as a service and related technology products" (broad is fine)</td></tr>
+          <tr><td><b>Registered Agent</b></td><td>WY-based agent to receive legal mail (required)</td><td>A commercial RA — see Part 4</td></tr>
+          <tr><td><b>Organizer</b></td><td>The person filing the formation</td><td>You (or your RA if their service files for you)</td></tr>
+          <tr><td><b>Principal address</b></td><td>Main business location</td><td>Can be your Bangladesh address, or a US virtual address — see Part 9</td></tr>
+          <tr><td><b>Mailing address</b></td><td>Where the state sends mail</td><td>RA address or your virtual US address</td></tr>
+          <tr><td><b>Business address</b></td><td>What you give banks/Stripe</td><td><b>Not</b> your RA address for banks — see Parts 9 &amp; 11</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="call why"><div class="lab">◆ Why "Organizer" ≠ "Owner"</div><p>The <strong>Organizer</strong> is just whoever signs the formation document — a clerical role that ends once the LLC exists. It does not have to be an owner. Ownership is defined separately in your Operating Agreement. Many RA services list themselves as Organizer; that's normal and fine.</p></div>
+      <div class="call mistake"><div class="lab">✕ Common mistake</div><p>Using slightly different name spellings across the state filing, EIN, and bank application. Banks reject on any mismatch. Pick one exact spelling of everything and reuse it everywhere.</p></div>
+      <a class="backtop" href="#start">↑ top</a>
+    </section>
+
+    <!-- =================================================== PART 3 -->
+    <section class="part" id="p3">
+      <div class="parthead"><span class="partnum">03</span><h2 class="parttitle">Registering the LLC Yourself on the Wyoming Portal</h2></div>
+      <p class="parttag">wyobiz.wyo.gov · ~15 minutes · $100 + ~2.4% card fee</p>
+      <div class="spec">
+        <div class="cell"><div class="k">Legally required</div><div class="v yes">Yes</div></div>
+        <div class="cell"><div class="k">Cost</div><div class="v">$100 + ~$2.40 card fee</div></div>
+        <div class="cell"><div class="k">Time</div><div class="v">Online: near-instant</div></div>
+        <div class="cell"><div class="k">Do it</div><div class="v">First</div></div>
+      </div>
+      <p>You'll file <strong>Articles of Organization</strong> on the Wyoming Secretary of State's WyoBiz portal. This is the document that legally creates the company. Below is the flow page-by-page. Wyoming occasionally tweaks the portal, so treat this as the <em>meaning</em> of each screen rather than pixel-exact instructions.</p>
+
+      <h4>Step 0 — Check the name is available</h4>
+      <p>On <a href="https://wyobiz.wyo.gov" target="_blank" rel="noopener">wyobiz.wyo.gov</a> use the business name search. Your name must be unique and end with "LLC" or "L.L.C." Avoid restricted words (bank, insurance, etc.). You don't need to pay to "reserve" a name — availability is confirmed when your filing is approved.</p>
+
+      <h4>Step 1 — Start the filing</h4>
+      <p>Choose <em>Limited Liability Company</em> → <em>Articles of Organization</em>. Select a <strong>domestic</strong> LLC (formed in Wyoming), not "foreign" (which means an out-of-state company registering into WY).</p>
+
+      <h4>Step 2 — Company name</h4>
+      <p>Enter it exactly, including "LLC." This is your one chance to get the spelling permanent, so match what you'll use on the EIN and bank.</p>
+
+      <h4>Step 3 — Registered Agent</h4>
+      <p>Enter your commercial RA's name and Wyoming address (Part 4). If your RA service is filing for you, they populate this. You cannot leave it blank and you cannot use a Bangladesh address here — it must be a physical Wyoming address.</p>
+
+      <h4>Step 4 — Principal office &amp; mailing address</h4>
+      <p>Principal office can be your real address (Bangladesh) or a US virtual address (Part 9). Mailing address is where the state sends paper — your RA or virtual US address is ideal.</p>
+
+      <h4>Step 5 — Organizer</h4>
+      <p>Name and sign as Organizer (you), or your RA if their package includes it. Wyoming does not publicly list members, so your names as owners won't appear on the public record — only the Organizer and RA do.</p>
+
+      <h4>Step 6 — Consent of Registered Agent</h4>
+      <p>Wyoming requires the RA to consent. A commercial RA handles this automatically; if you somehow act as your own agent (you can't from Bangladesh — you need a physical WY presence), you'd sign consent yourself.</p>
+
+      <h4>Step 7 — Review, pay, submit</h4>
+      <p>Pay the <strong>$100</strong> filing fee by card (a ~2.4% processing fee applies online, roughly $2.40). Online filings are typically approved within minutes to a few hours. Download the stamped <strong>Articles of Organization</strong> and your <strong>filing ID</strong> — you'll need these PDFs for the EIN and the bank.</p>
+
+      <div class="call mistake"><div class="lab">✕ Common mistakes on this page</div>
+        <ul>
+          <li>Filing "Foreign LLC" instead of "Domestic" (creates the wrong entity).</li>
+          <li>Typos in the company name that then don't match your EIN.</li>
+          <li>Forgetting to save the approved PDF — banks want the stamped copy, not a screenshot.</li>
+          <li>Noting the wrong <strong>anniversary month</strong>: your annual report is forever due the 1st of the month you formed in. Forming near a month boundary (e.g. Jan 31) can be confusing — form early in a month you'll remember.</li>
+        </ul>
+      </div>
+      <div class="call alt"><div class="lab">◆ Alternative</div><p>Most RA services (Northwest, etc.) will file the Articles for you as part of a formation package for ~$0–$100 over the state fee. If DIY-ing the portal feels risky, this is the one step where paying a little is defensible — but it's genuinely easy to do yourself.</p></div>
+      <a class="backtop" href="#start">↑ top</a>
+    </section>
+
+    <!-- =================================================== PART 4 -->
+    <section class="part" id="p4">
+      <div class="parthead"><span class="partnum">04</span><h2 class="parttitle">Registered Agent</h2></div>
+      <p class="parttag">A Wyoming physical address that receives your legal mail</p>
+      <div class="spec">
+        <div class="cell"><div class="k">Legally required</div><div class="v yes">Yes</div></div>
+        <div class="cell"><div class="k">Cost</div><div class="v">$25–$200 / yr</div></div>
+        <div class="cell"><div class="k">Time</div><div class="v">Minutes to sign up</div></div>
+        <div class="cell"><div class="k">Changeable</div><div class="v yes">Yes, anytime</div></div>
+      </div>
+      <div class="call why"><div class="lab">◆ Why it's required</div><p>Every Wyoming LLC must have an agent with a <strong>physical street address in Wyoming</strong>, available during business hours, to receive lawsuits ("service of process") and official state mail. Since you live in Bangladesh, you cannot be your own agent — you must hire a commercial one.</p></div>
+
+      <h4>Good providers</h4>
+      <ul>
+        <li><strong>Northwest Registered Agent</strong> — the reliability benchmark; strong privacy, good scanning/mail forwarding, human support. ~$125/yr.</li>
+        <li><strong>Wyoming Registered Agent Services LLC</strong> / <strong>Cloud Peak Law</strong> — WY-local, founder-friendly.</li>
+      </ul>
+      <h4>Cheapest</h4>
+      <ul>
+        <li><strong>Wyoming Agents</strong> / small local agents — as low as <strong>$25–$50/yr</strong>. Fine for the legal requirement; verify they scan/forward mail, which you'll rely on.</li>
+      </ul>
+      <div class="call when"><div class="lab">◷ Now or later</div><p><strong>Now</strong> — you need the RA <em>before</em> filing (Step 3 asks for it). Pick one, get the WY address, then file.</p></div>
+      <div class="call warn"><div class="lab">▲ If it expires</div><p>If your RA lapses, Wyoming can administratively <strong>dissolve</strong> your LLC and reinstatement costs <strong>$350</strong> (no-agent reinstatement) plus back fees. Autopay your RA and treat the renewal like rent. You can switch agents anytime by filing a change of agent (~$0–$5) — you are not locked in.</p></div>
+      <div class="call mistake"><div class="lab">✕ Common mistake</div><p>Assuming the RA address is your "business address." It is <em>not</em> usable as your bank/Stripe business address (Parts 9 &amp; 11). It's only for legal service and state mail.</p></div>
+      <a class="backtop" href="#start">↑ top</a>
+    </section>
+
+    <!-- =================================================== PART 5 -->
+    <section class="part" id="p5">
+      <div class="parthead"><span class="partnum">05</span><h2 class="parttitle">EIN — Your Federal Tax ID, Without an SSN</h2></div>
+      <p class="parttag">The number that unlocks banking, Stripe, and tax filing</p>
+      <div class="spec">
+        <div class="cell"><div class="k">Legally required</div><div class="v yes">Yes (foreign-owned)</div></div>
+        <div class="cell"><div class="k">Cost</div><div class="v yes">$0 (free from IRS)</div></div>
+        <div class="cell"><div class="k">Time</div><div class="v">Fax ~4 biz days–weeks</div></div>
+        <div class="cell"><div class="k">Do it</div><div class="v">Right after formation</div></div>
+      </div>
+      <p>The EIN is your LLC's federal tax ID. You cannot open a bank account, activate Stripe, or file taxes without it. Getting one <em>with</em> an SSN is instant online — but you don't have an SSN, so you're on the paper track. That's completely normal and works reliably.</p>
+
+      <div class="call warn"><div class="lab">▲ The online tool will not work for you</div><p>IRS's online EIN application <strong>requires the responsible party to have an SSN or ITIN.</strong> Do not waste hours on it. Use fax or phone. The EIN itself is always <strong>free</strong> — anyone charging you is charging for convenience, not the number.</p></div>
+
+      <h3>Method A — Fax (recommended for most)</h3>
+      <ol>
+        <li>Download <strong>Form SS-4</strong> from IRS.gov and fill every field (see line notes below).</li>
+        <li>Fax the completed SS-4 (plus a passport copy of the responsible party helps) to the IRS EIN Operation: <code>855-641-6935</code> (or <code>855-215-1627</code>). Fax runs 24/7.</li>
+        <li>The IRS faxes back your EIN, typically in <strong>~4 business days</strong> (sometimes longer during busy periods). This fax-back <em>is</em> usable immediately for banking and Stripe.</li>
+        <li>The official <strong>CP-575</strong> confirmation letter arrives separately by mail in 4–6 weeks to your RA/US address. If it never comes, request a <strong>147C</strong> letter later.</li>
+      </ol>
+      <p>No fax machine? Use an online fax service (HelloFax, FaxZero, etc.) — the IRS receives it identically.</p>
+
+      <h3>Method B — Phone (international applicants line)</h3>
+      <p>Call the IRS international EIN line at <code>+1-267-941-1099</code> (Mon–Fri, ~6:00 AM–11:00 PM ET; this is <em>not</em> toll-free). Have your completed SS-4 in front of you — the officer reads it to you line by line and issues the EIN on the call in ~15–40 minutes. Call early morning ET for the shortest wait. Write the EIN down the moment they say it.</p>
+
+      <h3>Method C — Mail (slowest, backup only)</h3>
+      <p>Mail SS-4 to: <em>Internal Revenue Service, Attn: EIN International Operation, Cincinnati, OH 45999, USA.</em> Weeks to over a month. Use only if fax and phone both fail.</p>
+
+      <h3>SS-4 line notes that trip people up</h3>
+      <div class="tablewrap">
+      <table>
+        <thead><tr><th>Line</th><th>What to put</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Exact LLC legal name (matches Articles)</td></tr>
+          <tr><td>4a/4b</td><td>Mailing address (your RA/US address or Bangladesh)</td></tr>
+          <tr><td>7a</td><td>Responsible party = one founder's full legal name</td></tr>
+          <tr><td><b>7b</b></td><td>Write <b>"Foreign"</b> (you have no SSN/ITIN). <em>Do not leave blank.</em></td></tr>
+          <tr><td>8a</td><td>Yes, it's an LLC</td></tr>
+          <tr><td>8b</td><td>Number of members: <b>2</b></td></tr>
+          <tr><td>9a</td><td>Check "Partnership" (a 2-member LLC's default federal class)</td></tr>
+          <tr><td>10</td><td>Reason: "Started new business" (or "Banking purpose")</td></tr>
+          <tr><td>11</td><td>Date business started (your formation date)</td></tr>
+          <tr><td>12</td><td>Closing month of accounting year: <b>December</b></td></tr>
+          <tr><td>13</td><td>Employees expected: usually <b>0</b></td></tr>
+          <tr><td>18</td><td>"Has the entity ever applied for an EIN before?" — No</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="call mistake"><div class="lab">✕ Common mistakes</div>
+        <ul>
+          <li>Trying the online tool for hours before discovering it needs an SSN.</li>
+          <li>Leaving line 7b blank instead of writing "Foreign."</li>
+          <li>Letting a formation agent list <em>themselves</em> as responsible party — this puts a stranger on your IRS record. The responsible party should be one of you.</li>
+          <li>Applying for a <em>second</em> EIN because the first was slow — use one method only, per entity.</li>
+          <li>Choosing the wrong entity class (don't accidentally elect corporation).</li>
+        </ul>
+      </div>
+      <div class="call when"><div class="lab">◷ Later admin note</div><p>If you ever change the responsible party or address, file <strong>Form 8822-B</strong> — within 60 days for a responsible-party change.</p></div>
+      <a class="backtop" href="#start">↑ top</a>
+    </section>
+
+    <!-- =================================================== PART 6 -->
+    <section class="part" id="p6">
+      <div class="parthead"><span class="partnum">06</span><h2 class="parttitle">Operating Agreement</h2></div>
+      <p class="parttag">The internal rulebook that actually governs your company</p>
+      <div class="spec">
+        <div class="cell"><div class="k">State-required?</div><div class="v">No (but essential)</div></div>
+        <div class="cell"><div class="k">Cost</div><div class="v yes">$0 DIY / $200–$1k lawyer</div></div>
+        <div class="cell"><div class="k">Time</div><div class="v">1–2 hrs to adapt</div></div>
+        <div class="cell"><div class="k">Do it</div><div class="v">Right after formation</div></div>
+      </div>
+      <div class="call why"><div class="lab">◆ Why you need one even though Wyoming doesn't require it</div><p>The Operating Agreement (OA) is the contract <em>between the two of you</em>. It proves who owns what, how decisions get made, and what happens when things go wrong. Banks and Stripe often ask for it. Without one, you fall back on Wyoming's default rules — which may not match your intentions and offer no deadlock-breaker. For two founders, this document is your relationship insurance.</p></div>
+
+      <p>A solid multi-member OA covers: ownership &amp; units, capital contributions, profit/loss allocation and distributions, management &amp; voting, major-decision list, transfer restrictions, member departure/removal, death/disability, buy-back mechanics, vesting, dispute resolution, dissolution, and IP ownership. Below is a professional starting template — adapt it, then have a US attorney glance over it before you rely on it for anything serious.</p>
+
+      <details class="tpl">
+        <summary><span>📄 Template — Multi-Member LLC Operating Agreement (starter)</span><span class="chev">▸</span></summary>
+        <div class="tplbody">
+          <div class="copybar"><button class="copybtn" data-target="tpl-oa">Copy</button></div>
+<pre id="tpl-oa">OPERATING AGREEMENT OF [COMPANY NAME] LLC
+A Wyoming Limited Liability Company
+
+This Operating Agreement ("Agreement") is entered into and effective as of
+[DATE], by and among the Members listed in Exhibit A (each a "Member" and
+collectively the "Members") of [COMPANY NAME] LLC (the "Company").
+
+1. FORMATION
+1.1 The Company was formed under the Wyoming Limited Liability Company Act by
+    filing Articles of Organization on [FORMATION DATE].
+1.2 Principal office: [ADDRESS]. Registered agent: [RA NAME/ADDRESS].
+1.3 Term: perpetual, until dissolved under this Agreement.
+
+2. PURPOSE
+2.1 To develop, market, and sell software-as-a-service products and to engage
+    in any lawful business permitted to a Wyoming LLC.
+
+3. MEMBERS, UNITS, AND OWNERSHIP
+3.1 Membership interests are denominated in Units. Total issued Units and each
+    Member's Units and Percentage Interest are set out in Exhibit A.
+    (Example: [FOUNDER 1] — 50 Units — 50%; [FOUNDER 2] — 50 Units — 50%.)
+3.2 New Units may be issued only by unanimous written consent of the Members.
+
+4. CAPITAL CONTRIBUTIONS
+4.1 Initial contributions (cash, code, IP, or services) are listed in Exhibit A.
+4.2 No Member is required to make additional contributions. Any additional
+    capital call requires unanimous consent; a Member who declines may be
+    subject to dilution as set out in Exhibit B.
+
+5. ALLOCATIONS AND DISTRIBUTIONS
+5.1 Profits and losses are allocated to Members in proportion to Percentage
+    Interests.
+5.2 Distributions are made when and as approved by the Members, pro rata to
+    Percentage Interests, only if the Company remains solvent afterward.
+5.3 Tax withholding: the Company may withhold and remit any US tax required on a
+    Member's allocable share (e.g., under IRC Section 1446) and treat it as a
+    distribution to that Member.
+
+6. MANAGEMENT AND VOTING
+6.1 The Company is Member-managed.
+6.2 Ordinary business decisions require a majority of Percentage Interests.
+6.3 "Major Decisions" require UNANIMOUS consent: selling the Company or
+    substantially all assets; taking on debt over $[AMOUNT]; admitting or
+    removing a Member; amending this Agreement; dissolving the Company;
+    changing tax classification; distributing or encumbering Company IP.
+6.4 DEADLOCK: If the Members cannot agree on a Major Decision within [30] days,
+    the matter goes to mediation (Section 12); if unresolved after [60] days,
+    either Member may invoke the buy/sell ("shotgun") procedure in Exhibit B.
+
+7. TRANSFER OF INTERESTS
+7.1 No Member may sell, pledge, or transfer Units without the written consent
+    of the other Member(s), except as permitted in this Agreement.
+7.2 Right of First Refusal: a Member wishing to sell must first offer the Units
+    to the other Member(s) on the same terms.
+
+8. VESTING (recommended for founders)
+8.1 Each founder's Units vest over [4] years with a [1]-year cliff, measured
+    from [START DATE]. Unvested Units are subject to repurchase at cost (or par)
+    if that founder ceases to actively work for the Company ("Departure").
+8.2 Fully vested Units are not subject to forfeiture but remain subject to the
+    transfer restrictions and buy-back terms of this Agreement.
+
+9. DEPARTURE, REMOVAL, DEATH, AND DISABILITY
+9.1 Voluntary departure: a departing Member must offer their Units to the
+    Company/remaining Member(s) under the buy-back terms in Exhibit B.
+9.2 Removal for cause (fraud, material breach, felony, abandonment of duties
+    for [90]+ days): by vote of the other Member(s); removed Member's Units are
+    subject to buy-back at the "for cause" price in Exhibit B.
+9.3 Death or permanent disability: the Company/remaining Member(s) have the
+    option to buy the affected Member's Units from them or their estate at the
+    "fair value" price in Exhibit B, payable over [24] months.
+
+10. BOOKS, RECORDS, AND TAX
+10.1 The Company keeps accurate books; each Member may inspect them.
+10.2 The Company files IRS Form 1065 and issues Schedule K-1 (and K-2/K-3) to
+     each Member annually. [MEMBER NAME] is designated the Partnership
+     Representative under the centralized partnership audit rules.
+10.3 Fiscal year ends December 31.
+
+11. INTELLECTUAL PROPERTY
+11.1 All software, source code, designs, trademarks, domains, and other IP
+     created for the Company's business is the exclusive property of the
+     Company. Each Member hereby assigns to the Company all such IP and will
+     sign further documents to confirm the assignment (see separate IP
+     Assignment Agreements).
+
+12. DISPUTE RESOLUTION
+12.1 Good-faith negotiation, then mediation in [Wyoming / neutral venue].
+12.2 Unresolved disputes: binding arbitration under [AAA] rules; governing law
+     is Wyoming. Prevailing party may recover reasonable fees.
+
+13. DISSOLUTION
+13.1 The Company dissolves on unanimous consent or as required by law. Assets
+     are applied to creditors first, then distributed to Members pro rata.
+
+14. GENERAL
+14.1 This Agreement is the entire agreement among the Members and may be amended
+     only in writing signed by all Members (subject to Section 6.3).
+14.2 If any provision is unenforceable, the rest remains in effect.
+
+IN WITNESS WHEREOF, the Members have executed this Agreement as of the date
+first written above.
+
+_______________________     _______________________
+[FOUNDER 1], Member          [FOUNDER 2], Member
+
+EXHIBIT A — Members, Units, Contributions
+EXHIBIT B — Buy-Back Prices &amp; Buy/Sell (Shotgun) Mechanics
+</pre>
+        </div>
+      </details>
+      <div class="call mistake"><div class="lab">✕ Common mistakes</div><p>Skipping the OA "because it's just the two of us"; omitting a deadlock-breaker on a 50/50 split; forgetting vesting (so a founder who quits in month 2 keeps 50% forever); and not naming a Partnership Representative for IRS audits.</p></div>
+      <a class="backtop" href="#start">↑ top</a>
+    </section>
+
+    <!-- =================================================== PART 7 -->
+    <section class="part" id="p7">
+      <div class="parthead"><span class="partnum">07</span><h2 class="parttitle">Founders Agreement</h2></div>
+      <p class="parttag">Do you also need one? Usually the OA covers it — but here's when it helps</p>
+      <p>For a two-person LLC, a well-drafted Operating Agreement (Part 6) already contains the substance of a founders agreement: ownership, vesting, roles, departure, and IP. A <strong>separate Founders Agreement</strong> is worth adding when you want to spell out <em>working expectations</em> that don't belong in a formal OA — time commitment, roles, salaries, side projects, and confidentiality — in plainer language you'll both actually read.</p>
+      <div class="call when"><div class="lab">◷ Recommendation</div><p>Sign the OA as your binding legal document, and add this short Founders Agreement as the "how we'll actually work together" companion. Both signed the same week.</p></div>
+      <details class="tpl">
+        <summary><span>📄 Template — Founders Agreement (starter)</span><span class="chev">▸</span></summary>
+        <div class="tplbody">
+          <div class="copybar"><button class="copybtn" data-target="tpl-fa">Copy</button></div>
+<pre id="tpl-fa">FOUNDERS AGREEMENT — [COMPANY NAME] LLC
+Between [FOUNDER 1] and [FOUNDER 2] ("Founders"), dated [DATE].
+
+1. PURPOSE
+   We are building [COMPANY / PRODUCT DESCRIPTION] together and want a clear,
+   shared understanding of ownership, roles, and expectations.
+
+2. OWNERSHIP
+   Ownership is [50% / 50%] as reflected in the Operating Agreement, subject to
+   the vesting schedule below.
+
+3. VESTING
+   Each Founder's ownership vests over [4] years with a [1]-year cliff from
+   [START DATE]. If a Founder leaves before vesting, unvested interest returns
+   to the Company as set out in the Operating Agreement.
+
+4. ROLES &amp; TIME COMMITMENT
+   [FOUNDER 1]: [e.g., product &amp; backend]. Full-time from [DATE].
+   [FOUNDER 2]: [e.g., growth &amp; frontend]. Full-time from [DATE].
+   Each Founder will devote substantially full working time to the Company and
+   will not take on competing work without written consent.
+
+5. DECISIONS
+   Day-to-day: each Founder leads their own area. Major decisions (as defined in
+   the Operating Agreement) require agreement of both.
+
+6. COMPENSATION
+   Until the Company can pay salaries, Founders take $[0] salary. Distributions
+   are made only when approved and only if the Company stays solvent.
+
+7. INTELLECTUAL PROPERTY &amp; CONFIDENTIALITY
+   All work product and IP belongs to the Company (see IP Assignment). Each
+   Founder keeps Company information confidential during and after involvement.
+
+8. DEPARTURE
+   A Founder who leaves follows the buy-back and transfer terms of the Operating
+   Agreement. We agree to act in good faith and give [30] days' notice.
+
+9. DISPUTES
+   We will attempt to resolve disagreements directly, then by mediation, before
+   any formal action, consistent with the Operating Agreement.
+
+Signed:
+_______________________     _______________________
+[FOUNDER 1]                  [FOUNDER 2]
+</pre>
+        </div>
+      </details>
+      <a class="backtop" href="#start">↑ top</a>
+    </section>
+
+    <!-- =================================================== PART 8 -->
+    <section class="part" id="p8">
+      <div class="parthead"><span class="partnum">08</span><h2 class="parttitle">IP Assignment — Put the Code in the Company</h2></div>
+      <p class="parttag">So the LLC owns the product, not either founder personally</p>
+      <div class="call why"><div class="lab">◆ Why this matters more than founders expect</div><p>By default, code a person writes can belong to <em>that person</em>, not the company — even a founder. If your IP isn't formally assigned to the LLC, then a departing co-founder could theoretically claim they still own half the codebase, and any future investor or acquirer will refuse to proceed until IP ownership is clean. Fix it early with a one-page assignment from each founder to the company.</p></div>
+      <p>Have <strong>each founder sign an IP Assignment to the LLC</strong>, and use a <strong>Contractor IP Assignment</strong> for anyone you hire (freelancers, designers). Also register the LLC as owner of your domains and accounts.</p>
+      <details class="tpl">
+        <summary><span>📄 Template — Founder IP Assignment</span><span class="chev">▸</span></summary>
+        <div class="tplbody">
+          <div class="copybar"><button class="copybtn" data-target="tpl-ip1">Copy</button></div>
+<pre id="tpl-ip1">INTELLECTUAL PROPERTY ASSIGNMENT AGREEMENT
+
+This Agreement is made on [DATE] between [FOUNDER NAME] ("Assignor") and
+[COMPANY NAME] LLC ("Company").
+
+1. ASSIGNMENT. Assignor irrevocably assigns to the Company all right, title, and
+   interest, worldwide, in and to all inventions, software, source code, object
+   code, designs, documentation, trademarks, domain names, know-how, and other
+   intellectual property that Assignor has created or will create relating to
+   the Company's business (collectively, the "IP"), including all copyrights,
+   patents, trade secrets, and moral rights (waived to the extent permitted).
+
+2. PRIOR WORKS. Any pre-existing IP that Assignor incorporates into Company
+   products is listed in Schedule 1; for such items Assignor grants the Company
+   a perpetual, worldwide, royalty-free, irrevocable license.
+
+3. FURTHER ASSURANCES. Assignor will sign any documents and take any actions the
+   Company reasonably requests to perfect, register, or enforce the IP, and
+   appoints the Company as attorney-in-fact to do so if Assignor is unavailable.
+
+4. CONSIDERATION. Assignor makes this assignment in consideration of Assignor's
+   membership interest in and continued relationship with the Company.
+
+5. GOVERNING LAW. Wyoming, USA.
+
+_______________________          _______________________
+[FOUNDER NAME], Assignor          For [COMPANY NAME] LLC
+
+SCHEDULE 1 — Prior Works (if any):
+</pre>
+        </div>
+      </details>
+      <details class="tpl">
+        <summary><span>📄 Template — Contractor / Freelancer IP Assignment clause</span><span class="chev">▸</span></summary>
+        <div class="tplbody">
+          <div class="copybar"><button class="copybtn" data-target="tpl-ip2">Copy</button></div>
+<pre id="tpl-ip2">WORK-FOR-HIRE &amp; IP ASSIGNMENT (for contractors)
+
+All deliverables and work product created by Contractor for [COMPANY NAME] LLC
+under this engagement are "works made for hire" and are the exclusive property
+of the Company. To the extent any deliverable does not qualify as a work made
+for hire, Contractor hereby irrevocably assigns to the Company all worldwide
+right, title, and interest in such deliverables, including all IP rights.
+Contractor will execute any documents needed to confirm the Company's ownership
+and waives moral rights to the extent permitted by law. Contractor retains no
+right to reuse Company-specific deliverables without written permission.
+</pre>
+        </div>
+      </details>
+      <a class="backtop" href="#start">↑ top</a>
+    </section>
+
+    <!-- =================================================== PART 9 -->
+    <section class="part" id="p9">
+      <div class="parthead"><span class="partnum">09</span><h2 class="parttitle">US Business Address</h2></div>
+      <p class="parttag">Four different "addresses" that people confuse — and which banks accept</p>
+      <div class="tablewrap">
+      <table>
+        <thead><tr><th>Address type</th><th>What it is</th><th>Bank use</th><th>Stripe use</th></tr></thead>
+        <tbody>
+          <tr><td><b>Registered agent address</b></td><td>WY address for legal service</td><td class="cross">Not accepted as business address</td><td>Avoid using as business address</td></tr>
+          <tr><td><b>Virtual business address</b></td><td>Real street address + suite from a mail provider</td><td class="tick">Usually accepted (real ones)</td><td class="tick">Accepted</td></tr>
+          <tr><td><b>Principal address</b></td><td>Main place of business</td><td>Can be your home (BD) or virtual US</td><td>Your operating address</td></tr>
+          <tr><td><b>Mailing address</b></td><td>Where post is sent</td><td>Virtual US or RA</td><td>—</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="call warn"><div class="lab">▲ The address that gets applications rejected</div><p>Since 2025, <strong>Mercury and most fintechs will not accept your registered agent's address as your business address</strong>, and they can detect RA/P.O.-box/UPS-store addresses. Give them a <em>real street</em> operating address — either your genuine Bangladesh address or a proper virtual office.</p></div>
+      <h4>Good virtual address providers</h4>
+      <ul>
+        <li><strong>iPostal1</strong>, <strong>Anytime Mailbox</strong>, <strong>Stable</strong>, <strong>Earth Class Mail</strong> — real street addresses with a unique suite, mail scanning and forwarding, ~$10–$30/mo.</li>
+      </ul>
+      <div class="call mistake"><div class="lab">✕ Never do this</div><ul>
+        <li>Use your RA address as the business/bank address.</li>
+        <li>Invent an address you don't control.</li>
+        <li>Use a P.O. box or a bare UPS-Store box (flagged).</li>
+        <li>Mismatch the address across Articles, EIN, bank, and Stripe.</li>
+      </ul></div>
+      <div class="call when"><div class="lab">◷ Now or later</div><p>Set up the virtual address <strong>before the bank/Stripe step</strong>. You don't strictly need it to form the LLC or get the EIN (your BD address works there), but you'll want it ready for banking.</p></div>
+      <a class="backtop" href="#start">↑ top</a>
+    </section>
+
+    <!-- =================================================== PART 10 -->
+    <section class="part" id="p10">
+      <div class="parthead"><span class="partnum">10</span><h2 class="parttitle">Business Phone Number</h2></div>
+      <p class="parttag">A US number for verifications, support, and legitimacy</p>
+      <div class="spec">
+        <div class="cell"><div class="k">Required?</div><div class="v">No, but very useful</div></div>
+        <div class="cell"><div class="k">Cost</div><div class="v">$0–$15 / mo</div></div>
+        <div class="cell"><div class="k">Do it</div><div class="v">Before bank/Stripe</div></div>
+        <div class="cell"><div class="k">Key need</div><div class="v">SMS receive</div></div>
+      </div>
+      <p>A US phone number makes your business look established, gives customers a contact, and — critically — receives the SMS verification codes some services send. You want VoIP with reliable SMS.</p>
+      <div class="tablewrap">
+      <table>
+        <thead><tr><th>Provider</th><th>Price</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><b>Google Voice</b></td><td>Free (needs a US number to set up) / Workspace add-on paid</td><td>Great once running; setup from abroad can be fiddly</td></tr>
+          <tr><td><b>OpenPhone</b></td><td>~$15/user/mo</td><td>Built for businesses; SMS, team inbox, works internationally</td></tr>
+          <tr><td><b>Dialpad / Grasshopper</b></td><td>~$14–$28/mo</td><td>Business features, good SMS support</td></tr>
+          <tr><td><b>Telnyx / Twilio</b></td><td>Pay-as-you-go</td><td>Developer-friendly, cheapest per number, more setup</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="call mistake"><div class="lab">✕ Common mistake</div><p>Using a free number that <em>can't receive SMS</em> — then failing a verification step. Confirm SMS-receive works before you rely on it. Also avoid disposable/burner numbers; banks distrust them.</p></div>
+      <a class="backtop" href="#start">↑ top</a>
+    </section>
+
+    <!-- =================================================== PART 11 -->
+    <section class="part" id="p11">
+      <div class="parthead"><span class="partnum">11</span><h2 class="parttitle">Business Bank Account — Read This Carefully</h2></div>
+      <p class="parttag">This is where the Bangladesh-specific reality bites</p>
+      <div class="call warn"><div class="lab">▲ Critical for founders living in Bangladesh</div>
+        <p><strong>Mercury does not open accounts for founders living in Bangladesh.</strong> Bangladesh is on Mercury's official prohibited-countries list. Even if you get an account created, it can be closed once your location is confirmed. Do not build your plan around Mercury.</p>
+        <p><strong>Relay now generally requires an SSN or ITIN</strong>, which you don't have — so it's usually not available either.</p>
+        <p>Your realistic, working option today is <strong>Wise Business</strong>, with <strong>Payoneer</strong> as a companion, and possibly <strong>Airwallex</strong> (check its current eligibility for Bangladesh residents). A traditional US bank (e.g., opening in person on a US trip) remains a backup if you ever travel.</p>
+      </div>
+
+      <div class="tablewrap">
+      <table>
+        <thead><tr><th>Option</th><th>Works for BD-resident founders?</th><th>SSN needed?</th><th>FDIC?</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><b>Wise Business</b></td><td class="tick">Yes — most accessible</td><td>No</td><td class="cross">No (funds safeguarded, not FDIC)</td><td>US ACH + wire details, multi-currency, works with Stripe payouts. Your primary account.</td></tr>
+          <tr><td><b>Payoneer</b></td><td class="tick">Generally yes</td><td>No</td><td class="cross">No</td><td>Good for receiving from marketplaces; pair with Wise.</td></tr>
+          <tr><td><b>Airwallex</b></td><td>Check current eligibility</td><td>No</td><td class="cross">No</td><td>Multi-currency; eligibility list changes — verify before applying.</td></tr>
+          <tr><td><b>Mercury</b></td><td class="cross">No — BD prohibited</td><td>No</td><td>via partner banks</td><td>Off the table while you live in Bangladesh.</td></tr>
+          <tr><td><b>Relay</b></td><td class="cross">Usually no</td><td class="cross">Yes (SSN/ITIN)</td><td>via partner bank</td><td>Now gated behind a US tax ID.</td></tr>
+          <tr><td><b>Traditional US bank</b></td><td>In person only</td><td>Often</td><td class="tick">Yes</td><td>Backup if you visit the US (e.g., Wells Fargo in-branch).</td></tr>
+        </tbody>
+      </table>
+      </div>
+
+      <h4>What Wise Business will ask for</h4>
+      <ul>
+        <li>LLC legal name + your EIN</li>
+        <li>Stamped Articles of Organization</li>
+        <li>Passports of both founders (beneficial owners at 25%+)</li>
+        <li>Business description + website</li>
+        <li>Your real operating/residential address</li>
+      </ul>
+
+      <h4>Why applications get rejected (all providers)</h4>
+      <ul>
+        <li>Using the <strong>registered agent address</strong> as the business address.</li>
+        <li>Mismatched details across Articles / EIN / application.</li>
+        <li>Vague business description ("consulting", "online business").</li>
+        <li>No real website, or a free <code>*.notion.site</code> / <code>*.vercel.app</code> domain instead of your own.</li>
+        <li>Applying <em>before</em> the EIN exists (auto-reject).</li>
+        <li>Founder located in a restricted country (the Mercury/Bangladesh case).</li>
+        <li>Reapplying after a rejection — many fintechs auto-reject a second attempt from the same entity, so get it right the first time.</li>
+      </ul>
+      <div class="call when"><div class="lab">◷ Now or later</div><p><strong>After</strong> the EIN. Have your own domain live, a clear one-sentence business description, and matching addresses ready before you hit submit.</p></div>
+      <a class="backtop" href="#start">↑ top</a>
+    </section>
+
+    <!-- =================================================== PART 12 -->
+    <section class="part" id="p12">
+      <div class="parthead"><span class="partnum">12</span><h2 class="parttitle">Stripe &amp; Polar — Getting Paid</h2></div>
+      <p class="parttag">Two different models; for SaaS you may want both</p>
+      <h4>Stripe (payment processor)</h4>
+      <p>Stripe is the standard for accepting cards. With a US LLC + EIN + a US bank/Wise account + a real website, you can activate <strong>Stripe (US)</strong> directly — you do <em>not</em> need Stripe Atlas (that's just their formation product; you've already formed the company).</p>
+      <p><strong>Stripe needs:</strong> LLC name + EIN, business address, bank/Wise details for payouts, your ID, and a live website that clearly describes what you sell and links to your policies.</p>
+
+      <h4>Polar (Merchant of Record)</h4>
+      <p>Polar (like Paddle or Lemon Squeezy) acts as the <strong>merchant of record</strong> — it sells your software <em>to</em> the customer and pays <em>you</em>. Crucially, it <strong>handles global sales tax and VAT for you</strong>, which removes a large compliance headache for a global SaaS. The trade-off is a higher fee than raw Stripe.</p>
+      <div class="call why"><div class="lab">◆ Which to use</div><p>Many bootstrapped SaaS founders start on a <strong>Merchant of Record (Polar/Paddle)</strong> to offload worldwide tax collection, then add raw <strong>Stripe</strong> later for lower fees once volume justifies handling tax themselves. For two non-US founders who don't want to track sales-tax rules in dozens of jurisdictions, starting with a MoR is a very reasonable default.</p></div>
+
+      <h4>Website requirements &amp; required policies</h4>
+      <p>Processors and MoRs require your site to have real, matching business info and these documents:</p>
+      <ul>
+        <li><strong>Terms of Service</strong> — the rules of using your product.</li>
+        <li><strong>Privacy Policy</strong> — what data you collect and how (needed for GDPR too, since you'll have EU users).</li>
+        <li><strong>Refund / Cancellation Policy</strong> — clear and reasonable; processors specifically look for this.</li>
+        <li>Clear pricing, a contact method, and a description matching your application.</li>
+      </ul>
+      <div class="call example"><div class="lab">◆ Example — a strong business description</div><p><em>Weak:</em> "We provide online software solutions." <br><em>Strong:</em> "We sell a subscription SaaS that helps small law firms automate client intake, billed monthly at $29–$99 via card. Customers are businesses in the US, EU, and Asia."</p></div>
+      <div class="call mistake"><div class="lab">✕ Common mistakes</div><ul>
+        <li>Applying with a coming-soon page — processors want a real, working site.</li>
+        <li>Copy-pasting someone else's ToS with their company name still in it.</li>
+        <li>No refund policy (a frequent hold/reject reason).</li>
+        <li>Description on the site not matching what you told the processor.</li>
+      </ul></div>
+      <div class="call when"><div class="lab">◷ Now or later</div><p><strong>Last</strong> — after LLC, EIN, address, and bank/Wise. This is the final gate before money flows.</p></div>
+      <a class="backtop" href="#start">↑ top</a>
+    </section>
+
+    <!-- =================================================== PART 13 -->
+    <section class="part" id="p13">
+      <div class="parthead"><span class="partnum">13</span><h2 class="parttitle">Taxes — In Detail</h2></div>
+      <p class="parttag">The part where a one-time CPA consult pays for itself</p>
+      <div class="call warn"><div class="lab">▲ The single most important tax fact for you</div><p>A <strong>multi-member foreign-owned LLC is a partnership</strong> for US tax. It files <strong>Form 1065 + Schedule K-1 (one per member) + Schedules K-2 &amp; K-3</strong>. It does <strong>NOT</strong> file Form 5472 + pro-forma 1120 — that rule is only for <em>single-member</em> foreign-owned LLCs. Filing the wrong form (or none) triggers penalties. This alone is why so many two-founder foreign LLCs get in trouble.</p></div>
+
+      <h3>Do you personally owe US income tax? It depends on "ECI"</h3>
+      <p>US tax on a foreign partner turns on <strong>Effectively Connected Income (ECI)</strong> — income from a US trade or business.</p>
+      <ul>
+        <li>If <strong>both founders do all the work from Bangladesh</strong>, with no US employees, office, agents, or inventory, your SaaS revenue is generally treated as <strong>foreign-source, not ECI</strong> → generally <strong>no US federal income tax</strong> for the partnership or for you personally, and <strong>no §1446 withholding</strong>.</li>
+        <li>If you create a US nexus (US employee, US office, US-based servers you control, a US-based partner actively running things), some income may become <strong>ECI</strong> → the partnership must <strong>withhold</strong> US tax on your share (Forms 8804 / 8805 / 8813, ~37% for individuals) and each of you files <strong>Form 1040-NR</strong>.</li>
+      </ul>
+      <div class="call why"><div class="lab">◆ Why you still file even with $0 tax</div><p>"No tax due" is not "no filing due." A partnership with the facts above still must file Form 1065 + K-1s + K-2/K-3 every year. The penalty for a <em>late</em> 1065 is roughly <strong>$255 per partner per month</strong> (up to 12 months) — so a two-member LLC three months late owes about <strong>$1,530</strong> even with zero income. Filing on time is the cheapest thing you'll do all year.</p></div>
+
+      <h3>Federal obligations checklist</h3>
+      <ul>
+        <li><strong>Form 1065</strong> (US Return of Partnership Income) — annually.</li>
+        <li><strong>Schedule K-1</strong> — one per member, showing each member's share.</li>
+        <li><strong>Schedules K-2 &amp; K-3</strong> — required because you have foreign partners / international items.</li>
+        <li><strong>Forms 8804 / 8805 / 8813</strong> — only if there's ECI allocable to you (withholding).</li>
+        <li><strong>Form 1040-NR</strong> — each foreign member, only if you have US-taxable income or need to claim withholding back.</li>
+      </ul>
+
+      <h3>Wyoming (state) obligations</h3>
+      <p>Wyoming has <strong>no state income tax and no franchise tax.</strong> Your only recurring state item is the <strong>Annual Report</strong> ($60 minimum, due the 1st of your formation-anniversary month — see Part 14).</p>
+
+      <h3>Sales tax / VAT</h3>
+      <p>US "sales tax" on SaaS varies by state (some tax SaaS, some don't) and only applies once you cross a state's <strong>economic nexus</strong> threshold (commonly ~$100k in sales or 200 transactions into that state). Tracking this across 45+ states is a real burden — which is exactly why using a <strong>Merchant of Record (Polar/Paddle)</strong> is attractive: they collect and remit sales tax/VAT for you. If you use raw Stripe at scale, you'll need a sales-tax tool (Stripe Tax, Anrok, TaxJar) or a CPA.</p>
+
+      <h3>Estimated taxes &amp; franchise tax</h3>
+      <p>No Wyoming franchise tax. Federal estimated taxes generally don't apply to you personally if you have no US-taxable income; if you develop ECI, quarterly §1446 withholding deposits (Form 8813) come into play — a CPA will set this up.</p>
+
+      <h3>Does Bangladesh tax this?</h3>
+      <p>Very possibly — you are tax residents of Bangladesh, and Bangladesh taxes residents. Income you draw from the US company (and potentially your share of company profits) may be taxable under NBR rules, and there is <strong>no US–Bangladesh tax treaty</strong> to reduce or coordinate the two systems. <strong>Talk to a Bangladeshi tax professional</strong> about how to report foreign business income and remittances. Don't assume "US company = invisible to NBR."</p>
+
+      <h3>Key federal deadlines (calendar-year LLC)</h3>
+      <div class="tablewrap">
+      <table>
+        <thead><tr><th>Item</th><th>Deadline</th></tr></thead>
+        <tbody>
+          <tr><td>Form 1065 + K-1s + K-2/K-3</td><td><b>March 15</b> (or next business day)</td></tr>
+          <tr><td>Extension (Form 7004)</td><td>By March 15 → extends filing to <b>Sept 15</b></td></tr>
+          <tr><td>Forms 8804/8805 (if ECI)</td><td>Generally March 15 (June 15 if all partners are NRAs)</td></tr>
+          <tr><td>Form 8813 deposits (if ECI)</td><td>Quarterly: Apr 15, Jun 15, Sep 15, Dec 15</td></tr>
+          <tr><td>Form 1040-NR (if applicable)</td><td>Typically June 15 for non-residents (confirm)</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="call when"><div class="lab">◷ CPA recommendation</div><p>Hire a US CPA/EA who explicitly lists <strong>foreign-owned partnership (1065 + K-2/K-3)</strong> experience. Specialist firms exist for exactly this (search "foreign-owned multi-member LLC 1065"). Budget roughly $300–$1,200/yr for the return. This is not the place to save money by guessing.</p></div>
+      <div class="call mistake"><div class="lab">✕ Fatal mistakes</div><ul>
+        <li>Filing Form 5472 (single-member rule) instead of 1065 (your rule).</li>
+        <li>Skipping the return because "we owe $0" — the penalty is per partner per month.</li>
+        <li>Omitting K-2/K-3 (IRS treats the return as incomplete).</li>
+        <li>Ignoring Bangladesh-side taxes entirely.</li>
+      </ul></div>
+      <p style="max-width:var(--maxread);font-size:15px;color:var(--ink-soft)">This section discusses tax rules generally; your actual obligations depend on facts a professional should review. Nothing here is tax advice for your specific situation.</p>
+      <a class="backtop" href="#start">↑ top</a>
+    </section>
+
+    <!-- =================================================== PART 14 -->
+    <section class="part" id="p14">
+      <div class="parthead"><span class="partnum">14</span><h2 class="parttitle">Annual Compliance — the Yearly Rhythm</h2></div>
+      <p class="parttag">Miss these and you risk dissolution or penalties</p>
+      <div class="checklist">
+        <div class="cl-head">Every year — recurring checklist</div>
+        <label><input type="checkbox"><span><b>Registered agent renewal</b> — autopay it; lapse can dissolve the LLC ($350 to fix).</span></label>
+        <label><input type="checkbox"><span><b>Wyoming Annual Report</b> — $60, due the 1st of your formation-anniversary month, filed at wyobiz.wyo.gov.</span></label>
+        <label><input type="checkbox"><span><b>Form 1065 + K-1s + K-2/K-3</b> — file by March 15 (or extend with 7004).</span></label>
+        <label><input type="checkbox"><span><b>Forms 8804/8805/8813</b> — only if you have ECI (withholding).</span></label>
+        <label><input type="checkbox"><span><b>Form 1040-NR</b> — each founder, only if US-taxable income applies.</span></label>
+        <label><input type="checkbox"><span><b>Bangladesh (NBR) filing</b> — report foreign income per local rules.</span></label>
+        <label><input type="checkbox"><span><b>Bookkeeping current</b> — keep clean monthly records (Wave/Xero/QuickBooks) all year, not in March.</span></label>
+        <label><input type="checkbox"><span><b>Bank / Wise details updated</b> — keep addresses and ownership current to avoid freezes.</span></label>
+        <label><input type="checkbox"><span><b>Stripe / Polar info current</b> — update business details, bank payout info, policies.</span></label>
+        <label><input type="checkbox"><span><b>Virtual address &amp; phone renewals</b> — keep active so mail/verifications don't break.</span></label>
+        <label><input type="checkbox"><span><b>Form 8822-B</b> — file within 60 days if the responsible party or address changes.</span></label>
+        <label><input type="checkbox"><span><b>Monitor BOI rule</b> — see note below; currently no filing for domestic LLCs, but the rule may be finalized.</span></label>
+      </div>
+      <div class="call why"><div class="lab">◆ Good news on BOI (FinCEN)</div><p>As of a March 2025 interim final rule still in effect, <strong>US-formed entities (like your Wyoming LLC) and their owners are exempt from Beneficial Ownership Information (BOI) reporting</strong> to FinCEN — even when foreign-owned. Only <em>foreign-formed</em> companies registering into the US must report. FinCEN has said it intends to finalize the rule, so keep an eye out in case the requirement returns for domestic entities.</p></div>
+      <a class="backtop" href="#start">↑ top</a>
+    </section>
+
+    <!-- =================================================== PART 15 -->
+    <section class="part" id="p15">
+      <div class="parthead"><span class="partnum">15</span><h2 class="parttitle">Costs — Minimum, Recommended, Premium</h2></div>
+      <p class="parttag">Realistic USD estimates; verify current prices</p>
+      <div class="tablewrap">
+      <table>
+        <thead><tr><th>Item</th><th>Minimum</th><th>Recommended</th><th>Premium</th></tr></thead>
+        <tbody>
+          <tr><td>WY formation (one-time)</td><td>$103</td><td>$103</td><td>$103</td></tr>
+          <tr><td>EIN</td><td class="tick">$0 DIY</td><td>$0 DIY</td><td>$50–$200 (agent files)</td></tr>
+          <tr><td>Registered agent /yr</td><td>$25</td><td>$125</td><td>$200</td></tr>
+          <tr><td>Virtual US address /yr</td><td>$0 (use BD address)*</td><td>$120</td><td>$300</td></tr>
+          <tr><td>Business phone /yr</td><td>$0 (Google Voice)</td><td>$180 (OpenPhone)</td><td>$300</td></tr>
+          <tr><td>Domain /yr</td><td>$12</td><td>$15</td><td>$40 (premium TLD)</td></tr>
+          <tr><td>Google Workspace /yr</td><td>$0 (Zoho Mail free)</td><td>$72 (1 user)</td><td>$300 (multiple + storage)</td></tr>
+          <tr><td>Operating Agreement etc.</td><td>$0 (templates here)</td><td>$0–$300</td><td>$1,000 (attorney)</td></tr>
+          <tr><td>CPA — annual 1065 /yr</td><td>$300</td><td>$600</td><td>$1,200</td></tr>
+          <tr><td>Bookkeeping tool /yr</td><td>$0 (Wave)</td><td>$180</td><td>$600</td></tr>
+          <tr><td><b>Year-1 total (approx.)</b></td><td><b>~$450</b></td><td><b>~$1,400</b></td><td><b>~$4,000</b></td></tr>
+          <tr><td><b>Year-2+ /yr (approx.)</b></td><td><b>~$400</b></td><td><b>~$1,300</b></td><td><b>~$3,900</b></td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p style="max-width:var(--maxread);font-size:15px;color:var(--ink-soft)">*Using your Bangladesh address works for formation and EIN, but you'll likely want a real virtual US address for banking — so "recommended" is the honest baseline for a company that needs Wise + Stripe.</p>
+      <a class="backtop" href="#start">↑ top</a>
+    </section>
+
+    <!-- =================================================== PART 16 -->
+    <section class="part" id="p16">
+      <div class="parthead"><span class="partnum">16</span><h2 class="parttitle">Timeline — Day 1 to Accepting Payments</h2></div>
+      <p class="parttag">The EIN wait is the long pole; everything else is fast</p>
+      <div class="tablewrap">
+      <table>
+        <thead><tr><th>Phase</th><th>What happens</th><th>Time</th></tr></thead>
+        <tbody>
+          <tr><td>Day 0</td><td>Decide state/entity, pick name, sign up for registered agent</td><td>1 day</td></tr>
+          <tr><td>Day 0–1</td><td>File Articles online (WyoBiz); approval same day</td><td>Minutes–hours</td></tr>
+          <tr><td>Day 1</td><td>Fax/call SS-4 for EIN; set up domain, email, virtual address, phone</td><td>1 day</td></tr>
+          <tr><td>Day 1–5 (fax) or day 1 (phone)</td><td>Receive EIN</td><td><b>~4 biz days</b> (fax) / same-day (phone)</td></tr>
+          <tr><td>Day 2–7</td><td>Sign Operating Agreement, Founders Agreement, IP assignments; build website + policies</td><td>2–5 days</td></tr>
+          <tr><td>After EIN</td><td>Open Wise Business (+ Payoneer)</td><td>1–5 biz days</td></tr>
+          <tr><td>After bank</td><td>Activate Stripe / onboard Polar; connect payout account</td><td>1–3 days</td></tr>
+          <tr><td><b>Total realistic</b></td><td>From nothing to live payments</td><td><b>~2–4 weeks</b></td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="call why"><div class="lab">◆ What actually determines the timeline</div><p>Not the filings — those are fast. It's the <strong>EIN turnaround</strong> and getting your <strong>website + policies</strong> convincing enough to clear Wise and Stripe. Do the website in parallel while the EIN processes so you lose no time.</p></div>
+      <a class="backtop" href="#start">↑ top</a>
+    </section>
+
+    <!-- =================================================== PART 17 -->
+    <section class="part" id="p17">
+      <div class="parthead"><span class="partnum">17</span><h2 class="parttitle">50+ Mistakes Foreign Founders Make</h2></div>
+      <p class="parttag">And exactly how to avoid each one</p>
+      <ol>
+        <li><b>Filing Form 5472 instead of Form 1065.</b> That's the single-member rule; you're a partnership. → File 1065 + K-1 + K-2/K-3.</li>
+        <li><b>Not filing at all because you owe $0.</b> Penalty is ~$255/partner/month. → Always file, even at a loss.</li>
+        <li><b>Omitting Schedules K-2/K-3.</b> IRS treats the return as incomplete. → Include them.</li>
+        <li><b>Planning around Mercury while living in Bangladesh.</b> BD is prohibited. → Use Wise Business.</li>
+        <li><b>Relying on Relay.</b> It now needs an SSN/ITIN. → Wise/Payoneer.</li>
+        <li><b>Using the RA address as your bank/business address.</b> Auto-reject. → Real street/virtual address.</li>
+        <li><b>Different name spellings across Articles/EIN/bank.</b> → Lock one exact spelling and reuse it.</li>
+        <li><b>Trying the online EIN tool without an SSN.</b> → Fax or phone SS-4.</li>
+        <li><b>Leaving SS-4 line 7b blank.</b> → Write "Foreign."</li>
+        <li><b>Letting a formation agent be the responsible party.</b> → List a founder.</li>
+        <li><b>Applying for two EINs when the first is slow.</b> → One method, one entity.</li>
+        <li><b>Skipping the Operating Agreement.</b> → Always sign one, even for two people.</li>
+        <li><b>50/50 with no deadlock-breaker.</b> → Add mediation + buy/sell clause.</li>
+        <li><b>No vesting.</b> A founder who quits keeps their full stake. → 4-yr vest, 1-yr cliff.</li>
+        <li><b>Never assigning IP to the LLC.</b> → Each founder signs an IP assignment.</li>
+        <li><b>Contractors keep IP rights.</b> → Work-for-hire + assignment in every contract.</li>
+        <li><b>Choosing New Mexico for anonymity, then failing bank KYC.</b> → Wyoming balances privacy + acceptance.</li>
+        <li><b>Choosing Delaware and paying $300/yr franchise tax for no benefit.</b> → Wyoming unless raising VC.</li>
+        <li><b>Forming a C-Corp too early.</b> → LLC now; convert when an investor requires it.</li>
+        <li><b>Two single-member LLCs instead of one multi-member.</b> → One shared entity.</li>
+        <li><b>Letting the registered agent lapse.</b> Dissolution + $350. → Autopay.</li>
+        <li><b>Missing the WY annual report</b> (1st of anniversary month). → Calendar it; WY reminders aren't enough.</li>
+        <li><b>Missing March 15 for the 1065.</b> → File or extend with Form 7004 by March 15.</li>
+        <li><b>Assuming no Bangladesh tax.</b> → Consult NBR/local pro; no US–BD treaty.</li>
+        <li><b>Ignoring sales tax/VAT at scale.</b> → Use a Merchant of Record or a tax tool.</li>
+        <li><b>Applying to the bank before the EIN.</b> → Wait for the EIN.</li>
+        <li><b>Vague business description.</b> "Online business" reads as risk. → Be specific.</li>
+        <li><b>Free subdomain instead of your own domain.</b> → Buy yourcompany.com.</li>
+        <li><b>Website is a coming-soon page.</b> → Launch a real site before Stripe.</li>
+        <li><b>No refund policy.</b> Common Stripe hold. → Publish ToS + Privacy + Refund.</li>
+        <li><b>Copy-pasted policies with another company's name.</b> → Customize them.</li>
+        <li><b>Site description ≠ processor description.</b> → Make them match.</li>
+        <li><b>Reapplying after rejection.</b> Often auto-rejected. → Get it right first time.</li>
+        <li><b>P.O. box / bare UPS-Store box as address.</b> Flagged. → Real virtual office suite.</li>
+        <li><b>Burner phone number.</b> Distrusted; SMS may fail. → Business VoIP with SMS.</li>
+        <li><b>Mixing personal and business money.</b> Pierces liability protection. → Separate accounts, always.</li>
+        <li><b>No bookkeeping until tax time.</b> → Track monthly with Wave/Xero.</li>
+        <li><b>Losing the stamped Articles / CP-575.</b> Banks want originals. → Save PDFs; request 147C if needed.</li>
+        <li><b>Not reporting responsible-party changes (8822-B).</b> → File within 60 days.</li>
+        <li><b>Believing the EIN costs money.</b> → It's free from the IRS.</li>
+        <li><b>Overpaying agencies for what you can do yourself.</b> → Use this manual; pay only where it saves real risk.</li>
+        <li><b>Filing "Foreign LLC" on WyoBiz.</b> That's for out-of-state entities. → Choose "Domestic."</li>
+        <li><b>Forming on a month boundary and misjudging the anniversary.</b> → Form early in a memorable month.</li>
+        <li><b>Assuming US servers/employees are harmless.</b> They can create ECI + US tax. → Understand nexus first.</li>
+        <li><b>No Partnership Representative named.</b> Needed for IRS audits. → Name one in the OA.</li>
+        <li><b>Not keeping K-1s for each member.</b> → Issue and retain them yearly.</li>
+        <li><b>Thinking Stripe Atlas is required.</b> → It isn't; you already formed the LLC.</li>
+        <li><b>Treating Wise as FDIC-insured.</b> It's safeguarded, not insured. → Don't park huge balances; sweep out.</li>
+        <li><b>One founder holding all logins/accounts.</b> Bus-factor risk. → Shared access + recovery plan.</li>
+        <li><b>Not backing up legal docs and credentials.</b> → Encrypted shared vault (1Password/Bitwarden).</li>
+        <li><b>Ignoring the FinCEN BOI rule status.</b> Exempt now, but may change. → Monitor annually.</li>
+        <li><b>Underpricing to "get customers," then can't afford compliance.</b> → Price to cover ~$1.3k/yr overhead.</li>
+        <li><b>Not consulting a CPA even once.</b> The costliest mistake of all. → Budget one consult before tax season.</li>
+      </ol>
+      <a class="backtop" href="#start">↑ top</a>
+    </section>
+
+    <!-- =================================================== PART 18 -->
+    <section class="part" id="p18">
+      <div class="parthead"><span class="partnum">18</span><h2 class="parttitle">Checklists (printable)</h2></div>
+      <p class="parttag">Tick as you go — resets on reload; use the Print button to keep a copy</p>
+
+      <div class="checklist">
+        <div class="cl-head">A · Before formation</div>
+        <label><input type="checkbox"><span>Agreed on Wyoming + multi-member LLC</span></label>
+        <label><input type="checkbox"><span>Company name chosen + backup + availability checked</span></label>
+        <label><input type="checkbox"><span>Ownership split + voting + deadlock rule agreed</span></label>
+        <label><input type="checkbox"><span>Responsible party (one founder) chosen for IRS</span></label>
+        <label><input type="checkbox"><span>Registered agent selected</span></label>
+        <label><input type="checkbox"><span>Passport scans (both), clear PDFs, ready</span></label>
+      </div>
+
+      <div class="checklist">
+        <div class="cl-head">B · During formation</div>
+        <label><input type="checkbox"><span>Articles of Organization filed on WyoBiz (Domestic LLC)</span></label>
+        <label><input type="checkbox"><span>Stamped Articles PDF + filing ID saved</span></label>
+        <label><input type="checkbox"><span>SS-4 completed (line 7b = "Foreign", 2 members, Partnership)</span></label>
+        <label><input type="checkbox"><span>SS-4 faxed (855-641-6935) or phoned (267-941-1099)</span></label>
+        <label><input type="checkbox"><span>EIN received &amp; saved</span></label>
+      </div>
+
+      <div class="checklist">
+        <div class="cl-head">C · After formation</div>
+        <label><input type="checkbox"><span>Operating Agreement signed by both</span></label>
+        <label><input type="checkbox"><span>Founders Agreement signed</span></label>
+        <label><input type="checkbox"><span>IP Assignment signed by each founder</span></label>
+        <label><input type="checkbox"><span>Domain purchased; company email set up</span></label>
+        <label><input type="checkbox"><span>Virtual US address active</span></label>
+        <label><input type="checkbox"><span>Business phone with SMS active</span></label>
+      </div>
+
+      <div class="checklist">
+        <div class="cl-head">D · Before opening a bank / Wise account</div>
+        <label><input type="checkbox"><span>EIN in hand</span></label>
+        <label><input type="checkbox"><span>All names/addresses match across documents</span></label>
+        <label><input type="checkbox"><span>Real operating address (not RA address)</span></label>
+        <label><input type="checkbox"><span>Clear one-sentence business description ready</span></label>
+        <label><input type="checkbox"><span>Website live (not coming-soon)</span></label>
+      </div>
+
+      <div class="checklist">
+        <div class="cl-head">E · Before Stripe / Polar</div>
+        <label><input type="checkbox"><span>Bank/Wise account open for payouts</span></label>
+        <label><input type="checkbox"><span>Terms of Service published</span></label>
+        <label><input type="checkbox"><span>Privacy Policy published</span></label>
+        <label><input type="checkbox"><span>Refund/Cancellation policy published</span></label>
+        <label><input type="checkbox"><span>Pricing + contact info visible; description matches</span></label>
+      </div>
+
+      <div class="checklist">
+        <div class="cl-head">F · Before launch</div>
+        <label><input type="checkbox"><span>Test transaction succeeds end-to-end</span></label>
+        <label><input type="checkbox"><span>Payout to bank/Wise confirmed</span></label>
+        <label><input type="checkbox"><span>Bookkeeping tool connected</span></label>
+        <label><input type="checkbox"><span>Shared password vault + doc backups set</span></label>
+      </div>
+
+      <div class="checklist">
+        <div class="cl-head">G · Annual compliance</div>
+        <label><input type="checkbox"><span>RA renewed (autopay)</span></label>
+        <label><input type="checkbox"><span>WY Annual Report filed ($60, anniversary month)</span></label>
+        <label><input type="checkbox"><span>Form 1065 + K-1 + K-2/K-3 filed (or 7004 extension)</span></label>
+        <label><input type="checkbox"><span>ECI-related forms handled if applicable</span></label>
+        <label><input type="checkbox"><span>Bangladesh tax filed</span></label>
+        <label><input type="checkbox"><span>Books reconciled; addresses/ownership current</span></label>
+      </div>
+      <a class="backtop" href="#start">↑ top</a>
+    </section>
+
+    <!-- =================================================== PART 19 -->
+    <section class="part" id="p19">
+      <div class="parthead"><span class="partnum">19</span><h2 class="parttitle">Future Growth</h2></div>
+      <p class="parttag">Multiple products, when to add an entity, and the VC path</p>
+      <h3>One LLC can own many products, domains &amp; brands</h3>
+      <p>You do <strong>not</strong> need a new company per product. One LLC can run multiple SaaS products, own dozens of domains, and operate several brand names (register "doing business as"/DBA names or just market under different names). Everything shares one EIN, one bank account, one Stripe, and one tax return. This is the simplest and cheapest way to run a product studio.</p>
+      <div class="call example"><div class="lab">◆ Example</div><p>Your LLC "Northlight Software LLC" runs <em>InboxIQ</em>, <em>DocSort</em>, and <em>MetricBase</em> — three products, three domains, one company, one 1065.</p></div>
+
+      <h3>When to create a second LLC</h3>
+      <ul>
+        <li><strong>Isolating risk/liability</strong> — a product with real legal exposure you want walled off.</li>
+        <li><strong>Selling one product</strong> — a clean entity makes a single-product sale far easier.</li>
+        <li><strong>Different ownership</strong> — a new product with a different partner or investor.</li>
+        <li><strong>A "holding" structure</strong> — later, a parent holding company owning product subsidiaries.</li>
+      </ul>
+      <p>Until one of those is true, keep it to one LLC. Extra entities mean extra RAs, EINs, returns, and cost.</p>
+
+      <h3>When to convert to a Delaware C-Corp</h3>
+      <p>Convert when you're <strong>raising priced venture capital</strong> or issuing standard employee stock options. VCs almost always require a <strong>Delaware C-Corp</strong> for its predictable law, share structures (preferred stock), and QSBS benefits. You can <strong>domesticate/convert</strong> the Wyoming LLC into a Delaware C-Corp when that day comes — plan it with a startup attorney, since it has tax consequences.</p>
+
+      <h3>What happens if you raise VC</h3>
+      <ul>
+        <li>Flip to Delaware C-Corp; issue founder common stock (with vesting) and preferred stock to investors.</li>
+        <li>Set up a cap table (Carta/Pulley) and a stock option pool.</li>
+        <li>US tax and payroll complexity rises — you'll need a startup CPA and counsel.</li>
+        <li>Foreign-founder ownership is fine, but the corp itself becomes a US taxpayer (21% on profits) — a different world from the pass-through LLC.</li>
+      </ul>
+      <div class="call when"><div class="lab">◷ Bottom line</div><p>Stay a Wyoming multi-member LLC while bootstrapping. Add entities only for isolation or sale. Convert to Delaware C-Corp only when a real investor requires it — not "just in case."</p></div>
+      <a class="backtop" href="#start">↑ top</a>
+    </section>
+
+    <!-- =================================================== PART 20 -->
+    <section class="part" id="p20">
+      <div class="parthead"><span class="partnum">20</span><h2 class="parttitle">Master Roadmap — No Company → Live &amp; Compliant</h2></div>
+      <p class="parttag">The whole thing, in order, with purpose · cost · time · docs · output</p>
+
+      <div class="step"><div class="sn">Step 1 · Decide</div><h4>Lock the structure</h4>
+        <p>Agree Wyoming + multi-member LLC, ownership split, voting/deadlock, responsible party.</p>
+        <div class="grid"><div><b>Purpose:</b> avoid costly re-dos</div><div><b>Cost:</b> $0</div><div><b>Time:</b> 1 day</div><div><b>Docs:</b> notes/passports</div><div><b>Output:</b> agreed plan</div></div>
+      </div>
+      <div class="step"><div class="sn">Step 2 · Registered agent</div><h4>Hire a Wyoming RA</h4>
+        <p>Sign up so you have a WY address before filing.</p>
+        <div class="grid"><div><b>Purpose:</b> legal requirement</div><div><b>Cost:</b> $25–$125/yr</div><div><b>Time:</b> minutes</div><div><b>Docs:</b> —</div><div><b>Output:</b> WY RA address</div></div>
+      </div>
+      <div class="step"><div class="sn">Step 3 · Form</div><h4>File Articles of Organization (WyoBiz)</h4>
+        <p>Domestic LLC, exact name, RA, addresses. Pay + download stamped PDF.</p>
+        <div class="grid"><div><b>Purpose:</b> create the company</div><div><b>Cost:</b> ~$103</div><div><b>Time:</b> minutes–hours</div><div><b>Docs:</b> name, RA, address</div><div><b>Output:</b> stamped Articles + filing ID</div></div>
+      </div>
+      <div class="step"><div class="sn">Step 4 · EIN</div><h4>Get the federal tax ID (SS-4)</h4>
+        <p>Fax or phone SS-4; line 7b = "Foreign"; 2 members; Partnership.</p>
+        <div class="grid"><div><b>Purpose:</b> unlock bank/Stripe/tax</div><div><b>Cost:</b> $0</div><div><b>Time:</b> ~4 biz days (fax)</div><div><b>Docs:</b> Articles, passport</div><div><b>Output:</b> EIN (+ later CP-575)</div></div>
+      </div>
+      <div class="step"><div class="sn">Step 5 · Internal docs</div><h4>Sign OA, Founders Agreement, IP assignments</h4>
+        <p>Adapt the templates in Parts 6–8; both founders sign.</p>
+        <div class="grid"><div><b>Purpose:</b> ownership + IP clean</div><div><b>Cost:</b> $0–$1,000</div><div><b>Time:</b> 1–2 days</div><div><b>Docs:</b> templates here</div><div><b>Output:</b> signed agreements</div></div>
+      </div>
+      <div class="step"><div class="sn">Step 6 · Infrastructure</div><h4>Domain, email, US address, phone, website + policies</h4>
+        <p>Build in parallel with the EIN wait. Publish ToS/Privacy/Refund.</p>
+        <div class="grid"><div><b>Purpose:</b> pass bank/Stripe checks</div><div><b>Cost:</b> ~$150–$400/yr</div><div><b>Time:</b> 2–5 days</div><div><b>Docs:</b> —</div><div><b>Output:</b> live, credible site</div></div>
+      </div>
+      <div class="step"><div class="sn">Step 7 · Banking</div><h4>Open Wise Business (+ Payoneer)</h4>
+        <p>After EIN. Real operating address, matching details, clear description.</p>
+        <div class="grid"><div><b>Purpose:</b> hold + receive USD</div><div><b>Cost:</b> low/free</div><div><b>Time:</b> 1–5 biz days</div><div><b>Docs:</b> EIN, Articles, passports, OA</div><div><b>Output:</b> US ACH/wire details</div></div>
+      </div>
+      <div class="step"><div class="sn">Step 8 · Payments</div><h4>Activate Stripe and/or onboard Polar</h4>
+        <p>Connect payout to Wise. MoR (Polar) handles global tax; Stripe for lower fees later.</p>
+        <div class="grid"><div><b>Purpose:</b> accept cards worldwide</div><div><b>Cost:</b> % per transaction</div><div><b>Time:</b> 1–3 days</div><div><b>Docs:</b> EIN, bank, website</div><div><b>Output:</b> live checkout</div></div>
+      </div>
+      <div class="step"><div class="sn">Step 9 · Launch &amp; test</div><h4>Run a real transaction end-to-end</h4>
+        <p>Confirm charge → payout → bank. Turn on bookkeeping.</p>
+        <div class="grid"><div><b>Purpose:</b> prove it works</div><div><b>Cost:</b> $0</div><div><b>Time:</b> 1 day</div><div><b>Docs:</b> —</div><div><b>Output:</b> first live payment</div></div>
+      </div>
+      <div class="step"><div class="sn">Step 10 · Stay compliant</div><h4>Run the annual rhythm</h4>
+        <p>RA renewal, WY annual report ($60), Form 1065 + K-1/K-2/K-3 by Mar 15, Bangladesh filing, clean books. Consult a CPA once before your first tax season.</p>
+        <div class="grid"><div><b>Purpose:</b> stay in good standing</div><div><b>Cost:</b> ~$400–$1,300/yr</div><div><b>Time:</b> ongoing</div><div><b>Docs:</b> books, K-1s</div><div><b>Output:</b> a durable, compliant company</div></div>
+      </div>
+
+      <div class="call why" style="margin-top:26px"><div class="lab">◆ You're done when…</div><p>Your Wyoming multi-member LLC exists, has an EIN, holds a working Wise account, accepts payments through Stripe/Polar with proper policies live, and you have a calendar of annual filings and a CPA lined up. That's a fully operational, compliant US SaaS company accepting payments worldwide — built by you, without an agency.</p></div>
+      <a class="backtop" href="#start">↑ top</a>
+    </section>
+
+    <footer>
+      <p><strong>The Foreign Founder's Field Manual</strong> — built as a permanent handbook for two Bangladeshi co-founders forming a Wyoming multi-member LLC. Figures and procedures reflect 2026 research and should be re-verified against official sources (Wyoming Secretary of State, IRS.gov, FinCEN.gov, and each provider) before you act. This is educational information, not legal, tax, or financial advice for your specific situation — pair it with a US CPA experienced in foreign-owned partnerships and, for the agreements, a quick attorney review.</p>
+    </footer>
+  </main>
+</div>
+
+<button class="printbtn" onclick="window.print()">⤓ Print / Save PDF</button>
+
+<script>
+  // progress bar
+  const bar=document.getElementById('progress');
+  const onScroll=()=>{const h=document.documentElement;const sc=h.scrollTop||document.body.scrollTop;const max=h.scrollHeight-h.clientHeight;bar.style.width=(max>0?(sc/max*100):0)+'%';};
+  document.addEventListener('scroll',onScroll,{passive:true});onScroll();
+
+  // active nav via IntersectionObserver
+  const links=[...document.querySelectorAll('nav.toc a')];
+  const map={};links.forEach(a=>map[a.getAttribute('href').slice(1)]=a);
+  const secs=[...document.querySelectorAll('section.part, header.hero')];
+  const io=new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{if(e.isIntersecting){links.forEach(l=>l.classList.remove('active'));const id=e.target.id;if(map[id])map[id].classList.add('active');}});
+  },{rootMargin:'-45% 0px -50% 0px',threshold:0});
+  secs.forEach(s=>io.observe(s));
+
+  // mobile menu
+  const toc=document.getElementById('toc');const scrim=document.getElementById('scrim');const btn=document.getElementById('menubtn');
+  const closeM=()=>{toc.classList.remove('open');scrim.classList.remove('show');btn.setAttribute('aria-expanded','false');};
+  if(btn){btn.addEventListener('click',()=>{const open=toc.classList.toggle('open');scrim.classList.toggle('show',open);btn.setAttribute('aria-expanded',open);});
+  scrim.addEventListener('click',closeM);
+  toc.addEventListener('click',e=>{if(e.target.tagName==='A')closeM();});}
+
+  // copy buttons
+  document.querySelectorAll('.copybtn').forEach(b=>{
+    b.addEventListener('click',async()=>{
+      const el=document.getElementById(b.dataset.target);
+      try{await navigator.clipboard.writeText(el.innerText);const t=b.textContent;b.textContent='Copied ✓';b.classList.add('done');setTimeout(()=>{b.textContent=t;b.classList.remove('done');},1600);}
+      catch(e){const r=document.createRange();r.selectNode(el);getSelection().removeAllRanges();getSelection().addRange(r);b.textContent='Select+Copy';}
+    });
+  });
+</script>
+</body>
+</html>

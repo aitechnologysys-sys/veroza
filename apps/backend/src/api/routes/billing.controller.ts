@@ -1,6 +1,6 @@
-import { Body, Controller, Get, HttpException, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpException, Inject, Param, Post, Req } from '@nestjs/common';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
-import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
+import { IBillingProvider } from '@gitroom/nestjs-libraries/services/billing.provider.interface';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization, User } from '@prisma/client';
 import { BillingSubscribeDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.subscribe.dto';
@@ -15,7 +15,7 @@ import { AuthService } from '@gitroom/helpers/auth/auth.service';
 export class BillingController {
   constructor(
     private _subscriptionService: SubscriptionService,
-    private _stripeService: StripeService,
+    @Inject('BILLING_PROVIDER') private _billingService: IBillingProvider,
     private _notificationService: NotificationService
   ) {}
 
@@ -25,14 +25,14 @@ export class BillingController {
     @Param('id') body: string
   ) {
     return {
-      status: await this._stripeService.checkSubscription(org.id, body),
+      status: await this._billingService.checkSubscription(org.id, body),
     };
   }
 
   @Get('/check-discount')
   async checkDiscount(@GetOrgFromRequest() org: Organization) {
     return {
-      offerCoupon: !(await this._stripeService.checkDiscount(org.paymentId))
+      offerCoupon: !(await this._billingService.checkDiscount(org.paymentId))
         ? false
         : AuthService.signJWT({ discount: true }),
     };
@@ -40,13 +40,13 @@ export class BillingController {
 
   @Post('/apply-discount')
   async applyDiscount(@GetOrgFromRequest() org: Organization) {
-    await this._stripeService.applyDiscount(org.paymentId);
+    await this._billingService.applyDiscount(org.paymentId);
   }
 
   @Post('/finish-trial')
   async finishTrial(@GetOrgFromRequest() org: Organization) {
     try {
-      await this._stripeService.finishTrial(org.paymentId);
+      await this._billingService.finishTrial(org.paymentId);
     } catch (err) {}
     return {
       finish: true,
@@ -68,7 +68,7 @@ export class BillingController {
     @Req() req: Request
   ) {
     const uniqueId = req?.cookies?.track;
-    return this._stripeService.embedded(
+    return this._billingService.embedded(
       uniqueId,
       org.id,
       user.id,
@@ -85,7 +85,7 @@ export class BillingController {
     @Req() req: Request
   ) {
     const uniqueId = req?.cookies?.track;
-    return this._stripeService.subscribe(
+    return this._billingService.subscribe(
       uniqueId,
       org.id,
       user.id,
@@ -96,10 +96,10 @@ export class BillingController {
 
   @Get('/portal')
   async modifyPayment(@GetOrgFromRequest() org: Organization) {
-    const customer = await this._stripeService.getCustomerByOrganizationId(
+    const customer = await this._billingService.getCustomerByOrganizationId(
       org.id
     );
-    const { url } = await this._stripeService.createBillingPortalLink(customer);
+    const { url } = await this._billingService.createBillingPortalLink(customer);
     return {
       portal: url,
     };
@@ -123,7 +123,7 @@ export class BillingController {
       user.email
     );
 
-    return this._stripeService.setToCancel(org.id);
+    return this._billingService.setToCancel(org.id);
   }
 
   @Post('/prorate')
@@ -131,7 +131,7 @@ export class BillingController {
     @GetOrgFromRequest() org: Organization,
     @Body() body: BillingSubscribeDto
   ) {
-    return this._stripeService.prorate(org.id, body);
+    return this._billingService.prorate(org.id, body);
   }
 
   @Post('/lifetime')
@@ -139,7 +139,7 @@ export class BillingController {
     @GetOrgFromRequest() org: Organization,
     @Body() body: { code: string }
   ) {
-    return this._stripeService.lifetimeDeal(org.id, body.code);
+    return this._billingService.lifetimeDeal(org.id, body.code);
   }
 
   @Get('/charges')
@@ -151,7 +151,7 @@ export class BillingController {
       throw new HttpException('Unauthorized', 400);
     }
 
-    return this._stripeService.getCharges(org.id);
+    return this._billingService.getCharges(org.id);
   }
 
   @Post('/refund-charges')
@@ -164,7 +164,7 @@ export class BillingController {
       throw new HttpException('Unauthorized', 400);
     }
 
-    return this._stripeService.refundCharges(org.id, body.chargeIds);
+    return this._billingService.refundCharges(org.id, body.chargeIds);
   }
 
   @Post('/cancel-subscription')
@@ -176,7 +176,7 @@ export class BillingController {
       throw new HttpException('Unauthorized', 400);
     }
 
-    return this._stripeService.cancelSubscription(org.id);
+    return this._billingService.cancelSubscription(org.id);
   }
 
   @Post('/add-subscription')

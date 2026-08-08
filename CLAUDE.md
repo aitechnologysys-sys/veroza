@@ -4,7 +4,38 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Postiz is an AI social media scheduling tool supporting 28+ channels (Instagram, X, LinkedIn, YouTube, TikTok, Discord, Slack, Bluesky, etc.). It's a production system with real users — always consider backward compatibility and data migrations when changing the schema or existing behavior.
+This is a **fork of [Postiz](https://github.com/gitroomhq/postiz-app)** being taken in its own product direction. Names you will see:
+
+| Where | Name |
+|---|---|
+| Product / brand (target) | **Postaryx** |
+| Git repository (`origin`) | `aitechnologysys-sys/veroza` — **VEROZA** is the holding-company / repo name, not the product name |
+| Upstream remote (`upstream`) | `gitroomhq/postiz-app` — the original Postiz repo, kept for pulling changes |
+| Local directory | `postiz-app` (unchanged from the original clone) |
+| `package.json` `name` | `gitroom` (unchanged upstream value) |
+
+The rename to Postaryx is **not complete**. Code, packages, path aliases (`@gitroom/*`), env var names, database identifiers, and user-facing strings still say "postiz"/"gitroom" in most places. Do **not** do a blanket find-and-replace — a rename has to be scoped and deliberate (e.g. user-facing copy first, then env/config, and internal identifiers only if there's a concrete reason). Ask before renaming anything that crosses a runtime boundary: path aliases, env var names, Prisma model/column names, Stripe/Polar metadata values (`service: 'gitroom'` / `service: 'postiz'`), or the published SDK package.
+
+Postiz/Postaryx is an AI social media scheduling tool supporting 28+ channels (Instagram, X, LinkedIn, YouTube, TikTok, Discord, Slack, Bluesky, etc.). Treat it as a production system — always consider backward compatibility and data migrations when changing the schema or existing behavior.
+
+**Keeping close to upstream is a deliberate goal.** When there's a choice between an idiomatic-for-us change and one that mirrors what upstream Postiz does, prefer mirroring upstream — it keeps `git merge upstream/main` tractable. Where we intentionally diverge (e.g. the billing provider abstraction), document the divergence in `docs/`.
+
+## Billing
+
+Both `StripeService` and `PolarService` implement `IBillingProvider` and live behind two independent env switches:
+
+| Var | Question it answers | Values |
+|---|---|---|
+| `BILLING_ENABLED` | Is billing **enforced** at all? | must be the literal `"true"`; anything else = free/self-hosted mode |
+| `BILLING_PROVIDER` | **Which gateway** handles checkout? | `stripe` (default) \| `polar` |
+
+**Currently active: Stripe.** Polar is implemented and parked.
+
+`BILLING_ENABLED` is the single source of truth for enforcement, and it is read in exactly one place — `isBillingEnabled()` in `libraries/helpers/src/utils/is.billing.enabled.ts`. Import that function; **never** gate a feature on `process.env.STRIPE_*` or `process.env.POLAR_*`. Upstream Postiz used the presence of `STRIPE_PUBLISHABLE_KEY` as the enforcement gate in 15 scattered places; we deliberately diverge from upstream here. The only two legitimate `process.env.STRIPE_*` reads left in the tree are the Stripe SDK constructor and the `stripeClient` prop that feeds `loadStripe()`.
+
+The Stripe API version is pinned explicitly in `stripe.service.ts` (`STRIPE_API_VERSION`), unlike upstream which inherits the SDK's default. It must stay in sync with the API version configured on the Stripe webhook endpoint — a mismatch fails silently. Don't remove the pin, and treat an SDK bump as a change that also touches the dashboard.
+
+See **`docs/billing-current-state.md`** for the full picture: provider wiring, Stripe setup and test-mode products, webhook/ngrok setup, and the Polar feature gaps. Background: `docs/stripe-implementation.md` (pre-migration reference) and `docs/polar-integration-plan.md` (original plan, partially superseded).
 
 ## Monorepo Structure
 

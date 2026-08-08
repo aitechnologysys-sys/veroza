@@ -25,7 +25,6 @@ import { InstagramStandaloneProvider } from '@gitroom/nestjs-libraries/integrati
 import { FarcasterProvider } from '@gitroom/nestjs-libraries/integrations/social/farcaster.provider';
 import { TelegramProvider } from '@gitroom/nestjs-libraries/integrations/social/telegram.provider';
 import { NostrProvider } from '@gitroom/nestjs-libraries/integrations/social/nostr.provider';
-import { VkProvider } from '@gitroom/nestjs-libraries/integrations/social/vk.provider';
 import { WordpressProvider } from '@gitroom/nestjs-libraries/integrations/social/wordpress.provider';
 import { ListmonkProvider } from '@gitroom/nestjs-libraries/integrations/social/listmonk.provider';
 import { GmbProvider } from '@gitroom/nestjs-libraries/integrations/social/gmb.provider';
@@ -61,7 +60,7 @@ export const socialIntegrationList: Array<SocialAbstract & SocialProvider> = [
   new FarcasterProvider(),
   new TelegramProvider(),
   new NostrProvider(),
-  new VkProvider(),
+  // VK removed deliberately — see scripts/check-banned-providers.mjs
   new MediumProvider(),
   new DevToProvider(),
   new HashnodeProvider(),

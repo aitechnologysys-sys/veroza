@@ -47,6 +47,12 @@ jobs:
 #          restore-keys: |
 #            ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}-
 
+      # Runs before install so a banned provider fails in seconds, not minutes.
+      # Guards against an upstream merge silently restoring a deliberately
+      # removed connector — see scripts/check-banned-providers.mjs.
+      - name: Check banned providers
+        run: node scripts/check-banned-providers.mjs
+
       - name: Install dependencies
         run: pnpm install
 

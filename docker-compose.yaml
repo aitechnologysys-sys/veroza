@@ -100,6 +100,11 @@ services:
         condition: service_healthy
       postiz-redis:
         condition: service_healthy
+      # Not optional: the backend requires Temporal at module-init time, so
+      # starting without it produces a container that serves the frontend but
+      # has a dead API. See the healthcheck on the `temporal` service.
+      temporal:
+        condition: service_healthy
 
   postiz-postgres:
     image: postgres:17-alpine
@@ -197,6 +202,33 @@ services:
       - ./dynamicconfig:/etc/temporal/config/dynamicconfig
     labels:
       kompose.volume.type: configMap
+    # The backend opens its Temporal connection during Nest module init, BEFORE
+    # app.listen(). If Temporal is not reachable it dies there with
+    # `Name resolution failed for target dns:temporal:7233`, and pm2 does not
+    # restart it (pm2 supervises the pnpm wrapper, which stays alive). The
+    # frontend keeps serving, so the only symptom is nginx logging
+    # `111: Connection refused` on every /api/* request. Observed twice.
+    #
+    # So `postiz` must wait for Temporal to be READY, not merely started —
+    # hence this healthcheck plus `condition: service_healthy` on postiz.
+    #
+    # `namespace describe default` rather than `cluster health` on purpose: it
+    # proves both that the frontend is serving AND that the `default` namespace
+    # auto-setup creates actually exists, which is the namespace the backend
+    # connects to. Address is the service name, not 127.0.0.1 — Temporal binds
+    # the container interface, and loopback is refused (verified).
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'temporal operator namespace describe default --address temporal:7233 >/dev/null 2>&1',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      # Cold start does schema setup + namespace creation; this is generous on
+      # purpose so a slow first boot is not reported as failed.
+      start_period: 120s
 
   temporal-admin-tools:
     container_name: temporal-admin-tools

@@ -301,6 +301,8 @@ package storage is free.
 | Doc | Covers |
 |---|---|
 | [docs/CI-BUILD-CUTOVER.md](docs/CI-BUILD-CUTOVER.md) | **Do this once**, right after the CI-build change merges: make the GHCR package public, then test and deploy step by step |
+| [docs/UPSTREAM-ISOLATION.md](docs/UPSTREAM-ISOLATION.md) | Proof that nothing of ours reaches Postiz, the one gap that was closed, and where we still link to them |
+| [docs/UPSTREAM-SYNC.md](docs/UPSTREAM-SYNC.md) | Pulling Postiz's fixes in: cherry-pick vs merge, the known conflict hotspots, and how to verify |
 | [docs/RUNNING-DEV-AND-PROD.md](docs/RUNNING-DEV-AND-PROD.md) | Switching stacks safely, Compose project isolation, the Postgres auth error |
 | [docs/LOCAL-DEVELOPMENT.md](docs/LOCAL-DEVELOPMENT.md) | Dev setup in depth |
 | [docs/PROD-DEPLOY-PREREQUISITE.md](docs/PROD-DEPLOY-PREREQUISITE.md) | What must exist before a deploy |

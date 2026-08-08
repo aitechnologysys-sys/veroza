@@ -217,52 +217,73 @@ runner** (these are GA now, and priced at $0.005/min — about 17% cheaper
 than the x86 runner, not a premium tier), push to GHCR, and have the VM only
 pull.
 
-`.github/workflows/build-image.yml`:
-```yaml
-name: Build and push Postiz image
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:
+**Status: done (8 Aug 2026).** An earlier draft of this section proposed
+creating a new `.github/workflows/build-image.yml`. That was a mistake — the
+repo already had `.github/workflows/build-containers.yml` doing exactly this
+job, inherited from upstream. It was simply unusable as-is for this fork:
 
-jobs:
-  build:
-    runs-on: ubuntu-24.04-arm   # hosted ARM64 runner — native, no emulation
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile.dev
-          platforms: linux/arm64
-          push: true
-          build-args: |
-            NEXT_PUBLIC_VERSION=${{ github.sha }}
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/postiz-app:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/postiz-app:latest
-```
+- it pushed to `ghcr.io/gitroomhq/postiz-app` (upstream's namespace) in 12
+  places, which we have no write access to — dead on arrival;
+- it triggered only on git tags, not on `main`;
+- it built amd64 *and* arm64 plus a manifest across 3 jobs, and we have no
+  amd64 target (Oracle Ampere A1 is arm64, dev machines are Apple Silicon);
+- it passed `--no-cache --pull`, so no layer reuse at all.
+
+So `build-containers.yml` was **rewritten in place** rather than duplicated —
+one job, arm64 only, pushing to `ghcr.io/${{ github.repository }}` (i.e.
+`ghcr.io/aitechnologysys-sys/veroza`). Read that file for the current
+definition; it is commented in detail. Keeping the upstream filename means the
+inevitable merge conflict shows up as a conflict to resolve rather than as two
+divergent workflows both trying to build.
+
+Three details worth knowing, since they are the parts that usually go wrong:
+
+1. **`permissions: packages: write` is mandatory.** `GITHUB_TOKEN` is
+   read-only by default and the push to GHCR fails without it.
+2. **The image name matches `github.repository` on purpose.** GitHub
+   auto-links a GHCR package to the repo of the same name, which is what makes
+   the default `GITHUB_TOKEN` sufficient. Naming the image `postaryx` instead
+   would leave the package unlinked and the first push would 403 until the
+   package is created and granted repo access by hand. Rename it later,
+   deliberately, alongside the rest of the Postaryx rename — not now.
+3. **Only `main` may move `:latest`.** Every run pushes `:<full-git-sha>`, but
+   `:latest` — the tag the VM pulls — is pushed only when the ref is the default
+   branch. A manual `workflow_dispatch` run on a feature branch gets
+   `:branch-<sanitised-name>` instead. Without this, testing the workflow from a
+   branch would quietly make that branch production's next deploy.
+4. **Baked-in config is not a problem here, and this was verified rather than
+   assumed.** The usual way a "move the build to CI" change breaks is that
+   `NEXT_PUBLIC_*` values get inlined into the client bundle at build time and
+   the CI runner doesn't have them. Postiz avoids this by reading them in
+   *server* components and threading them to the client through
+   `VariableContextComponent` (`apps/frontend/src/app/(app)/layout.tsx:61-107`)
+   — runtime values. The only client components that read `process.env`
+   directly are `launches.component.tsx` (`NEXT_PUBLIC_VERSION`, passed as a
+   build arg) and `facebook.component.tsx` (`NEXT_PUBLIC_FACEBOOK_PIXEL`,
+   optional). A CI-built image is behaviour-identical to the old on-box build.
 
 At your build frequency this comfortably fits inside GitHub's free-tier CI
 minutes (2,000 min/month on the Free plan, 3,000 on Pro) — a single build is
 likely well under 15 minutes.
 
-**On the VM**, change the `postiz` service in `docker-compose.yaml` from
-building to pulling:
+**Known limitation — caching barely helps yet.** The workflow wires up
+`type=gha` build cache, but `Dockerfile.dev` runs `COPY . /app` *before*
+`pnpm install`, so any source change invalidates the copy layer and every
+layer after it, install and build included. Getting real cache hits means
+restructuring the Dockerfile to copy `pnpm-lock.yaml` + all workspace
+`package.json` files first, install, then copy sources. That is a genuine
+divergence from upstream's Dockerfile and was left alone for now. Revisit if
+build wall-clock or CI minutes actually start to hurt.
+
+**On the VM**, the `postiz` service in `docker-compose.yaml` now pulls instead
+of building — the `build:` block and `pull_policy: never` are gone, replaced by:
 
 ```yaml
-postiz:
-  image: ghcr.io/<your-username>/postiz-app:latest   # was: build: {...}, pull_policy: never
-  # delete the `build:` block and the `pull_policy: never` line entirely
-  container_name: postiz
-  restart: always
-  ...   # everything else (env_file, environment, volumes, ports, healthcheck) unchanged
+image: ${POSTIZ_IMAGE:-ghcr.io/aitechnologysys-sys/veroza}:${POSTIZ_IMAGE_TAG:-latest}
 ```
+
+The two indirections exist so that rollback and local builds need no edit to
+the compose file (see the comment block above that line).
 
 One-time on the VM, authenticate to pull a private GHCR image:
 ```bash
@@ -277,9 +298,44 @@ docker compose -p postiz pull postiz
 docker compose -p postiz up -d postiz
 ```
 No `build`, no 4 GB spike, no risk to the running stack during a deploy.
-This also gives you the tagged-rollback benefit the audit called out — old
-image tags stay in GHCR, so reverting is `docker compose pull` a previous
-SHA tag.
+Rollback is a tag change, no rebuild — every `main` build also pushes a
+`:<full-git-sha>` tag:
+```bash
+POSTIZ_IMAGE_TAG=<full-git-sha> docker compose -p postiz up -d postiz
+```
+
+### 6a. The other workflows, cleaned up at the same time
+
+`.github/workflows/` was inherited wholesale from upstream and several files
+were either broken or actively wrong for this repo:
+
+| File | What was wrong | Action |
+|---|---|---|
+| `eslint` | **No file extension.** GitHub only loads `.yml`/`.yaml`, so this workflow had never run once. It also pointed at `apps/{backend,frontend}/.eslintrc.json`, neither of which exists — the real config is the root `eslint.config.mjs`. | Renamed to `eslint.yml`, retargeted at the root config |
+| `issue-label-triggers.yml` | Auto-closed issues *in this repo* with a message telling people to "contact Nevo David" about the Postiz public website. Live and would have fired. | Deleted |
+| `stale.yml` | Gated to `gitroomhq/postiz-app` so it no-ops here, but woke on a `*/30 * * * *` cron forever. | Deleted |
+| `build-extension.yaml`, `publish-extension.yml` | Hardcode `FRONTEND_URL=https://platform.postiz.com` and publish to *Postiz's* Chrome Web Store listing. Manual-dispatch-only, so never fired by accident. | Deleted — restore and retarget if/when we ship our own extension, which needs the domain from §8 anyway |
+
+**Open item: linting is broken independently of CI.** `pnpm eslint .` — the
+command CLAUDE.md documents — crashes before checking a single file:
+
+```
+TypeError: Converting circular structure to JSON
+  at @eslint/eslintrc/lib/shared/config-validator.js
+```
+
+`package.json` pins `eslint@8.57.0` while `eslint-config-next@16.2.6` (matching
+`next@16.2.6`) targets ESLint 9's flat config; loading it through `FlatCompat`
+on ESLint 8 blows up. `eslint.yml` is therefore `continue-on-error: true` for
+now — it reports, it does not gate. Fixing this properly is an ESLint 9 upgrade
+plus triaging whatever new rules then fire across the tree, which is real work
+and separate from this plan. Delete the `continue-on-error` line once it's done.
+
+**Also worth deciding:** `build.yml` triggers on bare `push:` with no branch
+filter *and* `pull_request:`, so a PR branch in this repo builds twice per
+push, and `main` now runs both `build.yml` and the image build. Narrowing it to
+`push: branches: [main]` would halve that. Left alone for now because it is
+pure upstream and harmless apart from CI minutes.
 
 ---
 

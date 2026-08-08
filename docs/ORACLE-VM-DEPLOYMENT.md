@@ -111,7 +111,8 @@ unprefixed) and future apps can never collide:
 
 ```bash
 cd /opt/postiz/postiz-app
-docker compose -p postiz up -d --build
+docker compose -p postiz pull postiz
+docker compose -p postiz up -d
 ```
 
 **Naming convention — apply to every app you add:**
@@ -177,9 +178,18 @@ ssh -i your-key.key -L 8080:127.0.0.1:8080 ubuntu@<VM_PUBLIC_IP>
 
 ## 6. Bring up the stack
 
+> **Never build on this box.** `Dockerfile.dev` builds all three apps with a
+> 4 GB Node heap; on a 12 GB instance that spikes to ~11.4 GB and can OOM the
+> running stack. GitHub Actions builds the image and pushes it to GHCR — this
+> server only ever pulls. If the package is still private you need a one-time
+> `docker login ghcr.io` with a `read:packages` token first. See
+> [../README.md](../README.md) §3–4 and
+> [CONTAINMENT-DEPLOYMENT-PLAN.md](./CONTAINMENT-DEPLOYMENT-PLAN.md) §6.
+
 ```bash
 cd /opt/postiz/postiz-app
-docker compose -p postiz up -d --build      # first build: several min, needs ≥4 GB build RAM
+docker compose -p postiz pull postiz        # fetch the newest CI-built image
+docker compose -p postiz up -d
 docker compose -p postiz logs -f postiz     # watch nginx + pm2 + prisma-db-push
 docker compose -p postiz ps                 # all required containers healthy/running
 curl -I http://127.0.0.1:4007               # expect 200 once warmed up (~90s healthcheck)

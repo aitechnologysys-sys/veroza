@@ -60,10 +60,13 @@ The compose file's `environment:` block always wins over `.env.prod` for these:
 ## Starting prod
 
 ```bash
-docker compose -p postiz-prod up -d --build
+docker compose -p postiz-prod pull postiz
+docker compose -p postiz-prod up -d
 ```
 
-- First boot takes ~30–60s: builds the image, runs `prisma-db-push`, starts Temporal.
+- The `postiz` service **pulls** a CI-built image from GHCR; it no longer builds
+  locally. See the deployment runbook in [../README.md](../README.md).
+- First boot takes ~30–60s after the pull: runs `prisma-db-push`, starts Temporal.
 - App is available at [http://localhost:4007](http://localhost:4007).
 - Stop with: `docker compose -p postiz-prod down`
 

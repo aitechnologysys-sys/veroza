@@ -51,7 +51,11 @@ services:
       IS_GENERAL: 'true'
       DISABLE_REGISTRATION: 'false'
 
-      # === Storage (local disk; switch to Cloudflare R2 in .env if desired) ===
+      # === Storage ===
+      # This hardcoded value wins over STORAGE_PROVIDER in .env.prod (environment:
+      # overrides env_file) — change it here, not there, to switch providers.
+      # UPLOAD_DIRECTORY/NEXT_PUBLIC_UPLOAD_DIRECTORY are unused when STORAGE_PROVIDER
+      # is "cloudflare" (CLOUDFLARE_* vars come from .env.prod, not overridden here).
       STORAGE_PROVIDER: 'local'
       UPLOAD_DIRECTORY: '/uploads'
       NEXT_PUBLIC_UPLOAD_DIRECTORY: '/uploads'
@@ -62,13 +66,19 @@ services:
     ports:
       # Loopback-only: the host nginx (port 80/443) is the sole public listener.
       # Binding to 0.0.0.0 would expose the app directly (Docker bypasses ufw).
-      - "127.0.0.1:4007:5000"
+      - '127.0.0.1:4007:5000'
     networks:
       - postiz-network
       - temporal-network
     healthcheck:
       # node:bookworm-slim has no curl/wget; use Node 22's global fetch.
-      test: ["CMD", "node", "-e", "fetch('http://localhost:5000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:5000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
       interval: 30s
       timeout: 5s
       retries: 5

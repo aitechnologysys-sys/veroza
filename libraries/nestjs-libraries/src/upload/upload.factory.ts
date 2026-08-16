@@ -1,6 +1,7 @@
 import { CloudflareStorage } from './cloudflare.storage';
 import { IUploadProvider } from './upload.interface';
 import { LocalStorage } from './local.storage';
+import { resolveUploadDirectory } from '@gitroom/helpers/utils/resolve.upload.directory';
 
 export class UploadFactory {
   static createStorage(): IUploadProvider {
@@ -8,7 +9,9 @@ export class UploadFactory {
 
     switch (storageProvider) {
       case 'local':
-        return new LocalStorage(process.env.UPLOAD_DIRECTORY!);
+        return new LocalStorage(
+          resolveUploadDirectory(process.env.UPLOAD_DIRECTORY!)
+        );
       case 'cloudflare':
         return new CloudflareStorage(
           process.env.CLOUDFLARE_ACCOUNT_ID!,

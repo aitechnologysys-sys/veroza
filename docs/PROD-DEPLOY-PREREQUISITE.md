@@ -8,8 +8,27 @@ Everything you need to know before running the production Docker Compose stack.
 
 | File | Purpose |
 |---|---|
-| `.env.prod` | **All secrets and API keys** for prod. Edit this file. |
-| `docker-compose.yaml` | Reads `.env.prod` via `env_file`, then overrides infra vars in its own `environment:` block. |
+| `.env.prod` | **All secrets and API keys** for prod. Injected into the container via `env_file:`. Edit this file. |
+| `.env` | **DB/Redis/Temporal passwords** Compose substitutes into `docker-compose.yaml`'s `${...}` placeholders — a *different* mechanism from `env_file:`, and Compose never reads `.env.prod` for it. See [1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md) P0-2/P1-3 for why these are two separate files. |
+| `docker-compose.yaml` | Reads `.env.prod` via `env_file` for secrets, and `.env` via `${...}` substitution for DB/Redis/Temporal passwords. |
+
+**Both files are gitignored and must be created by hand on whichever machine
+runs `docker compose up`** — neither `git pull` nor the image brings them.
+Before first `up`, create `.env` next to `docker-compose.yaml`:
+
+```bash
+cat >> .env << 'EOF'
+POSTARYX_DB_USER=postaryx-user
+POSTARYX_DB_PASSWORD=<a-strong-generated-password>
+POSTARYX_DB_NAME=postaryx-db-prod
+POSTARYX_REDIS_PASSWORD=<a-strong-generated-password>
+POSTARYX_TEMPORAL_DB_PASSWORD=<a-strong-generated-password>
+EOF
+chmod 600 .env
+```
+
+Compose refuses to start with a clear error if any of these are missing,
+rather than silently falling back to a weak default.
 
 ---
 
@@ -33,8 +52,8 @@ The compose file's `environment:` block always wins over `.env.prod` for these:
 
 | Variable | Hardcoded value |
 |---|---|
-| `DATABASE_URL` | `postgresql://postiz-user:postiz-password@postiz-postgres:5432/postiz-db-local` |
-| `REDIS_URL` | `redis://postiz-redis:6379` |
+| `DATABASE_URL` | `postgresql://${POSTARYX_DB_USER}:${POSTARYX_DB_PASSWORD}@postaryx-postgres:5432/${POSTARYX_DB_NAME}` — user/password/name come from the gitignored `.env`, not hardcoded; see [1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md) P0-2 |
+| `REDIS_URL` | `redis://:${POSTARYX_REDIS_PASSWORD}@postaryx-redis:6379` — password comes from the gitignored `.env`; see [1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md) P1-3 |
 | `TEMPORAL_ADDRESS` | `temporal:7233` |
 | `MAIN_URL` | `http://localhost:4007` |
 | `FRONTEND_URL` | `http://localhost:4007` |
@@ -60,14 +79,14 @@ The compose file's `environment:` block always wins over `.env.prod` for these:
 ## Starting prod
 
 ```bash
-docker compose -p postiz-prod pull postiz
-docker compose -p postiz-prod up -d
+docker compose -p postaryx-prod pull postaryx
+docker compose -p postaryx-prod up -d
 ```
 
-- The `postiz` service **pulls** a CI-built image from GHCR; it no longer builds
+- The `postaryx` service **pulls** a CI-built image from GHCR; it no longer builds
   locally. See the deployment runbook in [../README.md](../README.md).
 - First boot takes ~30–60s after the pull: runs `prisma-db-push`, starts Temporal.
 - App is available at [http://localhost:4007](http://localhost:4007).
-- Stop with: `docker compose -p postiz-prod down`
+- Stop with: `docker compose -p postaryx-prod down`
 
 See [RUNNING-DEV-AND-PROD.md](./RUNNING-DEV-AND-PROD.md) for volume isolation details and the dev ↔ prod switching guide.

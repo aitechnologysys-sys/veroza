@@ -10,16 +10,17 @@ Pulling **from** upstream is safe and sends them nothing — see
 
 ## Where we stand right now
 
-Measured 8 Aug 2026:
+Measured 16 Aug 2026 (was 205/19 on 8 Aug — re-measure with the command below,
+this drifts every week):
 
 ```
-commits upstream has that we lack:   205
-commits we have that upstream lacks:  19
+commits upstream has that we lack:   232
+commits we have that upstream lacks:  21
 last common commit:                   f7f1f318  (29 May 2026)
 ```
 
-So we are about **ten weeks behind**. That gap is the single biggest reason to do
-this deliberately rather than casually — 205 commits is a lot of surface area.
+So we are about **eleven weeks behind**. That gap is the single biggest reason to do
+this deliberately rather than casually — 232 commits is a lot of surface area.
 
 Re-measure any time:
 
@@ -95,7 +96,7 @@ git merge upstream/main
 You will get conflicts. Expected — and we know exactly where, because we measured
 the overlap between the files we changed and the files they changed.
 
-### The 22 conflict hotspots, and how to resolve each
+### The 25 conflict hotspots, and how to resolve each
 
 These are the files both sides have touched since the last common commit. Group
 by *why* they conflict; the resolution rule differs per group.
@@ -158,7 +159,7 @@ silently. Background: [billing-current-state.md](./billing-current-state.md).
 
 | File | Resolution |
 |---|---|
-| `docker-compose.yaml` | **Keep ours entirely** for the `postiz` service — we pull an image, upstream builds one. Take their changes to *other* services (Postgres/Redis/Temporal versions) |
+| `docker-compose.yaml` | **Keep ours entirely** for the `postaryx` service — we pull an image, upstream builds one. Take their changes to *other* services (Postgres/Redis/Temporal versions) |
 | `docker-compose.dev.yaml` | Usually take theirs; re-check ports |
 | `.github/workflows/build-containers.yml` | **Keep ours.** Theirs pushes to `gitroomhq`'s namespace and builds amd64 we don't use |
 | `.github/workflows/build.yml` | **Keep our `push: branches: [main]`.** Upstream's bare `push:` matches every branch and double-builds each commit once a PR is open |
@@ -174,21 +175,25 @@ only in case they documented a new env var worth copying.
 
 #### Group 5 — Ordinary code conflicts (just read them)
 
+`apps/backend/src/api/api.module.ts`,
 `apps/backend/src/api/routes/users.controller.ts`,
 `no.auth.integrations.controller.ts`,
 `apps/backend/src/services/auth/public.auth.middleware.ts`,
 `apps/frontend/src/app/(app|extension|provider)/layout.tsx`,
+`apps/frontend/src/components/auth/login.tsx`,
 `apps/frontend/src/components/launches/continue.integration.tsx`,
 `apps/orchestrator/src/activities/post.activity.ts`,
 `libraries/nestjs-libraries/src/database/prisma/integrations/integration.service.ts`,
-`libraries/nestjs-libraries/src/database/prisma/organizations/organization.repository.ts`
+`libraries/nestjs-libraries/src/database/prisma/organizations/organization.repository.ts`,
+`.gitignore`
 
 No policy here — read both sides and merge on the merits. Upstream usually wins
-because these are their bug fixes.
+because these are their bug fixes (`.gitignore` is the exception — just union
+both sides' entries, there's no "theirs vs ours" to weigh).
 
 ### Regenerate the list before you start
 
-The hotspot list above was accurate on 8 Aug 2026. It drifts. Recompute:
+The hotspot list above was accurate on 16 Aug 2026. It drifts. Recompute:
 
 ```bash
 BASE=$(git merge-base main upstream/main)
@@ -238,7 +243,7 @@ system — see the constraints in [../CLAUDE.md](../CLAUDE.md).
 **Then run it for real** before merging to `main`:
 
 ```bash
-docker compose -p postiz-dev -f docker-compose.dev.yaml up -d
+docker compose -p postaryx-dev -f docker-compose.dev.yaml up -d
 pnpm run prisma-db-push
 pnpm run dev
 # log in, load the calendar, schedule a post, check one social connector

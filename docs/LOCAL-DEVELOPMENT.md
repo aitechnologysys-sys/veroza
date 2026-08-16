@@ -13,8 +13,8 @@ build-from-source, all-in-Docker prod setup.
 ```
   Docker (deps only)                         Host (pnpm run dev)
   ────────────────────                       ───────────────────────────
-  postiz-postgres   :5432  ◀───────────────  backend       :3000  (NestJS)
-  postiz-redis      :6379  ◀───────────────  frontend      :4200  (Next.js)
+  postaryx-postgres :5432  ◀───────────────  backend       :3000  (NestJS)
+  postaryx-redis    :6379  ◀───────────────  frontend      :4200  (Next.js)
   temporal          :7233  ◀───────────────  orchestrator  :3002  (Temporal worker)
   + temporal deps (es, pg, ui, admin)        extension            (browser ext build)
   + pgAdmin :8082, RedisInsight :5540
@@ -48,7 +48,7 @@ cp .env.example .env
 ```
 The minimum that must be correct for local dev (the repo `.env` already has these):
 ```bash
-DATABASE_URL="postgresql://postiz-local:postiz-local-pwd@localhost:5432/postiz-db-local"
+DATABASE_URL="postgresql://postaryx-local:postaryx-local-pwd@localhost:5432/postaryx-db-local"
 REDIS_URL="redis://localhost:6379"
 TEMPORAL_ADDRESS="localhost:7233"
 JWT_SECRET="any-long-random-string"
@@ -56,13 +56,19 @@ FRONTEND_URL="http://localhost:4200"
 NEXT_PUBLIC_BACKEND_URL="http://localhost:3000"
 BACKEND_INTERNAL_URL="http://localhost:3000"
 STORAGE_PROVIDER="local"
-UPLOAD_DIRECTORY="/absolute/path/to/postiz-app/uploads"
+UPLOAD_DIRECTORY="uploads"
 IS_GENERAL="true"
 ```
-> ⚠️ The DB credentials in `.env` (`postiz-local` / `postiz-local-pwd` /
-> `postiz-db-local`) **must match** the `POSTGRES_*` values in
+> ⚠️ The DB credentials in `.env` (`postaryx-local` / `postaryx-local-pwd` /
+> `postaryx-db-local`) **must match** the `POSTGRES_*` values in
 > [docker-compose.dev.yaml](../docker-compose.dev.yaml). They already do — don't
 > change one without the other.
+>
+> `UPLOAD_DIRECTORY="uploads"` is relative — it resolves against the monorepo
+> root (found by walking up to `pnpm-workspace.yaml`), not `process.cwd()`, so
+> it works the same regardless of which machine or user account clones the
+> repo. Use an absolute path only if you actually want uploads stored
+> somewhere outside the repo.
 >
 > Social/AI/billing keys are optional — leave a key blank to disable that
 > feature rather than leaving placeholder text in it.
@@ -130,6 +136,52 @@ Stop the app with Ctrl-C. Stop deps with `docker compose -f docker-compose.dev.y
 | localhost:6379 | Redis |
 | localhost:7233 | Temporal gRPC (the app connects here) |
 
+All of the above are loopback-bound (`127.0.0.1:<port>`) in
+`docker-compose.dev.yaml` — reachable from your own machine, not your network
+(see [1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md) P1-1).
+
+### Connecting each tool
+
+**DBeaver (or any Postgres/Redis GUI client) — connects from your Mac, so use `localhost`:**
+
+| Field | Value |
+|---|---|
+| Host | `localhost` |
+| Port | `5432` |
+| Database | `POSTARYX_DEV_DB_NAME` from `.env` (default `postaryx-db-local`) |
+| Username | `POSTARYX_DEV_DB_USER` from `.env` (default `postaryx-local`) |
+| Password | `POSTARYX_DEV_DB_PASSWORD` from `.env` (default `postaryx-local-pwd`) |
+
+**pgAdmin** — a two-step process; logging in and connecting to Postgres are
+separate:
+1. Open http://localhost:8082, log in with `admin@admin.com` / `admin` (the
+   pgAdmin *web app's own* login — this is not the database).
+2. **Add the database connection**: right-click **Servers → Register →
+   Server…**. On the **Connection** tab, use:
+
+   | Field | Value |
+   |---|---|
+   | Host name/address | `postaryx-postgres` |
+   | Port | `5432` |
+   | Username | `POSTARYX_DEV_DB_USER` from `.env` |
+   | Password | `POSTARYX_DEV_DB_PASSWORD` from `.env` |
+
+   ⚠️ Use the **container name** `postaryx-postgres`, not `localhost` —
+   pgAdmin runs *inside* the `postaryx-network` Docker bridge alongside
+   Postgres, so it resolves service names, not your host's `localhost`.
+   `localhost` from pgAdmin's point of view means the pgAdmin container
+   itself, which has no Postgres running in it.
+
+**RedisInsight** — same two-step shape as pgAdmin:
+1. Open http://localhost:5540.
+2. **Add Redis Database** → Host `postaryx-redis`, Port `6379`, no password
+   (dev Redis has no `requirepass`). Same reason as pgAdmin: RedisInsight
+   connects from *inside* the Docker network, so it needs the container name,
+   not `localhost`.
+
+**Temporal UI** — no setup needed. Open http://localhost:8080; it connects to
+the Temporal server automatically on load.
+
 ---
 
 ## Common tasks
@@ -189,6 +241,22 @@ docker compose -f docker-compose.dev.yaml down -v
 
 ---
 
+## Connecting tools to the production stack
+
+pgAdmin and RedisInsight are **not** part of `docker-compose.yaml` — they're
+dev-only conveniences. Production tooling access instead relies on Postgres's
+own loopback-bound port plus an SSH tunnel (on the actual VM), or direct
+`localhost` (when rehearsing the prod stack on your own Mac per README.md §2):
+
+| Tool | Local prod rehearsal (your Mac) | Real VM deploy |
+|---|---|---|
+| DBeaver → Postgres | Host `127.0.0.1`, port `5432`, creds from `.env`'s `POSTARYX_DB_*` — full walkthrough in [1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md) "Start here" | SSH-tunnel first, then the same `127.0.0.1:5432` — see [1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md) P1-2 |
+| Temporal UI | http://localhost:8080, no setup | SSH-tunnel `8080:127.0.0.1:8080`, then http://localhost:8080 — see [ORACLE-VM-DEPLOYMENT.md](./ORACLE-VM-DEPLOYMENT.md) §5 |
+| Redis | `redis-cli -a "$POSTARYX_REDIS_PASSWORD"` (prod Redis requires auth — see [1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md) P1-3) | Same, via SSH — no RedisInsight in prod |
+| pgAdmin | Not available (dev-only) | Not available (dev-only) |
+
+---
+
 ## How local differs from production (quick reference)
 
 | | Local (`docker-compose.dev.yaml` + `pnpm dev`) | Production (`docker-compose.yaml`) |
@@ -196,7 +264,7 @@ docker compose -f docker-compose.dev.yaml down -v
 | App processes | On host, hot-reload | Built into one image, run by pm2 |
 | Reverse proxy | None — hit 4200/3000 directly | nginx on :5000 → exposed as :4007 |
 | DB migration | Manual `pnpm run prisma-db-push` | Automatic on container boot |
-| Config source | `.env` via `dotenv` | `env_file: .env` + compose `environment:` overrides |
-| Dev GUIs | pgAdmin, RedisInsight included | Not included |
-| Image | None (runs from source on host) | Built from `Dockerfile.dev` (`postiz-app:local`) |
+| Config source | `.env` via `dotenv` | `env_file: .env.prod` (secrets) + `.env` (`${...}` substitution for DB/Redis/Temporal passwords) |
+| Dev GUIs | pgAdmin, RedisInsight included | Not included — Postgres/Temporal UI reachable via loopback + SSH tunnel instead |
+| Image | None (runs from source on host) | Built from `Dockerfile.dev` (`postaryx-app:local`) |
 </content>

@@ -3,55 +3,59 @@
 # This is only for the dev enviroment
 
 services:
-  postiz-postgres:
+  postaryx-postgres:
     # ref: https://hub.docker.com/_/postgres
     image: postgres:17-alpine # 17.0
-    container_name: postiz-postgres
+    container_name: postaryx-postgres
     restart: always
     environment:
-      POSTGRES_PASSWORD: postiz-local-pwd
-      POSTGRES_USER: postiz-local
-      POSTGRES_DB: postiz-db-local
+      # Sourced from the repo-root .env — same values `pnpm dev`'s DATABASE_URL
+      # expands from, so the two can't drift apart. See docs/1.SECURITY-HARDENING-TODO.md P0-2.
+      POSTGRES_PASSWORD: ${POSTARYX_DEV_DB_PASSWORD:?set POSTARYX_DEV_DB_PASSWORD in .env}
+      POSTGRES_USER: ${POSTARYX_DEV_DB_USER:?set POSTARYX_DEV_DB_USER in .env}
+      POSTGRES_DB: ${POSTARYX_DEV_DB_NAME:-postaryx-db-local}
       TEMPORAL_ADDRESS: 'temporal:7233'
     volumes:
       - postgres-volume:/var/lib/postgresql/data
+    # Loopback-ONLY — see docs/1.SECURITY-HARDENING-TODO.md P1-1. Binding to
+    # 0.0.0.0 (the bare "5432:5432" form) would reach any network you're on.
     ports:
-      - 5432:5432
+      - '127.0.0.1:5432:5432'
     networks:
-      - postiz-network
-  postiz-redis:
+      - postaryx-network
+  postaryx-redis:
     # ref: https://hub.docker.com/_/redis
     image: redis:7-alpine # 7.4.0
-    container_name: postiz-redis
+    container_name: postaryx-redis
     restart: always
     ports:
-      - 6379:6379
+      - '127.0.0.1:6379:6379'
     networks:
-      - postiz-network
-  postiz-pg-admin:
+      - postaryx-network
+  postaryx-pg-admin:
     # ref: https://hub.docker.com/r/dpage/pgadmin4/tags
     image: dpage/pgadmin4:latest
-    container_name: postiz-pg-admin
+    container_name: postaryx-pg-admin
     restart: always
     ports:
-      - 8082:80
+      - '127.0.0.1:8082:80'
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
       PGADMIN_DEFAULT_PASSWORD: admin
     networks:
-      - postiz-network
-  postiz-redisinsight:
+      - postaryx-network
+  postaryx-redisinsight:
     # ref: https://hub.docker.com/r/redis/redisinsight
     image: redis/redisinsight:latest
-    container_name: postiz-redisinsight
+    container_name: postaryx-redisinsight
     links:
-      - postiz-redis
+      - postaryx-redis
     ports:
-      - '5540:5540'
+      - '127.0.0.1:5540:5540'
     volumes:
       - redisinsight:/data
     networks:
-      - postiz-network
+      - postaryx-network
     restart: always
 
   temporal-elasticsearch:
@@ -76,7 +80,11 @@ services:
     container_name: temporal-postgresql
     image: postgres:16
     environment:
-      POSTGRES_PASSWORD: temporal
+      # Password from .env — see docs/1.SECURITY-HARDENING-TODO.md. Username
+      # stays the literal "temporal": Temporal's own tooling/images assume it,
+      # it's not a secret, just an account name. Must match `temporal`'s
+      # POSTGRES_PWD below (same var, so they can't drift apart).
+      POSTGRES_PASSWORD: ${POSTARYX_DEV_TEMPORAL_DB_PASSWORD:?set POSTARYX_DEV_TEMPORAL_DB_PASSWORD in .env}
       POSTGRES_USER: temporal
     networks:
       - temporal-network
@@ -88,7 +96,7 @@ services:
   temporal:
     container_name: temporal
     ports:
-      - '7233:7233'
+      - '127.0.0.1:7233:7233'
     image: temporalio/auto-setup:1.28.1
     depends_on:
       - temporal-postgresql
@@ -97,7 +105,7 @@ services:
       - DB=postgres12
       - DB_PORT=5432
       - POSTGRES_USER=temporal
-      - POSTGRES_PWD=temporal
+      - POSTGRES_PWD=${POSTARYX_DEV_TEMPORAL_DB_PASSWORD:?set POSTARYX_DEV_TEMPORAL_DB_PASSWORD in .env}
       - POSTGRES_SEEDS=temporal-postgresql
       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
       - ENABLE_ES=true
@@ -133,7 +141,7 @@ services:
     networks:
       - temporal-network
     ports:
-      - '8080:8080'
+      - '127.0.0.1:8080:8080'
 
 volumes:
   redisinsight:
@@ -148,7 +156,7 @@ volumes:
     external: false
 
 networks:
-  postiz-network:
+  postaryx-network:
     external: false
   temporal-network:
     driver: bridge

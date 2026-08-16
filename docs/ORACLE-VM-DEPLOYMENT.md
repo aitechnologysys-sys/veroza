@@ -17,7 +17,7 @@ Postiz ships as **one Docker image running three Node processes** behind an
 
 ```
                           ┌──────────────────────────────────────────────┐
-  Browser ─ HTTPS ─▶ host │  postiz  (single container)                  │
+  Browser ─ HTTPS ─▶ host │  postaryx  (single container)                  │
    (nginx :443)      nginx│   internal nginx :5000  (the only exposed     │
         │            ─────▶│     │                    port → host :4007)   │
         │                  │     ├── /        → frontend (Next.js :4200)  │
@@ -35,8 +35,9 @@ Two consequences that drive every decision below:
 
 1. **Postiz already routes `/` and `/api` internally**, so the host only proxies
    **one** upstream port (`127.0.0.1:4007`).
-2. **It builds from source** (`Dockerfile.dev`) and **self-migrates the DB on
-   boot** (`prisma-db-push`). The full stack is **9 containers** (app + Postgres +
+2. **It pulls a CI-built image** (built from `Dockerfile.dev` in GitHub
+   Actions — never on this box) and **self-migrates the DB on boot**
+   (`prisma-db-push`). The full stack is **8 containers** (app + Postgres +
    Redis + a 5-container Temporal stack including Elasticsearch). Budget
    ~3–4 GB RAM steady-state for Postiz alone.
 
@@ -48,7 +49,7 @@ Two consequences that drive every decision below:
 |---|---|---|
 | **Reverse proxy** | **Nginx on the host** (systemd) + Certbot | One auto-renewing cert store for all current/future apps; decoupled from app rebuilds; trivial to add vhosts. Traefik/Caddy-in-Docker only pay off at ~10+ apps and couple every app onto a shared proxy network. |
 | **Docker networks** | **One bridge network per project** (the default) | Keeps each app isolated (security + no DNS collisions). The host Nginx bridges apps at the loopback layer, so they never need to share a network. |
-| **Auto-updates (Watchtower)** | **No** | Postiz builds from source (no tag to poll) and runs DB migrations on boot — an unattended update could migrate/break production. Use deliberate `git pull && build` with a rollback path. |
+| **Auto-updates (Watchtower)** | **No** | Postiz runs DB migrations on boot — an unattended update could migrate/break production even though it's just a pull now (no local build). Use deliberate `git pull && docker compose pull` with a rollback path. |
 | **Domains** | **Single domain** for Postiz | Postiz's internal Nginx already serves `/api`. Splitting into `api.*` would force internal-nginx edits + cross-origin cookies/CORS for zero benefit. (Multi-domain pattern below is for *future, separate* apps.) |
 
 ### Three gotchas that dominate this setup
@@ -96,13 +97,13 @@ docker ps -a; docker volume ls; docker network ls; df -h
 
 ```
 /opt/
-└── postiz/
-    └── postiz-app/                # git clone of the Postiz repo
+└── postaryx/
+    └── postaryx-app/              # git clone of the Postiz repo
         ├── docker-compose.yaml    # edited for loopback ports + real URLs (§5, §7)
         ├── .env.prod              # secrets — chmod 600, NEVER committed
         └── ...
-/opt/backups/postiz/               # nightly DB + uploads dumps
-/etc/nginx/sites-available/postiz.conf   # symlinked into sites-enabled/
+/opt/backups/postaryx/               # nightly DB + uploads dumps
+/etc/nginx/sites-available/postaryx.conf   # symlinked into sites-enabled/
 ```
 
 **Always run Postiz with an explicit compose project name** so its containers,
@@ -110,29 +111,29 @@ network, and volumes are namespaced (Postiz's Temporal containers are otherwise
 unprefixed) and future apps can never collide:
 
 ```bash
-cd /opt/postiz/postiz-app
-docker compose -p postiz pull postiz
-docker compose -p postiz up -d
+cd /opt/postaryx/postaryx-app
+docker compose -p postaryx pull postaryx
+docker compose -p postaryx up -d
 ```
 
 **Naming convention — apply to every app you add:**
 
 | Resource | Pattern | Postiz example |
 |---|---|---|
-| Compose project | `<project>` | `postiz` (via `-p postiz`) |
-| Container | `<project>-<role>` | `postiz`, `postiz-postgres`, `postiz-redis` |
-| Network | `<project>-<purpose>` | `postiz-network`, `temporal-network` |
-| Volume | `<project>-<purpose>` | `postgres-volume`, `postiz-uploads` |
+| Compose project | `<project>` | `postaryx` (via `-p postaryx`) |
+| Container | `<project>-<role>` | `postaryx`, `postaryx-postgres`, `postaryx-redis` |
+| Network | `<project>-<purpose>` | `postaryx-network`, `temporal-network` |
+| Volume | `<project>-<purpose>` | `postgres-volume`, `postaryx-uploads` |
 
 ---
 
 ## 4. Get the code & configure secrets
 
 ```bash
-sudo mkdir -p /opt/postiz && sudo chown $USER:$USER /opt/postiz
-cd /opt/postiz
-git clone https://github.com/<your-fork>/postiz-app.git
-cd postiz-app
+sudo mkdir -p /opt/postaryx && sudo chown $USER:$USER /opt/postaryx
+cd /opt/postaryx
+git clone https://github.com/<your-fork>/postiz-app.git postaryx-app
+cd postaryx-app
 cp .env.prod.example .env.prod 2>/dev/null || cp .env.example .env.prod
 chmod 600 .env.prod
 ```
@@ -146,6 +147,26 @@ In `.env.prod` set at minimum:
 
 > Keep a redacted `.env.prod.example` in git documenting which keys exist.
 
+**Also required — Postgres, Redis, and Temporal's own DB password** (see
+[1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md) P0-2/P1-3): create a
+**plain `.env`** file next to `docker-compose.yaml` — a *different* file from
+`.env.prod`, since Compose only reads `.env` for `${...}` substitution, never
+`.env.prod` — with:
+```bash
+cat >> .env << 'EOF'
+POSTARYX_DB_USER=postaryx-user
+POSTARYX_DB_PASSWORD=<a-strong-generated-password>
+POSTARYX_DB_NAME=postaryx-db-prod
+POSTARYX_REDIS_PASSWORD=<a-strong-generated-password>
+POSTARYX_TEMPORAL_DB_PASSWORD=<a-strong-generated-password>
+EOF
+chmod 600 .env
+```
+Compose refuses to start without these (`:?` substitution) rather than falling
+back to a weak default — see P0-2/P1-3 in the same doc. §7 below appends
+`POSTARYX_PUBLIC_URL` to this same
+file once you have a domain — don't overwrite it, append to it.
+
 ---
 
 ## 5. Port allocation & loopback binding
@@ -155,14 +176,14 @@ Reserve a 100-port block per app, and **bind every Postiz container port to
 
 | Project | Loopback entry | Public hostname |
 |---|---|---|
-| **postiz** | `127.0.0.1:4007` | `postiz.example.com` |
+| **postaryx** | `127.0.0.1:4007` | `postaryx.example.com` |
 | future app2 | `127.0.0.1:81xx` | app2 domain(s) |
 
 These edits are already applied to `docker-compose.yaml` in this repo:
 
 ```yaml
-postiz:        ports: ["127.0.0.1:4007:5000"]   # entry point, loopback-only
-postiz-postgres:  # host `ports:` removed entirely — reached over postiz-network
+postaryx:        ports: ["127.0.0.1:4007:5000"]   # entry point, loopback-only
+postaryx-postgres:  ports: ["127.0.0.1:5432:5432"]  # loopback-only, for DBeaver
 temporal:      ports: ["127.0.0.1:7233:7233"]
 temporal-ui:   ports: ["127.0.0.1:8080:8080"]   # reach via SSH tunnel
 # spotlight service removed (dev-only error viewer)
@@ -173,6 +194,9 @@ To reach the Temporal UI for debugging, SSH-tunnel it:
 ssh -i your-key.key -L 8080:127.0.0.1:8080 ubuntu@<VM_PUBLIC_IP>
 # then open http://localhost:8080 in your local browser
 ```
+
+Same pattern for Postgres — see [1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md)
+P1-2 for the full DBeaver-over-SSH-tunnel walkthrough.
 
 ---
 
@@ -187,11 +211,11 @@ ssh -i your-key.key -L 8080:127.0.0.1:8080 ubuntu@<VM_PUBLIC_IP>
 > [CONTAINMENT-DEPLOYMENT-PLAN.md](./CONTAINMENT-DEPLOYMENT-PLAN.md) §6.
 
 ```bash
-cd /opt/postiz/postiz-app
-docker compose -p postiz pull postiz        # fetch the newest CI-built image
-docker compose -p postiz up -d
-docker compose -p postiz logs -f postiz     # watch nginx + pm2 + prisma-db-push
-docker compose -p postiz ps                 # all required containers healthy/running
+cd /opt/postaryx/postaryx-app
+docker compose -p postaryx pull postaryx        # fetch the newest CI-built image
+docker compose -p postaryx up -d
+docker compose -p postaryx logs -f postaryx     # watch nginx + pm2 + prisma-db-push
+docker compose -p postaryx ps                 # all required containers healthy/running
 curl -I http://127.0.0.1:4007               # expect 200 once warmed up (~90s healthcheck)
 ```
 
@@ -205,15 +229,15 @@ upstream.
 
 ```bash
 sudo apt update && sudo apt install -y nginx
-sudo nano /etc/nginx/sites-available/postiz.conf
+sudo nano /etc/nginx/sites-available/postaryx.conf
 ```
 
-`/etc/nginx/sites-available/postiz.conf`:
+`/etc/nginx/sites-available/postaryx.conf`:
 ```nginx
 server {
     listen 80;
     listen [::]:80;
-    server_name postiz.example.com;
+    server_name postaryx.example.com;
 
     client_max_body_size 2G;          # match Postiz's internal 2G upload limit
 
@@ -232,24 +256,24 @@ server {
 ```
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/postiz.conf /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/postaryx.conf /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default     # optional: drop the welcome page
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
 **Set the public URL.** The compose `environment:` block reads a single
-`POSTIZ_PUBLIC_URL` variable (defaulting to `http://localhost:4007` so the stack
-also runs locally). On the server, create a **`.env` file next to
-`docker-compose.yaml`** (Compose auto-loads `.env` for `${...}` substitution):
+`POSTARYX_PUBLIC_URL` variable (defaulting to `http://localhost:4007` so the stack
+also runs locally). Append it to the same `.env` file you created in §4 (next
+to `docker-compose.yaml`, alongside `POSTARYX_DB_*` — don't overwrite it):
 ```bash
-echo 'POSTIZ_PUBLIC_URL=https://postiz.example.com' > /opt/postiz/postiz-app/.env
+echo 'POSTARYX_PUBLIC_URL=https://postaryx.example.com' >> /opt/postaryx/postaryx-app/.env
 ```
 This sets `MAIN_URL`, `FRONTEND_URL`, and `NEXT_PUBLIC_BACKEND_URL` (= URL + `/api`)
 consistently. They're runtime values, so **no rebuild** is needed — just
-`docker compose -p postiz up -d postiz`. A mismatch between this and the real
+`docker compose -p postaryx up -d postaryx`. A mismatch between this and the real
 domain is the #1 cause of broken login and OAuth callbacks.
 
-> Don't put `POSTIZ_PUBLIC_URL` in `.env.prod` — that file is injected into the
+> Don't put `POSTARYX_PUBLIC_URL` in `.env.prod` — that file is injected into the
 > container at runtime but is **not** read for `${...}` substitution. The public
 > URL must be in `.env` (or the shell environment).
 
@@ -264,16 +288,16 @@ does **not** need this; one block is correct.
 
 ## 8. SSL with Let's Encrypt / Certbot
 
-Create a DNS **A record** `postiz.example.com → <VM_PUBLIC_IP>` (and `AAAA` if you
-use IPv6) and wait for propagation (`dig postiz.example.com`). Then:
+Create a DNS **A record** `postaryx.example.com → <VM_PUBLIC_IP>` (and `AAAA` if you
+use IPv6) and wait for propagation (`dig postaryx.example.com`). Then:
 
 ```bash
 sudo snap install core; sudo snap refresh core
 sudo snap install --classic certbot
 sudo ln -sf /snap/bin/certbot /usr/bin/certbot
 
-# Issues the cert and rewrites postiz.conf for :443 with an 80→443 redirect
-sudo certbot --nginx -d postiz.example.com --redirect --agree-tos -m you@example.com
+# Issues the cert and rewrites postaryx.conf for :443 with an 80→443 redirect
+sudo certbot --nginx -d postaryx.example.com --redirect --agree-tos -m you@example.com
 
 sudo systemctl status snap.certbot.renew.timer    # auto-renewal
 sudo certbot renew --dry-run
@@ -288,8 +312,9 @@ mechanism for all.
 
 **Layer A — OCI Security List / NSG (cloud).** VCN → your subnet's Security List →
 **Ingress Rules** → add stateful `0.0.0.0/0 TCP 80` and `0.0.0.0/0 TCP 443`. Keep
-SSH (22) restricted to your IP. Do **not** open 4007/7233/8080 — they're
-loopback-only.
+SSH (22) restricted to your IP. Do **not** open 4007/5432/7233/8080 — they're
+loopback-only (`5432` since P1-2, for DBeaver — see
+[1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md)).
 
 **Layer B — host firewall (`ufw`).**
 ```bash
@@ -303,7 +328,8 @@ sudo ufw status verbose
 ```bash
 curl --max-time 5 http://<VM_PUBLIC_IP>:4007   # must TIME OUT
 curl --max-time 5 http://<VM_PUBLIC_IP>:8080   # must TIME OUT
-curl -I https://postiz.example.com             # must return 200
+nc -z -w5 <VM_PUBLIC_IP> 5432 && echo "EXPOSED — fix immediately" || echo "OK: not reachable"
+curl -I https://postaryx.example.com             # must return 200
 ```
 
 ---
@@ -331,34 +357,34 @@ daemon-wide in `/etc/docker/daemon.json`:
 ```bash
 sudo systemctl restart docker      # restarts all containers — use a maintenance window
 ```
-- App logs (all three Node processes via pm2): `docker compose -p postiz logs -f postiz`
+- App logs (all three Node processes via pm2): `docker compose -p postaryx logs -f postaryx`
 - Host Nginx: `/var/log/nginx/access.log`, `/var/log/nginx/error.log`
 
 ---
 
 ## 12. Backups
 
-Critical volumes: **`postgres-volume`** (all app data) and **`postiz-uploads`**
+Critical volumes: **`postgres-volume`** (all app data) and **`postaryx-uploads`**
 (media, when `STORAGE_PROVIDER=local`). Temporal volumes are recommended.
 
-`/opt/backups/postiz/backup.sh` (`chmod +x`, run via root cron at 03:00):
+`/opt/backups/postaryx/backup.sh` (`chmod +x`, run via root cron at 03:00):
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
 TS=$(date +%F)
-DIR=/opt/backups/postiz
+DIR=/opt/backups/postaryx
 mkdir -p "$DIR"
-docker exec postiz-postgres pg_dump -U postiz-user postiz-db-prod | gzip > "$DIR/db-$TS.sql.gz"
-docker run --rm -v postiz_postiz-uploads:/u -v "$DIR":/b alpine \
+docker exec postaryx-postgres pg_dump -U postaryx-user postaryx-db-prod | gzip > "$DIR/db-$TS.sql.gz"
+docker run --rm -v postaryx_postaryx-uploads:/u -v "$DIR":/b alpine \
   tar czf "/b/uploads-$TS.tar.gz" -C /u .
 find "$DIR" -name '*.gz' -mtime +14 -delete    # keep 14 days
 ```
 ```bash
 sudo crontab -e
-# 0 3 * * * /opt/backups/postiz/backup.sh >> /var/log/postiz-backup.log 2>&1
+# 0 3 * * * /opt/backups/postaryx/backup.sh >> /var/log/postaryx-backup.log 2>&1
 ```
-> The uploads volume is named `postiz_postiz-uploads` (compose prepends the
-> `-p postiz` project name). Confirm with `docker volume ls`.
+> The uploads volume is named `postaryx_postaryx-uploads` (compose prepends the
+> `-p postaryx` project name). Confirm with `docker volume ls`.
 
 Copy `/opt/backups/` **off the VM** (OCI Object Storage via `oci os object put`,
 or `rsync` elsewhere). **Test a restore at least once** — a backup you've never
@@ -366,7 +392,7 @@ restored is a hope, not a backup.
 
 Restore outline:
 ```bash
-gunzip -c db-YYYY-MM-DD.sql.gz | docker exec -i postiz-postgres psql -U postiz-user -d postiz-db-prod
+gunzip -c db-YYYY-MM-DD.sql.gz | docker exec -i postaryx-postgres psql -U postaryx-user -d postaryx-db-prod
 ```
 
 ---
@@ -384,22 +410,26 @@ gunzip -c db-YYYY-MM-DD.sql.gz | docker exec -i postiz-postgres psql -U postiz-u
 
 ## 14. Updating after new commits
 
+Merging to `main` triggers the CI build (see §2a of
+[INFRASTRUCTURE-AND-DEPLOYMENT.md](./INFRASTRUCTURE-AND-DEPLOYMENT.md) and
+[CI-BUILD-CUTOVER.md](./CI-BUILD-CUTOVER.md)) — the VM never builds, only pulls:
+
 ```bash
-cd /opt/postiz/postiz-app
-git pull
-docker compose -p postiz build postiz       # build new image while old still serves
-docker compose -p postiz up -d              # recreate changed containers; runs prisma-db-push
-docker compose -p postiz logs -f postiz     # watch boot + migration
-docker image prune -f                       # reclaim old image layers
+cd /opt/postaryx/postaryx-app
+git pull                                      # picks up any tracked-file changes (compose, configs)
+docker compose -p postaryx pull postaryx      # fetch the newest CI-built image
+docker compose -p postaryx up -d postaryx     # recreate the app container; runs prisma-db-push
+docker compose -p postaryx logs -f postaryx   # watch boot + migration
+docker image prune -f                         # reclaim old image layers
 ```
-Bump `version.txt` / `NEXT_PUBLIC_VERSION` to show the new version in the UI (it's
-the one build-time arg).
+Bump `version.txt` to show the new version in the UI — CI stamps it as
+`<version.txt>-<short-sha>` (`NEXT_PUBLIC_VERSION`, the one build-time arg).
 
 ---
 
 ## 15. Zero-downtime deployment
 
-**Option A — pre-build, fast swap (recommended; ~seconds of blip):** the commands
+**Option A — pre-pull, fast swap (recommended; ~seconds of blip):** the commands
 in §14. The DB/Redis/Temporal containers keep running; only the app container
 restarts, and host Nginx holds the connection during it.
 
@@ -416,11 +446,17 @@ touches `schema.prisma`**.
 
 ## 16. Rollback strategy
 
-1. **Code:** `git log --oneline` → `git checkout <previous-good-sha>` →
-   `docker compose -p postiz build postiz && docker compose -p postiz up -d`.
-   (Tag known-good releases, e.g. `git tag deploy-2026-06-28`, for fast targets.)
-2. **Image:** Docker keeps the prior `postiz-app:local` layers until pruned, so a
-   rebuild of the old SHA is fast.
+1. **Image (the normal path):** no rebuild needed — every `main` build also
+   pushes a `:<full-git-sha>` tag to GHCR, so pin and re-pull:
+   ```bash
+   POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx pull postaryx
+   POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx up -d postaryx
+   ```
+   Set the variable on **both** commands — `pull` and `up` read it independently.
+2. **Code (tracked files only — compose, configs):** `git log --oneline` →
+   `git checkout <previous-good-sha>` for the files that changed, then repeat
+   step 1 with that commit's image tag. (Tag known-good releases, e.g.
+   `git tag deploy-2026-06-28`, for fast targets.)
 3. **Data:** if a bad migration corrupted the DB, restore the latest dump (§12).
    This is why the pre-deploy backup is mandatory for schema changes.
 
@@ -431,8 +467,8 @@ touches `schema.prisma`**.
 - **Loopback-bind all container ports** (§5) — the keystone, since Docker bypasses `ufw`.
 - **TLS everywhere** via Certbot; force HTTP→HTTPS (`--redirect`).
 - Set `DISABLE_REGISTRATION=true` once your accounts exist (private instance).
-- Change the `postiz-password` Postgres default (in both `docker-compose.yaml` and
-  `DATABASE_URL`) and use a strong unique `JWT_SECRET`.
+- Set a strong, unique `POSTARYX_DB_PASSWORD` in `.env` (§4 — Compose refuses to
+  start without one, no weak default to forget) and a strong unique `JWT_SECRET`.
 - Drop optional containers you don't use: `spotlight` (removed), and
   `temporal-ui` / `temporal-admin-tools` if you don't need the dashboard/CLI.
 - `chmod 600 .env.prod`; SSH key-only auth; restrict port 22 in the OCI Security List.
@@ -463,11 +499,11 @@ touches `schema.prisma`**.
 
 ## 19. Monitoring
 
-- **Built-in:** `docker compose -p postiz ps` (health), `docker stats --no-stream`
+- **Built-in:** `docker compose -p postaryx ps` (health), `docker stats --no-stream`
   (live RAM/CPU — watch Elasticsearch and the three Node processes), `df -h` +
   `docker system df` (disk).
 - **Uptime:** an external HTTP check (UptimeRobot / Healthchecks.io) on
-  `https://postiz.example.com` — catches outages the host can't self-report.
+  `https://postaryx.example.com` — catches outages the host can't self-report.
 - **OCI native:** the OCI Monitoring agent provides CPU/mem/disk alarms for free.
 - **Optional later (shared across apps):** a single
   Prometheus + Grafana + cAdvisor + node-exporter stack on its own loopback port,
@@ -481,14 +517,15 @@ touches `schema.prisma`**.
 
 1. **After teardown (if any):** `docker ps -a` shows no leftover containers from
    the old app; `docker volume ls` is clean.
-2. `docker compose -p postiz ps` → all required containers `healthy`/`running`.
+2. `docker compose -p postaryx ps` → all required containers `healthy`/`running`.
 3. On the VM: `curl -I http://127.0.0.1:4007` → `200`.
-4. On the VM: `curl -I https://postiz.example.com` → `200` with a valid cert.
-5. From outside the VM: `curl --max-time 5 http://<VM_PUBLIC_IP>:4007` and `:8080`
-   → **timeout** (confirms loopback binding + firewall).
+4. On the VM: `curl -I https://postaryx.example.com` → `200` with a valid cert.
+5. From outside the VM: `curl --max-time 5 http://<VM_PUBLIC_IP>:4007` and `:8080`,
+   plus `nc -z -w5 <VM_PUBLIC_IP> 5432` → all **timeout/not reachable** (confirms
+   loopback binding + firewall, including Postgres since P1-2).
 6. In a browser: load the site, register/login, and **schedule a test post a few
    minutes out** → confirms the Temporal orchestrator works end-to-end (the real
    integration test for this app).
-7. `docker compose -p postiz logs postiz | grep -i prisma` → migration ran clean.
+7. `docker compose -p postaryx logs postaryx | grep -i prisma` → migration ran clean.
 8. Run `backup.sh` once manually; verify `db-*.sql.gz` and `uploads-*.tar.gz` are
    non-empty.

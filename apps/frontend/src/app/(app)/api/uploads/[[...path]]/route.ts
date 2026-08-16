@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createReadStream, statSync } from 'fs';
 // @ts-ignore
 import mime from 'mime';
+import { resolveUploadDirectory } from '@gitroom/helpers/utils/resolve.upload.directory';
 async function* nodeStreamToIterator(stream: any) {
   for await (const chunk of stream) {
     yield chunk;
@@ -29,7 +30,9 @@ export const GET = async (
 ) => {
   const { path } = await context.params;
   const filePath =
-    process.env.UPLOAD_DIRECTORY + '/' + (path ?? []).join('/');
+    resolveUploadDirectory(process.env.UPLOAD_DIRECTORY!) +
+    '/' +
+    (path ?? []).join('/');
   const response = createReadStream(filePath);
   const fileStats = statSync(filePath);
   const contentType = mime.getType(filePath) || 'application/octet-stream';

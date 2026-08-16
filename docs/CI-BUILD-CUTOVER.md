@@ -117,30 +117,35 @@ to Step 2.
 
 Never let the server be the first place a new image runs.
 
+> Needs a `.env` with `POSTARYX_DB_*`/`POSTARYX_REDIS_PASSWORD`/
+> `POSTARYX_TEMPORAL_DB_PASSWORD` set — see
+> [PROD-DEPLOY-PREREQUISITE.md](./PROD-DEPLOY-PREREQUISITE.md) if this is your
+> first time running the prod stack locally.
+
 ```bash
 # Make sure the dev stack is not running (it collides on ports)
-docker compose -p postiz-dev -f docker-compose.dev.yaml down
+docker compose -p postaryx-dev -f docker-compose.dev.yaml down
 
 # Start the production stack locally, using the image CI just built
-docker compose -p postiz-prod pull postiz
-docker compose -p postiz-prod up -d
+docker compose -p postaryx-prod pull postaryx
+docker compose -p postaryx-prod up -d
 
 # Watch it start — takes ~90 seconds
-docker compose -p postiz-prod logs -f postiz
+docker compose -p postaryx-prod logs -f postaryx
 ```
 
 **Check all four of these:**
 
 ```bash
 # 1. Every container is running / healthy
-docker compose -p postiz-prod ps
+docker compose -p postaryx-prod ps
 
 # 2. The app answers
 curl -I http://127.0.0.1:4007          # expect: HTTP/1.1 200 OK
 
 # 3. You are running the exact commit you think you are.
 #    Prints v<version.txt>-<short-sha>, e.g. v1.47.0-a1b2c3d
-docker exec postiz printenv NEXT_PUBLIC_VERSION
+docker exec postaryx printenv NEXT_PUBLIC_VERSION
 
 # 4. Open it in a browser and log in
 open http://localhost:4007
@@ -149,7 +154,7 @@ open http://localhost:4007
 Then stop it:
 
 ```bash
-docker compose -p postiz-prod down
+docker compose -p postaryx-prod down
 ```
 
 **If the app doesn't come up**, read the logs from step 2 above. This is a
@@ -162,40 +167,40 @@ Only after Step 4 passed.
 
 ```bash
 ssh ubuntu@<VM_PUBLIC_IP>
-cd /opt/postiz/postiz-app
+cd /opt/postaryx/postaryx-app
 
 # Get the code change that switches compose from building to pulling
 git pull
 
-# Confirm the project name (this server uses "postiz", not "postiz-prod")
+# Confirm the project name (this server uses "postaryx", not "postaryx-prod")
 docker compose ls
 
 # Download the new image and restart just the app
-docker compose -p postiz pull postiz
-docker compose -p postiz up -d postiz
+docker compose -p postaryx pull postaryx
+docker compose -p postaryx up -d postaryx
 
 # Watch it come up
-docker compose -p postiz logs -f postiz
+docker compose -p postaryx logs -f postaryx
 ```
 
 **Verify, exactly as in Step 4:**
 
 ```bash
-docker compose -p postiz ps
+docker compose -p postaryx ps
 curl -I http://127.0.0.1:4007
-docker exec postiz printenv NEXT_PUBLIC_VERSION   # must match the commit you deployed
+docker exec postaryx printenv NEXT_PUBLIC_VERSION   # must match the commit you deployed
 ```
 
 Then load the real site in a browser and log in.
 
 > **`docker compose ls` matters.** A wrong `-p` name does not error — it
 > silently creates or targets a *different, empty* stack. If this server's
-> project is `postiz`, every command must say `-p postiz`.
+> project is `postaryx`, every command must say `-p postaryx`.
 
 ## Step 6. Confirm the server never builds again
 
 ```bash
-grep -A1 "^  postiz:" docker-compose.yaml
+grep -A1 "^  postaryx:" docker-compose.yaml
 ```
 
 You should see an `image:` line and **no `build:` block**. If you see `build:`,
@@ -211,17 +216,17 @@ not a rebuild. Get the sha from the Actions run or `git log`.
 
 ```bash
 # On the server. Set the variable on BOTH lines — pull and up read it separately.
-POSTIZ_IMAGE_TAG=<full-git-sha> docker compose -p postiz pull postiz
-POSTIZ_IMAGE_TAG=<full-git-sha> docker compose -p postiz up -d postiz
+POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx pull postaryx
+POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx up -d postaryx
 
 # Confirm you're on the old build
-docker exec postiz printenv NEXT_PUBLIC_VERSION
+docker exec postaryx printenv NEXT_PUBLIC_VERSION
 ```
 
 To go back to normal afterwards, just drop the variable:
 
 ```bash
-docker compose -p postiz pull postiz && docker compose -p postiz up -d postiz
+docker compose -p postaryx pull postaryx && docker compose -p postaryx up -d postaryx
 ```
 
 Nothing tracked by git is edited, so the server never ends up with local
@@ -244,7 +249,7 @@ under you.
 | Build fails at **Log in to GHCR** | Workflow lacks `packages: write` | Confirm the `permissions:` block in `build-containers.yml` is intact |
 | Build queues forever, never starts | No `ubuntu-24.04-arm` runner available | Free for public repos, so this shouldn't happen here. If it does, the repo went private — check its visibility |
 | Build fails at **Prune old image versions** | Cleanup problem only | Harmless. The step is `continue-on-error`, the image already pushed |
-| App up but shows the *old* version | Pulled but didn't recreate the container | `docker compose -p postiz up -d postiz` again; verify with `docker exec postiz printenv NEXT_PUBLIC_VERSION` |
+| App up but shows the *old* version | Pulled but didn't recreate the container | `docker compose -p postaryx up -d postaryx` again; verify with `docker exec postaryx printenv NEXT_PUBLIC_VERSION` |
 | Compose commands seem to do nothing | Wrong `-p` project name | `docker compose ls` and use the name you actually see |
 
 ---
@@ -254,10 +259,10 @@ under you.
 ```bash
 # 1. Merge to main. Wait for "Build image" to go green in the Actions tab.
 # 2. On the server:
-cd /opt/postiz/postiz-app
-docker compose -p postiz pull postiz
-docker compose -p postiz up -d postiz
-docker exec postiz printenv NEXT_PUBLIC_VERSION   # sanity check
+cd /opt/postaryx/postaryx-app
+docker compose -p postaryx pull postaryx
+docker compose -p postaryx up -d postaryx
+docker exec postaryx printenv NEXT_PUBLIC_VERSION   # sanity check
 ```
 
 That's it. No building, no memory spike, no downtime risk from a deploy.

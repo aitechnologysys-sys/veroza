@@ -182,7 +182,7 @@ These edits are already applied to `docker-compose.yaml` in this repo:
 
 ```yaml
 postaryx:        ports: ["127.0.0.1:4007:5000"]   # entry point, loopback-only
-postaryx-postgres:  # host `ports:` removed entirely — reached over postaryx-network
+postaryx-postgres:  ports: ["127.0.0.1:5432:5432"]  # loopback-only, for DBeaver
 temporal:      ports: ["127.0.0.1:7233:7233"]
 temporal-ui:   ports: ["127.0.0.1:8080:8080"]   # reach via SSH tunnel
 # spotlight service removed (dev-only error viewer)
@@ -193,6 +193,9 @@ To reach the Temporal UI for debugging, SSH-tunnel it:
 ssh -i your-key.key -L 8080:127.0.0.1:8080 ubuntu@<VM_PUBLIC_IP>
 # then open http://localhost:8080 in your local browser
 ```
+
+Same pattern for Postgres — see [1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md)
+P1-2 for the full DBeaver-over-SSH-tunnel walkthrough.
 
 ---
 

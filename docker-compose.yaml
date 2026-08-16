@@ -125,9 +125,14 @@ services:
       POSTGRES_DB: ${POSTARYX_DB_NAME:-postaryx-db-prod}
     volumes:
       - postgres-volume:/var/lib/postgresql/data
-    # No host port: the app reaches Postgres over postaryx-network. Publishing 5432
-    # would expose the DB to the internet (Docker bypasses ufw) and clash with any
-    # other Postgres on the host. For ad-hoc psql access, SSH-tunnel instead.
+    ports:
+      # Loopback-ONLY, for DBeaver — see docs/1.SECURITY-HARDENING-TODO.md P1-2.
+      # The leading 127.0.0.1 is the entire security control: it binds to the
+      # VM's internal interface, unreachable from outside. Reach it through an
+      # SSH tunnel — same approach as temporal-ui:8080. Never remove the
+      # 127.0.0.1 prefix: Docker bypasses ufw, so a bare "5432:5432" publishes
+      # the DB straight to the internet, guarded only by whatever's in .env.
+      - '127.0.0.1:5432:5432'
     networks:
       - postaryx-network
     healthcheck:

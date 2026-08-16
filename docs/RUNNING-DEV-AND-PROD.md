@@ -4,8 +4,9 @@ You have two stacks in this repo:
 
 - **Dev** — [docker-compose.dev.yaml](../docker-compose.dev.yaml) (deps only) +
   `pnpm run dev` on the host. Hot-reload. See [LOCAL-DEVELOPMENT.md](./LOCAL-DEVELOPMENT.md).
-- **Prod** — [docker-compose.yaml](../docker-compose.yaml). One command builds and
-  runs the whole app in Docker. See [INFRASTRUCTURE-AND-DEPLOYMENT.md](./INFRASTRUCTURE-AND-DEPLOYMENT.md).
+- **Prod** — [docker-compose.yaml](../docker-compose.yaml). One command pulls a
+  CI-built image and runs the whole app in Docker — it no longer builds locally.
+  See [INFRASTRUCTURE-AND-DEPLOYMENT.md](./INFRASTRUCTURE-AND-DEPLOYMENT.md).
 
 This guide answers: **can I run one, then the other, then go back — without breaking
 the database?** Short answer: **yes, if you isolate them by Docker Compose
@@ -50,9 +51,10 @@ data loss. (Prefer not typing `-p` every time? See
 
 Even with separate projects, the two stacks collide if run simultaneously:
 
-- **Published ports overlap:** both publish Temporal `7233` and Temporal UI
-  `8080` (dev also publishes `5432`, `6379`, `8082`, `5540`; prod also `4007`,
-  `8969`).
+- **Published ports overlap:** both publish Postgres `5432` (as of P1-2 —
+  prod's `postaryx-postgres` didn't use to publish a host port, so this is a
+  newer collision), Temporal `7233`, and Temporal UI `8080` (dev also publishes
+  `6379`, `8082`, `5540`; prod also `4007`).
 - **Container names are hardcoded and global:** both files set
   `container_name: postaryx-postgres`, `temporal`, `temporal-ui`, etc.
   `container_name` is **not** namespaced by project, so the second stack fails
@@ -72,8 +74,8 @@ folder) they resolve to the **same physical Docker volumes**:
 | Volume (declared in both files) | Default-project volume | Shared? | Problem? |
 |---|---|---|---|
 | `postgres-volume` (app DB) | `postaryx-app_postgres-volume` | ✅ shared | ⚠️ **YES** — see below |
-| `temporal-postgres-volume` | `postaryx-app_temporal-postgres-volume` | ✅ shared | harmless (same creds) |
-| `temporal-es-volume` | `postaryx-app_temporal-es-volume` | ✅ shared | harmless |
+| `temporal-postgres-volume` | `postaryx-app_temporal-postgres-volume` | ✅ shared | ⚠️ **YES, same bug** — since P3-2b, dev and prod use *different* `POSTARYX_DEV_TEMPORAL_DB_PASSWORD` / `POSTARYX_TEMPORAL_DB_PASSWORD` (previously both were the literal `temporal`, so this used to be harmless) |
+| `temporal-es-volume` | `postaryx-app_temporal-es-volume` | ✅ shared | harmless — no auth involved (`xpack.security.enabled=false`) |
 
 > The default-project volume names above say `postaryx-app` because that name
 > comes from the repo folder (`docker-compose`'s default project name is the
@@ -116,6 +118,11 @@ So, the breaking sequence:
 > On this machine there is already a `postaryx-app_postgres-volume` (initialized by
 > a prior dev run), so a prod run with the default project name **would** hit this
 > immediately. That's exactly the situation this guide prevents.
+
+The identical failure mode now also applies to **Temporal's own Postgres**
+(`temporal-postgres-volume`) — same first-init-wins behavior, and dev/prod use
+different passwords for it since P3-2b. Project isolation (§3) fixes both at
+once; there's nothing Temporal-specific to do beyond that.
 
 ---
 
@@ -172,8 +179,9 @@ pnpm run dev                   # no prisma-db-push needed; schema/data persisted
 Why it works: step 2 uses `postaryx-prod_*` volumes, so it never touches the
 `postaryx-dev_*` data from step 1. Step 3 finds your dev DB exactly as you left it.
 
-> First time you `up` **prod**, give it ~30–60s: it builds the image, runs
-> `prisma-db-push` automatically (prod self-migrates on boot), and boots Temporal.
+> First time you `up` **prod**, give it ~30–60s: it pulls the CI-built image
+> (no local build — see README.md §3), runs `prisma-db-push` automatically
+> (prod self-migrates on boot), and boots Temporal.
 
 ---
 

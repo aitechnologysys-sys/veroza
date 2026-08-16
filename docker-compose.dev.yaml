@@ -17,8 +17,10 @@ services:
       TEMPORAL_ADDRESS: 'temporal:7233'
     volumes:
       - postgres-volume:/var/lib/postgresql/data
+    # Loopback-ONLY — see docs/1.SECURITY-HARDENING-TODO.md P1-1. Binding to
+    # 0.0.0.0 (the bare "5432:5432" form) would reach any network you're on.
     ports:
-      - 5432:5432
+      - '127.0.0.1:5432:5432'
     networks:
       - postaryx-network
   postaryx-redis:
@@ -27,7 +29,7 @@ services:
     container_name: postaryx-redis
     restart: always
     ports:
-      - 6379:6379
+      - '127.0.0.1:6379:6379'
     networks:
       - postaryx-network
   postaryx-pg-admin:
@@ -36,7 +38,7 @@ services:
     container_name: postaryx-pg-admin
     restart: always
     ports:
-      - 8082:80
+      - '127.0.0.1:8082:80'
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
       PGADMIN_DEFAULT_PASSWORD: admin
@@ -49,7 +51,7 @@ services:
     links:
       - postaryx-redis
     ports:
-      - '5540:5540'
+      - '127.0.0.1:5540:5540'
     volumes:
       - redisinsight:/data
     networks:
@@ -94,7 +96,7 @@ services:
   temporal:
     container_name: temporal
     ports:
-      - '7233:7233'
+      - '127.0.0.1:7233:7233'
     image: temporalio/auto-setup:1.28.1
     depends_on:
       - temporal-postgresql
@@ -139,7 +141,7 @@ services:
     networks:
       - temporal-network
     ports:
-      - '8080:8080'
+      - '127.0.0.1:8080:8080'
 
 volumes:
   redisinsight:

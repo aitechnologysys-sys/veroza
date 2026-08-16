@@ -35,8 +35,9 @@ Two consequences that drive every decision below:
 
 1. **Postiz already routes `/` and `/api` internally**, so the host only proxies
    **one** upstream port (`127.0.0.1:4007`).
-2. **It builds from source** (`Dockerfile.dev`) and **self-migrates the DB on
-   boot** (`prisma-db-push`). The full stack is **9 containers** (app + Postgres +
+2. **It pulls a CI-built image** (built from `Dockerfile.dev` in GitHub
+   Actions — never on this box) and **self-migrates the DB on boot**
+   (`prisma-db-push`). The full stack is **8 containers** (app + Postgres +
    Redis + a 5-container Temporal stack including Elasticsearch). Budget
    ~3–4 GB RAM steady-state for Postiz alone.
 
@@ -48,7 +49,7 @@ Two consequences that drive every decision below:
 |---|---|---|
 | **Reverse proxy** | **Nginx on the host** (systemd) + Certbot | One auto-renewing cert store for all current/future apps; decoupled from app rebuilds; trivial to add vhosts. Traefik/Caddy-in-Docker only pay off at ~10+ apps and couple every app onto a shared proxy network. |
 | **Docker networks** | **One bridge network per project** (the default) | Keeps each app isolated (security + no DNS collisions). The host Nginx bridges apps at the loopback layer, so they never need to share a network. |
-| **Auto-updates (Watchtower)** | **No** | Postiz builds from source (no tag to poll) and runs DB migrations on boot — an unattended update could migrate/break production. Use deliberate `git pull && build` with a rollback path. |
+| **Auto-updates (Watchtower)** | **No** | Postiz runs DB migrations on boot — an unattended update could migrate/break production even though it's just a pull now (no local build). Use deliberate `git pull && docker compose pull` with a rollback path. |
 | **Domains** | **Single domain** for Postiz | Postiz's internal Nginx already serves `/api`. Splitting into `api.*` would force internal-nginx edits + cross-origin cookies/CORS for zero benefit. (Multi-domain pattern below is for *future, separate* apps.) |
 
 ### Three gotchas that dominate this setup
@@ -311,8 +312,9 @@ mechanism for all.
 
 **Layer A — OCI Security List / NSG (cloud).** VCN → your subnet's Security List →
 **Ingress Rules** → add stateful `0.0.0.0/0 TCP 80` and `0.0.0.0/0 TCP 443`. Keep
-SSH (22) restricted to your IP. Do **not** open 4007/7233/8080 — they're
-loopback-only.
+SSH (22) restricted to your IP. Do **not** open 4007/5432/7233/8080 — they're
+loopback-only (`5432` since P1-2, for DBeaver — see
+[1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md)).
 
 **Layer B — host firewall (`ufw`).**
 ```bash
@@ -326,6 +328,7 @@ sudo ufw status verbose
 ```bash
 curl --max-time 5 http://<VM_PUBLIC_IP>:4007   # must TIME OUT
 curl --max-time 5 http://<VM_PUBLIC_IP>:8080   # must TIME OUT
+nc -z -w5 <VM_PUBLIC_IP> 5432 && echo "EXPOSED — fix immediately" || echo "OK: not reachable"
 curl -I https://postaryx.example.com             # must return 200
 ```
 
@@ -407,22 +410,26 @@ gunzip -c db-YYYY-MM-DD.sql.gz | docker exec -i postaryx-postgres psql -U postar
 
 ## 14. Updating after new commits
 
+Merging to `main` triggers the CI build (see §2a of
+[INFRASTRUCTURE-AND-DEPLOYMENT.md](./INFRASTRUCTURE-AND-DEPLOYMENT.md) and
+[CI-BUILD-CUTOVER.md](./CI-BUILD-CUTOVER.md)) — the VM never builds, only pulls:
+
 ```bash
 cd /opt/postaryx/postaryx-app
-git pull
-docker compose -p postaryx build postaryx       # build new image while old still serves
-docker compose -p postaryx up -d              # recreate changed containers; runs prisma-db-push
-docker compose -p postaryx logs -f postaryx     # watch boot + migration
-docker image prune -f                       # reclaim old image layers
+git pull                                      # picks up any tracked-file changes (compose, configs)
+docker compose -p postaryx pull postaryx      # fetch the newest CI-built image
+docker compose -p postaryx up -d postaryx     # recreate the app container; runs prisma-db-push
+docker compose -p postaryx logs -f postaryx   # watch boot + migration
+docker image prune -f                         # reclaim old image layers
 ```
-Bump `version.txt` / `NEXT_PUBLIC_VERSION` to show the new version in the UI (it's
-the one build-time arg).
+Bump `version.txt` to show the new version in the UI — CI stamps it as
+`<version.txt>-<short-sha>` (`NEXT_PUBLIC_VERSION`, the one build-time arg).
 
 ---
 
 ## 15. Zero-downtime deployment
 
-**Option A — pre-build, fast swap (recommended; ~seconds of blip):** the commands
+**Option A — pre-pull, fast swap (recommended; ~seconds of blip):** the commands
 in §14. The DB/Redis/Temporal containers keep running; only the app container
 restarts, and host Nginx holds the connection during it.
 
@@ -439,11 +446,17 @@ touches `schema.prisma`**.
 
 ## 16. Rollback strategy
 
-1. **Code:** `git log --oneline` → `git checkout <previous-good-sha>` →
-   `docker compose -p postaryx build postaryx && docker compose -p postaryx up -d`.
-   (Tag known-good releases, e.g. `git tag deploy-2026-06-28`, for fast targets.)
-2. **Image:** Docker keeps the prior `postaryx-app:local` layers until pruned, so a
-   rebuild of the old SHA is fast.
+1. **Image (the normal path):** no rebuild needed — every `main` build also
+   pushes a `:<full-git-sha>` tag to GHCR, so pin and re-pull:
+   ```bash
+   POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx pull postaryx
+   POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx up -d postaryx
+   ```
+   Set the variable on **both** commands — `pull` and `up` read it independently.
+2. **Code (tracked files only — compose, configs):** `git log --oneline` →
+   `git checkout <previous-good-sha>` for the files that changed, then repeat
+   step 1 with that commit's image tag. (Tag known-good releases, e.g.
+   `git tag deploy-2026-06-28`, for fast targets.)
 3. **Data:** if a bad migration corrupted the DB, restore the latest dump (§12).
    This is why the pre-deploy backup is mandatory for schema changes.
 
@@ -507,8 +520,9 @@ touches `schema.prisma`**.
 2. `docker compose -p postaryx ps` → all required containers `healthy`/`running`.
 3. On the VM: `curl -I http://127.0.0.1:4007` → `200`.
 4. On the VM: `curl -I https://postaryx.example.com` → `200` with a valid cert.
-5. From outside the VM: `curl --max-time 5 http://<VM_PUBLIC_IP>:4007` and `:8080`
-   → **timeout** (confirms loopback binding + firewall).
+5. From outside the VM: `curl --max-time 5 http://<VM_PUBLIC_IP>:4007` and `:8080`,
+   plus `nc -z -w5 <VM_PUBLIC_IP> 5432` → all **timeout/not reachable** (confirms
+   loopback binding + firewall, including Postgres since P1-2).
 6. In a browser: load the site, register/login, and **schedule a test post a few
    minutes out** → confirms the Temporal orchestrator works end-to-end (the real
    integration test for this app).

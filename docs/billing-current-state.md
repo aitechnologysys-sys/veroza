@@ -28,7 +28,7 @@ Companion docs:
 ```
 BillingController (apps/backend/src/api/routes/billing.controller.ts)
     └── @Inject('BILLING_PROVIDER') → IBillingProvider
-            ├── StripeService   (libraries/nestjs-libraries/src/services/stripe.service.ts,  987 lines)
+            ├── StripeService   (libraries/nestjs-libraries/src/services/stripe.service.ts,  998 lines)
             └── PolarService    (libraries/nestjs-libraries/src/services/polar.service.ts,   554 lines)
                     └── SubscriptionService → SubscriptionRepository → Prisma
 
@@ -102,7 +102,7 @@ When it returns `false` the deployment behaves as free / self-hosted: every org 
 
 **Never re-introduce a `process.env.STRIPE_*` check as an enforcement gate.** Import `isBillingEnabled()` instead. The two Stripe env vars that legitimately remain in code are the ones that genuinely configure the gateway:
 
-- `stripe.service.ts:16` — `new Stripe(process.env.STRIPE_SECRET_KEY)`
+- `stripe.service.ts:25` — `new Stripe(process.env.STRIPE_SECRET_KEY)`
 - `(app)/layout.tsx` — `stripeClient={process.env.STRIPE_PUBLISHABLE_KEY}`, which feeds `loadStripe()`
 
 ### What changed
@@ -241,7 +241,7 @@ The requirement is **same major version as the SDK**, not an identical date stri
 
 For the CLI, `stripe listen` also uses the account default; override with `--stripe-version`.
 
-The code pin at `stripe.service.ts:8-16`:
+The code pin at `stripe.service.ts:16-27`:
 
 ```ts
 const STRIPE_API_VERSION = '2026-02-25.clover';
@@ -299,7 +299,7 @@ You can defer all of this. Without a working webhook, checkout completes on Stri
 
 ### The short answer: nothing
 
-This is the part worth internalising from how Postiz does it. `StripeService.embedded()`, `subscribe()` and `prorate()` all **find-or-create** the Product and the Price at request time (`stripe.service.ts:661-703`, `727-769`, `205-248`):
+This is the part worth internalising from how Postiz does it. `StripeService.embedded()`, `subscribe()` and `prorate()` all **find-or-create** the Product and the Price at request time (`stripe.service.ts:661-703`, `727-769`, `212-259`):
 
 ```ts
 const findProduct =
@@ -340,7 +340,7 @@ There is no `FREE` product — the FREE tier never reaches Stripe.
 
 **Two traps if you hand-create:**
 
-1. **Nickname mismatch.** `embedded()` and `subscribe()` match on interval + amount only, but `prorate()` *also* requires `nickname === "<TIER> <PERIOD>"` (`stripe.service.ts:229`). A price created with a different nickname will be used for checkout but rejected by proration, which will then create a *second*, duplicate price. Use the exact nicknames in the table.
+1. **Nickname mismatch.** `embedded()` and `subscribe()` match on interval + amount only, but `prorate()` *also* requires `nickname === "<TIER> <PERIOD>"` (`stripe.service.ts:240`). A price created with a different nickname will be used for checkout but rejected by proration, which will then create a *second*, duplicate price. Use the exact nicknames in the table.
 2. **Price drift.** Matching is on exact `unit_amount`. If you edit `pricing.ts` without archiving the old Stripe price, the next checkout creates a new price alongside the old one — existing subscribers stay on the old amount, which is usually what you want, but the product accumulates orphan prices. Archive deliberately.
 
 Because prices are amount-matched, **renaming a tier orphans its product** — a rename means creating a new product and migrating subscribers. Relevant if the Postaryx rebrand ever touches tier names. It shouldn't.
@@ -386,7 +386,7 @@ No schema change either way — `Organization.paymentId` holds whichever provide
 
 Not blocking, but worth tracking:
 
-1. **`.env.prod` is tracked by git and holds real credentials.** `.gitignore` now lists it, but that does not untrack an already-tracked file — run `git rm --cached .env.prod` and commit. Its Polar sandbox token and ngrok authtoken are in the repo history regardless, so rotate them. **Do not put the Stripe secret key in this file until it is untracked.**
+1. **`.env.prod` is untracked (done — `da0cb264`), but the credentials it held are still live and unrotated.** It was committed in `1195455e` and untracked in `da0cb264`; both commits are permanently readable in this public repo's history regardless of untracking. The Polar sandbox token and `NGROK_AUTHTOKEN` from that leaked commit are still the actual values in the current `.env.prod` (the Stripe key there is a separate, later-added test-mode key, not the leaked one) — see P0-1 in [1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md), still unchecked.
 2. **`POLAR_PRICE_*` naming** — `getConfiguredProductId()` (`polar.service.ts:198-207`) prefers `POLAR_PRODUCT_{TIER}_{PERIOD}` and falls back to `POLAR_PRICE_{TIER}_{PERIOD}`, then does a `/v1/products` scan to resolve a price id to its product id. `.env.prod` uses the `POLAR_PRICE_*` form. Setting `POLAR_PRODUCT_*` instead skips the extra API call and the in-memory cache entirely — simpler and one fewer failure mode.
 3. **`getPackages()` is dead code** — `stripe.service.ts:175-199` early-returns `{}` before touching Stripe. Still exposed via `users.controller.ts:181`. Upstream quirk; harmless.
 4. **Webhook handling isn't on the interface** — adding a third provider means adding a third controller. Fine for two providers; revisit if a third appears.

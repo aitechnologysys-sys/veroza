@@ -76,7 +76,7 @@ frontend deploys. Not before.
 
 ## 2. Current footprint vs. target
 
-From your own `docker-compose.yaml` (9 services) and the audit's per-container
+From your own `docker-compose.yaml` (8 services) and the audit's per-container
 estimates:
 
 | State | Steady RAM | Against 12 GB |
@@ -249,11 +249,13 @@ Three details worth knowing, since they are the parts that usually go wrong:
    `NEXT_PUBLIC_*` values get inlined into the client bundle at build time and
    the CI runner doesn't have them. Postiz avoids this by reading them in
    *server* components and threading them to the client through
-   `VariableContextComponent` (`apps/frontend/src/app/(app)/layout.tsx:61-107`)
-   — runtime values. The only client components that read `process.env`
+   `VariableContextComponent` (`apps/frontend/src/app/(app)/layout.tsx:56-116`)
+   — runtime values. The client components that read `process.env`
    directly are `launches.component.tsx` (`NEXT_PUBLIC_VERSION`, passed as a
-   build arg) and `facebook.component.tsx` (`NEXT_PUBLIC_FACEBOOK_PIXEL`,
-   optional). A CI-built image is behaviour-identical to the old on-box build.
+   build arg), `facebook.component.tsx` (`NEXT_PUBLIC_FACEBOOK_PIXEL`,
+   optional), and `nayner.auth.button.tsx` (`NEYNAR_LOGIN_URL`, not
+   `NEXT_PUBLIC_`-prefixed, so not inlined at build time regardless). A
+   CI-built image is behaviour-identical to the old on-box build.
 
 At your build frequency this comfortably fits inside GitHub's free-tier CI
 minutes (2,000 min/month on the Free plan, 3,000 on Pro) — a single build is

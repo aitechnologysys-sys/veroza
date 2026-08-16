@@ -50,8 +50,9 @@ Two key takeaways:
 
 ## 2. What runs *inside* the `postaryx` container
 
-> **This deployment builds the image from source**, not from the published
-> `ghcr.io/gitroomhq/postiz-app`. See [§2a](#2a-our-image-built-in-ci-pulled-everywhere).
+> **This deployment pulls a prebuilt image built in CI**, not from the
+> published `ghcr.io/gitroomhq/postiz-app` and not built locally. See
+> [§2a](#2a-our-image-built-in-ci-pulled-everywhere).
 
 The image is built from [Dockerfile.dev](../Dockerfile.dev): a Node 22 + nginx
 base, with `pnpm build` run for all three apps. At runtime the container does:
@@ -186,8 +187,8 @@ state working set, not a hard limit. These are estimates — see
 - **Image:** `ghcr.io/aitechnologysys-sys/veroza:latest` by default — **built in CI** from this source via `Dockerfile.dev` (see [§2a](#2a-our-image-built-in-ci-pulled-everywhere)). Override with `POSTARYX_IMAGE` / `POSTARYX_IMAGE_TAG`.
 - **What:** The app itself (frontend + backend + orchestrator + nginx, see §2).
 - **Why:** This is the product.
-- **Ports:** `4007:5000` — the only user-facing port.
-- **Depends on:** `postaryx-postgres` (healthy), `postaryx-redis` (healthy).
+- **Ports:** `127.0.0.1:4007:5000` — the only user-facing port, loopback-only (a host reverse proxy is the sole public listener).
+- **Depends on:** `postaryx-postgres` (healthy), `postaryx-redis` (healthy), `temporal` (healthy) — the backend opens its Temporal connection at module-init time, before the app is otherwise ready, so it must wait for Temporal too.
 - **Config:** `env_file: .env` (secrets) + `environment:` overrides (infra wiring).
 - **Healthcheck:** Node `fetch('http://localhost:5000')`, 90s start period.
 - **Volumes:** `postaryx-config:/config/`, `postaryx-uploads:/uploads/` (uploaded media when `STORAGE_PROVIDER=local`).
@@ -200,6 +201,7 @@ state working set, not a hard limit. These are estimates — see
 - **Image:** `postgres:17-alpine`
 - **What:** The primary application database (users, orgs, integrations, posts, billing). Schema lives in [schema.prisma](../libraries/nestjs-libraries/src/database/prisma/schema.prisma); accessed via Prisma.
 - **Why:** Postiz's system of record. Connected via `DATABASE_URL`.
+- **Ports:** `127.0.0.1:5432:5432` — loopback-only, for DBeaver access (see [1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md) P1-2). Not reachable from outside the host.
 - **Volume:** `postgres-volume:/var/lib/postgresql/data` (named volume — **this is your real data, back it up**).
 - **Disk:** ~280 MB image + your data (grows with usage).
 - **RAM:** ~150–400 MB.
@@ -208,22 +210,12 @@ state working set, not a hard limit. These are estimates — see
 - **Image:** `redis:7.2`
 - **What:** In-memory store used for caching, rate-limiting (`@nestjs/throttler` + `ioredis`), and as a lightweight queue/pub-sub between processes.
 - **Why:** Fast ephemeral state. Connected via `REDIS_URL`. (Note: durable scheduled jobs go through **Temporal**, not Redis — Redis here is for caching/throttling/short-lived coordination.)
+- **Auth + memory cap:** requires a password (`--requirepass ${POSTARYX_REDIS_PASSWORD}` from `.env`) and caps memory at `256mb` with `allkeys-lru` eviction — see [1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md) P1-3. No host port published.
 - **Volume:** `postaryx-redis-data:/data` (AOF/RDB persistence).
 - **Disk:** ~140 MB image + small data.
 - **RAM:** ~50–200 MB.
 
-### 3c. Monitoring (optional)
-
-#### `spotlight`
-- **Image:** `ghcr.io/getsentry/spotlight:latest`
-- **What:** Sentry "Spotlight" — a local, self-hosted error/trace viewer (a dev-time Sentry, no cloud account needed).
-- **Why:** Debugging. The app only sends data here if you set `NEXT_PUBLIC_SENTRY_DSN`/`SENTRY_SPOTLIGHT` (commented out by default).
-- **Port:** `8969:8969`.
-- **Disk:** ~250 MB.
-- **RAM:** ~80–150 MB.
-- **🟢 Safe to delete** for a lean deployment unless you actively want local error tracing.
-
-### 3d. The Temporal stack (5 containers — see §4 for the deep dive)
+### 3c. The Temporal stack (5 containers — see §4 for the deep dive)
 
 | Service | Image | Disk (approx) | RAM (approx) | Role |
 |---|---|---|---|---|
@@ -306,7 +298,7 @@ Now, why each of the 5 containers exists:
 
 ### Networks
 Two bridge networks isolate concerns:
-- **`postaryx-network`** — app ↔ its Postgres/Redis ↔ spotlight.
+- **`postaryx-network`** — app ↔ its Postgres/Redis.
 - **`temporal-network`** — the 5 Temporal containers + the `postaryx` app (the app
   joins *both* networks so the orchestrator can reach `temporal:7233`).
 
@@ -335,7 +327,7 @@ Two bridge networks isolate concerns:
 > architecture (Apple Silicon pulls arm64 variants) and image updates. Disk =
 > image size on disk; "+ data" grows with usage. See §7 to measure precisely.
 
-### Production stack (`docker-compose.yaml`) — 9 containers
+### Production stack (`docker-compose.yaml`) — 8 containers
 
 | Service | Image disk | Steady RAM | Required? |
 |---|---:|---:|:--|
@@ -347,8 +339,7 @@ Two bridge networks isolate concerns:
 | temporal-elasticsearch | ~640 MB | ~300–600 MB | ✅ Yes* (as configured) |
 | temporal-ui | ~120 MB | ~50–100 MB | ❌ Optional |
 | temporal-admin-tools | ~400 MB | ~20 MB | ❌ Optional |
-| spotlight | ~250 MB | ~80–150 MB | ❌ Optional |
-| **TOTAL** | **~5.2–6.2 GB disk** | **~1.7–3.7 GB RAM** | |
+| **TOTAL** | **~5.0–6.0 GB disk** | **~1.6–3.6 GB RAM** | |
 
 \* The whole Temporal group is required because background jobs (scheduled
 publishing, emails, token refresh) run through it. Individual Temporal
@@ -357,7 +348,7 @@ publishing, emails, token refresh) run through it. Individual Temporal
 **Practical guidance:**
 - **Minimum viable RAM:** ~4 GB will run it but is tight (ES + 3 Node processes
   + 3 Postgres-class processes). **Recommended: 8 GB.** With 4 GB, expect to
-  drop `spotlight`, `temporal-ui`, `temporal-admin-tools`.
+  drop `temporal-ui`, `temporal-admin-tools`.
 - **Disk:** budget **~10–15 GB** total to leave headroom for image layers,
   Postgres growth, uploaded media, and Docker overhead. Pure images are ~6 GB;
   the rest is data + breathing room.
@@ -371,7 +362,7 @@ The dev compose runs **only dependencies** (you run the apps locally via
 
 | Service | Image | Note vs prod |
 |---|---|---|
-| postaryx-postgres | `postgres:17-alpine` | exposes `5432` to host |
+| postaryx-postgres | `postgres:17-alpine` | exposes `127.0.0.1:5432` (loopback-only, per P1-1) |
 | postaryx-redis | `redis:7-alpine` (~40 MB) | lighter than prod's `redis:7.2` |
 | postaryx-pg-admin | `dpage/pgadmin4:latest` (~450 MB) | DB GUI on `:8082` — dev only |
 | postaryx-redisinsight | `redis/redisinsight:latest` (~350 MB) | Redis GUI on `:5540` — dev only |
@@ -450,8 +441,8 @@ ensure Docker has ≥4 GB build RAM and internet access.
    port `4007`, and set the `*_URL` vars to the `https://` domain.
 2. ✅ Temporal data already persists via named volumes (done in this compose, §5).
 3. Back up `postgres-volume` and `postaryx-uploads` regularly.
-4. Drop `spotlight`, `temporal-ui`, `temporal-admin-tools` if you don't need
-   them (smaller attack surface + less RAM).
+4. Drop `temporal-ui`, `temporal-admin-tools` if you don't need them (smaller
+   attack surface + less RAM).
 5. Set `DISABLE_REGISTRATION=true` once your accounts exist, if it's a private
    instance.
 6. Update by pulling, not rebuilding: merge to `main`, wait for the *Build
@@ -461,37 +452,48 @@ ensure Docker has ≥4 GB build RAM and internet access.
 
 > The maintainers' canonical install guide is
 > <https://docs.postiz.com/installation/docker-compose> — cross-check version
-> bumps there. Since we build from source, our image follows *this* repo, not the
-> upstream `:latest` tag.
-
+> bumps there. Since our image is built in CI from *this* repo (see §2a), it
+> follows this repo's `main`, not the upstream `:latest` tag.
 
 **Production: `pull` + `up -d` does everything**
 
 Two commands fetch and run the entire stack. But "everything" means the production way, not dev mode:
 
-Builds the postaryx image from source (Dockerfile.dev), which runs pnpm install + pnpm run build (compiles all 3 apps).
-Starts all 9 containers — the app + Postgres + Redis + the Temporal stack.
-Inside the postaryx container, the entrypoint (CMD) runs nginx && pnpm run pm2, which:
-runs prisma-db-push (auto-migrates the DB), then
-starts backend + frontend + orchestrator under pm2 using their start scripts (the built dist/ output, e.g. next start, node dist/.../main.js) — not pnpm run dev.
-So: no separate terminal, no manual migration, no pnpm dev. It's pnpm run pm2, the production runner.
+1. Pulls the CI-built `postaryx` image from GHCR (Dockerfile.dev already ran in
+   GitHub Actions — see §2a. Never builds locally on the server).
+2. Starts all 8 containers — the app + Postgres + Redis + the Temporal stack.
+3. Inside the `postaryx` container, the entrypoint (CMD) runs `nginx && pnpm run pm2`, which:
+   - runs `prisma-db-push` (auto-migrates the DB), then
+   - starts backend + frontend + orchestrator under pm2 using their start
+     scripts (the built `dist/` output, e.g. `next start`, `node dist/.../main.js`)
+     — not `pnpm run dev`.
+4. So: no separate terminal, no manual migration, no `pnpm dev`. It's
+   `pnpm run pm2`, the production runner.
 
-Local: two manual steps, on purpose
-The dev compose runs only the dependencies (no app container). So you run the apps yourself:
+**Local: two manual steps, on purpose.** The dev compose runs only the
+dependencies (no app container). So you run the apps yourself:
 
-
+```bash
 # Terminal 1 — dependencies only
 docker compose -f docker-compose.dev.yaml up
 
 # Terminal 2 — the apps, in dev/hot-reload mode
 pnpm run prisma-db-push   # first time + after schema changes
 pnpm run dev
-The key distinction
-Prod	Local
-Who runs the apps?	The container (pm2)	You (pnpm run dev)
-Which mode?	Built apps (start)	Dev mode (dev, hot-reload)
-DB migration	Automatic on boot	Manual prisma-db-push
-Command count	2 (pull + up -d)	2 (compose up + pnpm dev)
-Why the difference? Prod wants one self-contained, optimized image that just runs. Local wants hot-reload and breakpoints, which means running the source on your host — so the apps stay out of Docker and you start them yourself.
+```
+
+**The key distinction**
+
+| | Prod | Local |
+|---|---|---|
+| Who runs the apps? | The container (pm2) | You (`pnpm run dev`) |
+| Which mode? | Built apps (`start`) | Dev mode (`dev`, hot-reload) |
+| DB migration | Automatic on boot | Manual `prisma-db-push` |
+| Command count | 2 (`pull` + `up -d`) | 2 (`compose up` + `pnpm dev`) |
+
+Why the difference? Prod wants one self-contained, optimized image that just
+pulls and runs. Local wants hot-reload and breakpoints, which means running
+the source on your host — so the apps stay out of Docker and you start them
+yourself.
 
 pnpm run dev ≠ what prod does. Prod's in-container pnpm run pm2 is the production counterpart to it.

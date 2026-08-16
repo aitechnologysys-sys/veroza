@@ -340,11 +340,12 @@ short version — edit `docker-compose.yaml`:
    ```bash
    docker compose -p postaryx run --rm temporal-admin-tools tctl --namespace default namespace describe
    ```
-3. **Cap Redis memory** — nothing bounds it today. In the `postaryx-redis`
-   service, add:
-   ```yaml
-   command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
-   ```
+3. ~~Cap Redis memory~~ — **already done.** `postaryx-redis`'s `command:`
+   already sets `--maxmemory 256mb --maxmemory-policy allkeys-lru` *and*
+   `--requirepass ${POSTARYX_REDIS_PASSWORD}` (see
+   [1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md) P1-3). No
+   action needed — and don't paste a `command:` block over it without keeping
+   the `--requirepass` line, or you'll silently strip the password.
 
 This takes the stack from ~4.4–7.4 GB steady-state (with a build spike
 avoided entirely, since you're pulling) down to ~3.4–5.8 GB — comfortable
@@ -544,11 +545,10 @@ fallback while you're still debugging — that's why this is last.)
 You're live. A few things worth doing in the first week, each already
 written up elsewhere in `docs/`:
 
-- **Rotate Temporal's hardcoded Postgres password** (`temporal`) that still
-  ships in the committed `docker-compose.yaml` — the app's own DB password is
-  already sourced from `.env` (P0-2 in
-  [1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md)). Cheap now,
-  a migration exercise once you have real customer data.
+- **Confirm you set a strong, unique `POSTARYX_TEMPORAL_DB_PASSWORD` in `.env`**
+  (§7.3) — it's no longer hardcoded (P3-2b in
+  [1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md)), but it's only
+  as strong as what you put there.
 - **Set an OCI budget alert at $1** so any accidental billing surfaces
   immediately — Console → **☰ → Billing & Cost Management → Budgets**.
 - **Set `DISABLE_REGISTRATION=true`** in `docker-compose.yaml` once your own

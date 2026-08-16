@@ -55,8 +55,14 @@ services:
       BACKEND_INTERNAL_URL: 'http://localhost:3000'
 
       # === Service wiring (container network) ===
-      DATABASE_URL: 'postgresql://postaryx-user:postaryx-password@postaryx-postgres:5432/postaryx-db-prod'
-      REDIS_URL: 'redis://postaryx-redis:6379'
+      # DB user/password/name come from POSTARYX_DB_* in .env (next to this
+      # compose file — NOT .env.prod, which Compose never reads for `${...}`
+      # substitution). Single source of truth shared with the postaryx-postgres
+      # service below, so they can't drift apart. See docs/1.SECURITY-HARDENING-TODO.md P0-2.
+      DATABASE_URL: 'postgresql://${POSTARYX_DB_USER:?set POSTARYX_DB_USER in .env}:${POSTARYX_DB_PASSWORD:?set POSTARYX_DB_PASSWORD in .env}@postaryx-postgres:5432/${POSTARYX_DB_NAME:-postaryx-db-prod}'
+      # Password from .env, matching postaryx-redis's `--requirepass` below —
+      # see docs/1.SECURITY-HARDENING-TODO.md P1-3.
+      REDIS_URL: 'redis://:${POSTARYX_REDIS_PASSWORD:?set POSTARYX_REDIS_PASSWORD in .env}@postaryx-redis:6379'
       TEMPORAL_ADDRESS: 'temporal:7233'
 
       # === Required flags ===
@@ -111,9 +117,12 @@ services:
     container_name: postaryx-postgres
     restart: always
     environment:
-      POSTGRES_PASSWORD: postaryx-password
-      POSTGRES_USER: postaryx-user
-      POSTGRES_DB: postaryx-db-prod
+      # Sourced from .env (next to this compose file), not .env.prod — see the
+      # comment on DATABASE_URL above. Compose refuses to start rather than
+      # silently falling back to a weak default if these are unset.
+      POSTGRES_PASSWORD: ${POSTARYX_DB_PASSWORD:?set POSTARYX_DB_PASSWORD in .env}
+      POSTGRES_USER: ${POSTARYX_DB_USER:?set POSTARYX_DB_USER in .env}
+      POSTGRES_DB: ${POSTARYX_DB_NAME:-postaryx-db-prod}
     volumes:
       - postgres-volume:/var/lib/postgresql/data
     # No host port: the app reaches Postgres over postaryx-network. Publishing 5432
@@ -122,7 +131,7 @@ services:
     networks:
       - postaryx-network
     healthcheck:
-      test: pg_isready -U postaryx-user -d postaryx-db-local
+      test: pg_isready -U ${POSTARYX_DB_USER:?set POSTARYX_DB_USER in .env} -d ${POSTARYX_DB_NAME:-postaryx-db-prod}
       interval: 10s
       timeout: 3s
       retries: 3
@@ -130,8 +139,20 @@ services:
     image: redis:7.2
     container_name: postaryx-redis
     restart: always
+    # Password + memory cap sourced from .env — see
+    # docs/1.SECURITY-HARDENING-TODO.md P1-3. Without maxmemory, Redis grows
+    # unbounded; allkeys-lru evicts the least-recently-used key once it hits
+    # the cap rather than OOM-ing.
+    command:
+      - redis-server
+      - --requirepass
+      - ${POSTARYX_REDIS_PASSWORD:?set POSTARYX_REDIS_PASSWORD in .env}
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - allkeys-lru
     healthcheck:
-      test: redis-cli ping
+      test: redis-cli -a ${POSTARYX_REDIS_PASSWORD:?set POSTARYX_REDIS_PASSWORD in .env} --no-auth-warning ping
       interval: 10s
       timeout: 3s
       retries: 3
@@ -167,7 +188,11 @@ services:
     image: postgres:16
     restart: unless-stopped
     environment:
-      POSTGRES_PASSWORD: temporal
+      # Password from .env — see docs/1.SECURITY-HARDENING-TODO.md. Username
+      # stays the literal "temporal": Temporal's own tooling/images assume it,
+      # it's not a secret, just an account name. Must match `temporal`'s
+      # POSTGRES_PWD below (same var, so they can't drift apart).
+      POSTGRES_PASSWORD: ${POSTARYX_TEMPORAL_DB_PASSWORD:?set POSTARYX_TEMPORAL_DB_PASSWORD in .env}
       POSTGRES_USER: temporal
     networks:
       - temporal-network
@@ -189,7 +214,7 @@ services:
       - DB=postgres12
       - DB_PORT=5432
       - POSTGRES_USER=temporal
-      - POSTGRES_PWD=temporal
+      - POSTGRES_PWD=${POSTARYX_TEMPORAL_DB_PASSWORD:?set POSTARYX_TEMPORAL_DB_PASSWORD in .env}
       - POSTGRES_SEEDS=temporal-postgresql
       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
       - ENABLE_ES=true

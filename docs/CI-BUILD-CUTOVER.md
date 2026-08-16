@@ -117,6 +117,11 @@ to Step 2.
 
 Never let the server be the first place a new image runs.
 
+> Needs a `.env` with `POSTARYX_DB_*`/`POSTARYX_REDIS_PASSWORD`/
+> `POSTARYX_TEMPORAL_DB_PASSWORD` set — see
+> [PROD-DEPLOY-PREREQUISITE.md](./PROD-DEPLOY-PREREQUISITE.md) if this is your
+> first time running the prod stack locally.
+
 ```bash
 # Make sure the dev stack is not running (it collides on ports)
 docker compose -p postaryx-dev -f docker-compose.dev.yaml down

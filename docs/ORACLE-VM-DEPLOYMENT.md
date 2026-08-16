@@ -146,6 +146,26 @@ In `.env.prod` set at minimum:
 
 > Keep a redacted `.env.prod.example` in git documenting which keys exist.
 
+**Also required — Postgres, Redis, and Temporal's own DB password** (see
+[1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md) P0-2/P1-3): create a
+**plain `.env`** file next to `docker-compose.yaml` — a *different* file from
+`.env.prod`, since Compose only reads `.env` for `${...}` substitution, never
+`.env.prod` — with:
+```bash
+cat >> .env << 'EOF'
+POSTARYX_DB_USER=postaryx-user
+POSTARYX_DB_PASSWORD=<a-strong-generated-password>
+POSTARYX_DB_NAME=postaryx-db-prod
+POSTARYX_REDIS_PASSWORD=<a-strong-generated-password>
+POSTARYX_TEMPORAL_DB_PASSWORD=<a-strong-generated-password>
+EOF
+chmod 600 .env
+```
+Compose refuses to start without these (`:?` substitution) rather than falling
+back to a weak default — see P0-2/P1-3 in the same doc. §7 below appends
+`POSTARYX_PUBLIC_URL` to this same
+file once you have a domain — don't overwrite it, append to it.
+
 ---
 
 ## 5. Port allocation & loopback binding
@@ -239,10 +259,10 @@ sudo nginx -t && sudo systemctl reload nginx
 
 **Set the public URL.** The compose `environment:` block reads a single
 `POSTARYX_PUBLIC_URL` variable (defaulting to `http://localhost:4007` so the stack
-also runs locally). On the server, create a **`.env` file next to
-`docker-compose.yaml`** (Compose auto-loads `.env` for `${...}` substitution):
+also runs locally). Append it to the same `.env` file you created in §4 (next
+to `docker-compose.yaml`, alongside `POSTARYX_DB_*` — don't overwrite it):
 ```bash
-echo 'POSTARYX_PUBLIC_URL=https://postaryx.example.com' > /opt/postaryx/postaryx-app/.env
+echo 'POSTARYX_PUBLIC_URL=https://postaryx.example.com' >> /opt/postaryx/postaryx-app/.env
 ```
 This sets `MAIN_URL`, `FRONTEND_URL`, and `NEXT_PUBLIC_BACKEND_URL` (= URL + `/api`)
 consistently. They're runtime values, so **no rebuild** is needed — just
@@ -431,8 +451,8 @@ touches `schema.prisma`**.
 - **Loopback-bind all container ports** (§5) — the keystone, since Docker bypasses `ufw`.
 - **TLS everywhere** via Certbot; force HTTP→HTTPS (`--redirect`).
 - Set `DISABLE_REGISTRATION=true` once your accounts exist (private instance).
-- Change the `postaryx-password` Postgres default (in both `docker-compose.yaml` and
-  `DATABASE_URL`) and use a strong unique `JWT_SECRET`.
+- Set a strong, unique `POSTARYX_DB_PASSWORD` in `.env` (§4 — Compose refuses to
+  start without one, no weak default to forget) and a strong unique `JWT_SECRET`.
 - Drop optional containers you don't use: `spotlight` (removed), and
   `temporal-ui` / `temporal-admin-tools` if you don't need the dashboard/CLI.
 - `chmod 600 .env.prod`; SSH key-only auth; restrict port 22 in the OCI Security List.

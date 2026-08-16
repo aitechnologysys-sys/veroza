@@ -12,6 +12,11 @@ the database?** Short answer: **yes, if you isolate them by Docker Compose
 *project***. If you don't, switching to the other stack throws a Postgres auth
 error. Here's exactly why, and how to do it cleanly.
 
+> First time running the prod stack? It needs a `.env` with `POSTARYX_DB_*` /
+> `POSTARYX_REDIS_PASSWORD` / `POSTARYX_TEMPORAL_DB_PASSWORD` set before either
+> command below will start — see
+> [PROD-DEPLOY-PREREQUISITE.md](./PROD-DEPLOY-PREREQUISITE.md).
+
 ---
 
 ## TL;DR (the golden rule)
@@ -82,8 +87,12 @@ credentials**:
 
 | | User | Password | DB |
 |---|---|---|---|
-| **Dev** (`docker-compose.dev.yaml` + `.env`) | `postaryx-local` | `postaryx-local-pwd` | `postaryx-db-local` |
-| **Prod** (`docker-compose.yaml` env override) | `postaryx-user` | `postaryx-password` | `postaryx-db-local` |
+| **Dev** (`docker-compose.dev.yaml` + `.env`) | `POSTARYX_DEV_DB_USER` | `POSTARYX_DEV_DB_PASSWORD` | `POSTARYX_DEV_DB_NAME` |
+| **Prod** (`docker-compose.yaml` + `.env`) | `POSTARYX_DB_USER` | `POSTARYX_DB_PASSWORD` | `POSTARYX_DB_NAME` |
+
+Both rows are `${...}`-substituted from the same repo-root `.env` (see
+[1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md) P0-2) — the
+prefixes keep them distinct even though both stacks read the same file.
 
 The official `postgres` image only runs its initialization (which **creates the
 user/password from `POSTGRES_USER`/`POSTGRES_PASSWORD`**) **when the data
@@ -92,15 +101,15 @@ start it sees existing data and **skips** init.
 
 So, the breaking sequence:
 
-1. You run **dev** first → `postgres-volume` is initialized with role
-   `postaryx-local`. Works fine.
+1. You run **dev** first → `postgres-volume` is initialized with the
+   `POSTARYX_DEV_DB_USER` role. Works fine.
 2. You `down` dev, run **prod** (same default project → same volume) → Postgres
-   sees existing data, **skips** init, so role `postaryx-user` is **never created**.
-   Prod connects with `postaryx-user:postaryx-password` and you get:
+   sees existing data, **skips** init, so the `POSTARYX_DB_USER` role is **never
+   created**. Prod connects with the wrong credentials and you get:
 
    ```
-   FATAL: password authentication failed for user "postaryx-user"
-   # (or)  role "postaryx-user" does not exist
+   FATAL: password authentication failed for user "<POSTARYX_DB_USER value>"
+   # (or)  role "<POSTARYX_DB_USER value>" does not exist
    ```
    `prisma-db-push` and the backend fail to start.
 
@@ -205,7 +214,7 @@ Ask and I can apply this edit for you.
 |---|---|---|
 | **Separate projects** (recommended) | `-p postaryx-dev` / `-p postaryx-prod`, or `name:` in files | Always. Keeps both DBs, clean switching. |
 | **Wipe on switch** | `docker compose down -v` before switching | You don't care about the other stack's data; quick and dirty. |
-| **Align credentials** | Make dev `.env` + dev compose use `postaryx-user`/`postaryx-password` (match prod) | You *want* one shared DB across both. Rare; mixes concerns. |
+| **Align credentials** | Set `POSTARYX_DEV_DB_USER`/`POSTARYX_DEV_DB_PASSWORD` in `.env` to match `POSTARYX_DB_USER`/`POSTARYX_DB_PASSWORD` | You *want* one shared DB across both. Rare; mixes concerns. |
 
 `down -v` deletes that project's named volumes (DB, Redis, Temporal pg + es). Only
 use it when you intend to throw the data away. After a `-v` you'll re-run

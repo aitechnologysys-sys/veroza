@@ -9,9 +9,11 @@ services:
     container_name: postaryx-postgres
     restart: always
     environment:
-      POSTGRES_PASSWORD: postaryx-local-pwd
-      POSTGRES_USER: postaryx-local
-      POSTGRES_DB: postaryx-db-local
+      # Sourced from the repo-root .env — same values `pnpm dev`'s DATABASE_URL
+      # expands from, so the two can't drift apart. See docs/1.SECURITY-HARDENING-TODO.md P0-2.
+      POSTGRES_PASSWORD: ${POSTARYX_DEV_DB_PASSWORD:?set POSTARYX_DEV_DB_PASSWORD in .env}
+      POSTGRES_USER: ${POSTARYX_DEV_DB_USER:?set POSTARYX_DEV_DB_USER in .env}
+      POSTGRES_DB: ${POSTARYX_DEV_DB_NAME:-postaryx-db-local}
       TEMPORAL_ADDRESS: 'temporal:7233'
     volumes:
       - postgres-volume:/var/lib/postgresql/data
@@ -76,7 +78,11 @@ services:
     container_name: temporal-postgresql
     image: postgres:16
     environment:
-      POSTGRES_PASSWORD: temporal
+      # Password from .env — see docs/1.SECURITY-HARDENING-TODO.md. Username
+      # stays the literal "temporal": Temporal's own tooling/images assume it,
+      # it's not a secret, just an account name. Must match `temporal`'s
+      # POSTGRES_PWD below (same var, so they can't drift apart).
+      POSTGRES_PASSWORD: ${POSTARYX_DEV_TEMPORAL_DB_PASSWORD:?set POSTARYX_DEV_TEMPORAL_DB_PASSWORD in .env}
       POSTGRES_USER: temporal
     networks:
       - temporal-network
@@ -97,7 +103,7 @@ services:
       - DB=postgres12
       - DB_PORT=5432
       - POSTGRES_USER=temporal
-      - POSTGRES_PWD=temporal
+      - POSTGRES_PWD=${POSTARYX_DEV_TEMPORAL_DB_PASSWORD:?set POSTARYX_DEV_TEMPORAL_DB_PASSWORD in .env}
       - POSTGRES_SEEDS=temporal-postgresql
       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
       - ENABLE_ES=true

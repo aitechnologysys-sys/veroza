@@ -134,21 +134,14 @@ docker compose -p postaryx run --rm temporal-admin-tools tctl --namespace defaul
 For the UI, reach it via an ad-hoc container + SSH tunnel only when
 debugging, rather than a standing container.
 
-### 3c. Cap Redis memory (not currently set anywhere in your compose)
+### 3c. Cap Redis memory — done
 
-Your `postaryx-redis` service has no `maxmemory` and no eviction policy today —
-it will grow unbounded. Add:
-
-```yaml
-postaryx-redis:
-  image: redis:7.2
-  command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
-  ...
-```
-
-256 MB is a starting point for your scale (queues + cache) — watch
-`docker exec postaryx-redis redis-cli info memory` after real traffic and
-adjust.
+`postaryx-redis` now sets `--maxmemory 256mb --maxmemory-policy allkeys-lru`
+(and `--requirepass` from `.env` — see
+[1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md) P1-3). 256 MB
+is a starting point for your scale (queues + cache) — watch
+`docker exec postaryx-redis redis-cli -a "$POSTARYX_REDIS_PASSWORD"
+--no-auth-warning info memory` after real traffic and adjust.
 
 ---
 

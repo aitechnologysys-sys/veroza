@@ -185,6 +185,14 @@ See [docs/LOCAL-DEVELOPMENT.md](docs/LOCAL-DEVELOPMENT.md).
 Same `docker-compose.yaml` the server uses, so this is the honest rehearsal for
 a deploy.
 
+> **First time running this stack?** It needs a `.env` (not `.env.prod`) with
+> `POSTARYX_DB_USER`/`POSTARYX_DB_PASSWORD`/`POSTARYX_DB_NAME`,
+> `POSTARYX_REDIS_PASSWORD`, and `POSTARYX_TEMPORAL_DB_PASSWORD` — Compose
+> refuses to start without them. See
+> [docs/PROD-DEPLOY-PREREQUISITE.md](docs/PROD-DEPLOY-PREREQUISITE.md) for the
+> one-time setup, and §3's ["Where configuration comes
+> from"](#where-configuration-comes-from) for why `.env.prod` alone isn't enough.
+
 **This no longer builds.** The `postaryx` service pulls a prebuilt image from
 GHCR — see §3 for why. So a plain `up -d` fetches whatever CI last published
 from `main`:
@@ -287,21 +295,16 @@ values are read in *server* components and passed to the client through
 `VariableContextComponent`, so none of them are compiled into the bundle.
 
 > ⚠️ **`docker-compose.yaml` is committed to a public repo, so everything in its
-> `environment:` blocks is world-readable — including
-> `POSTGRES_PASSWORD: postaryx-password` and Temporal's `POSTGRES_PASSWORD: temporal`.**
-> These are upstream's defaults and are currently contained: neither Postgres nor
-> Redis publishes a host port, so they are reachable only from inside the
-> `postaryx-network` bridge. But they are publicly-known credentials guarding your
-> database, so a foothold anywhere on the box or in any container needs no
-> password guessing — and anyone who later adds `ports: - "5432:5432"` for
-> debugging exposes the DB with a documented password.
->
-> **Fix while pre-launch:** replace them with `${POSTGRES_PASSWORD}` substitution
-> sourced from `.env`, and put the real value there. Note that
-> `POSTGRES_PASSWORD` only takes effect when the data directory is first
-> initialised — on an existing volume you must `ALTER USER` inside the database
-> or recreate the volume. That is cheap now and expensive after you have
-> customers.
+> `environment:` blocks is world-readable.** The app's Postgres role
+> (`POSTARYX_DB_USER`/`POSTARYX_DB_PASSWORD`/`POSTARYX_DB_NAME`), Redis's
+> (`POSTARYX_REDIS_PASSWORD`), and Temporal's own internal Postgres password
+> (`POSTARYX_TEMPORAL_DB_PASSWORD`) are all sourced from `${...}` substitution
+> in the gitignored `.env`, not hardcoded — see
+> [docs/1.SECURITY-HARDENING-TODO.md](docs/1.SECURITY-HARDENING-TODO.md) P0-2/P1-3.
+> Neither Postgres nor Redis publishes a host port (only reachable from inside
+> the `postaryx-network` / `temporal-network` bridges) — but the moment anyone
+> adds `ports: - "5432:5432"` for debugging, this is what stands between that
+> and a fully open database.
 
 ## 4. GHCR package visibility — read this once
 

@@ -301,6 +301,23 @@ Set at minimum:
 - Every social/email/AI/billing key is optional at this stage — you can add
   them later without a rebuild (§7.6 covers why).
 
+**Also required — Postgres, Redis, and Temporal's own DB password** (see
+[1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md) P0-2/P1-3): create a
+**plain `.env`** file next to `docker-compose.yaml` — a *different* file from
+`.env.prod`, since Compose only reads `.env` for `${...}` substitution:
+```bash
+cat >> .env << 'EOF'
+POSTARYX_DB_USER=postaryx-user
+POSTARYX_DB_PASSWORD=<a-strong-generated-password>
+POSTARYX_DB_NAME=postaryx-db-prod
+POSTARYX_REDIS_PASSWORD=<a-strong-generated-password>
+POSTARYX_TEMPORAL_DB_PASSWORD=<a-strong-generated-password>
+EOF
+chmod 600 .env
+```
+Compose refuses to start without these. §8.3 below appends `POSTARYX_PUBLIC_URL`
+to this same file — don't overwrite it.
+
 ### 7.4 Trim the stack to fit 2 OCPU / 12 GB
 
 Because you're deploying fresh at the current Always-Free ceiling (§0),
@@ -408,7 +425,7 @@ dig +short postaryx.com
 
 ```bash
 cd /opt/postaryx/postaryx-app
-echo 'POSTARYX_PUBLIC_URL=https://postaryx.com' > .env
+echo 'POSTARYX_PUBLIC_URL=https://postaryx.com' >> .env
 ```
 
 This one variable drives `MAIN_URL`, `FRONTEND_URL`, and
@@ -527,9 +544,10 @@ fallback while you're still debugging — that's why this is last.)
 You're live. A few things worth doing in the first week, each already
 written up elsewhere in `docs/`:
 
-- **Rotate the hardcoded Postgres passwords** (`postaryx-password`,
-  `temporal`) that ship in the committed `docker-compose.yaml` — P0-2 in
-  [1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md). Cheap now,
+- **Rotate Temporal's hardcoded Postgres password** (`temporal`) that still
+  ships in the committed `docker-compose.yaml` — the app's own DB password is
+  already sourced from `.env` (P0-2 in
+  [1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md)). Cheap now,
   a migration exercise once you have real customer data.
 - **Set an OCI budget alert at $1** so any accidental billing surfaces
   immediately — Console → **☰ → Billing & Cost Management → Budgets**.

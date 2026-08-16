@@ -158,7 +158,7 @@ silently. Background: [billing-current-state.md](./billing-current-state.md).
 
 | File | Resolution |
 |---|---|
-| `docker-compose.yaml` | **Keep ours entirely** for the `postiz` service — we pull an image, upstream builds one. Take their changes to *other* services (Postgres/Redis/Temporal versions) |
+| `docker-compose.yaml` | **Keep ours entirely** for the `postaryx` service — we pull an image, upstream builds one. Take their changes to *other* services (Postgres/Redis/Temporal versions) |
 | `docker-compose.dev.yaml` | Usually take theirs; re-check ports |
 | `.github/workflows/build-containers.yml` | **Keep ours.** Theirs pushes to `gitroomhq`'s namespace and builds amd64 we don't use |
 | `.github/workflows/build.yml` | **Keep our `push: branches: [main]`.** Upstream's bare `push:` matches every branch and double-builds each commit once a PR is open |
@@ -238,7 +238,7 @@ system — see the constraints in [../CLAUDE.md](../CLAUDE.md).
 **Then run it for real** before merging to `main`:
 
 ```bash
-docker compose -p postiz-dev -f docker-compose.dev.yaml up -d
+docker compose -p postaryx-dev -f docker-compose.dev.yaml up -d
 pnpm run prisma-db-push
 pnpm run dev
 # log in, load the calendar, schedule a post, check one social connector

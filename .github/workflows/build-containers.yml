@@ -31,7 +31,7 @@ name: Build image
 
 on:
   # Every merge to main produces a deployable image. Deploying is a separate,
-  # manual step on the VM (`docker compose -p postiz pull postiz && up -d`).
+  # manual step on the VM (`docker compose -p postaryx pull postaryx && up -d`).
   push:
     branches: [main]
   # Lets you rebuild any branch by hand from the Actions tab.
@@ -184,13 +184,13 @@ jobs:
             echo
             echo "Deploy on the VM:"
             echo '```bash'
-            echo "cd /opt/postiz/postiz-app"
-            echo "docker compose -p postiz pull postiz"
-            echo "docker compose -p postiz up -d postiz"
+            echo "cd /opt/postaryx/postaryx-app"
+            echo "docker compose -p postaryx pull postaryx"
+            echo "docker compose -p postaryx up -d postaryx"
             echo '```'
             echo
             echo "Or pin this exact build (works for any branch):"
             echo '```bash'
-            echo "POSTIZ_IMAGE_TAG=${{ github.sha }} docker compose -p postiz up -d postiz"
+            echo "POSTARYX_IMAGE_TAG=${{ github.sha }} docker compose -p postaryx up -d postaryx"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

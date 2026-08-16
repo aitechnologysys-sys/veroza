@@ -156,7 +156,7 @@ quick-reference; the linked docs hold the detail and the reasoning.
 
 > **The one rule that prevents most pain:** always pass the same
 > `-p <project>` to every Compose command for a stack — `up`, `down`, `pull`,
-> `logs`, `ps`. Dev uses `postiz-dev`, local prod uses `postiz-prod`. Different
+> `logs`, `ps`. Dev uses `postaryx-dev`, local prod uses `postaryx-prod`. Different
 > project names keep their volumes separate, which is what lets you switch back
 > and forth without Postgres auth errors or data loss. Never run both at once
 > (they collide on ports and hardcoded `container_name`s). Full explanation:
@@ -167,7 +167,7 @@ quick-reference; the linked docs hold the detail and the reasoning.
 Dependencies in Docker, the three apps on the host.
 
 ```bash
-docker compose -p postiz-dev -f docker-compose.dev.yaml up -d   # Postgres, Redis, Temporal
+docker compose -p postaryx-dev -f docker-compose.dev.yaml up -d   # Postgres, Redis, Temporal
 pnpm run prisma-db-push        # first time, and after any schema change
 pnpm run dev                   # backend + frontend + orchestrator
 # → http://localhost:4200
@@ -175,7 +175,7 @@ pnpm run dev                   # backend + frontend + orchestrator
 # Testing a billing webhook? Expose the backend:
 ngrok http 3000
 
-docker compose -p postiz-dev -f docker-compose.dev.yaml down    # stop
+docker compose -p postaryx-dev -f docker-compose.dev.yaml down    # stop
 ```
 
 See [docs/LOCAL-DEVELOPMENT.md](docs/LOCAL-DEVELOPMENT.md).
@@ -185,24 +185,24 @@ See [docs/LOCAL-DEVELOPMENT.md](docs/LOCAL-DEVELOPMENT.md).
 Same `docker-compose.yaml` the server uses, so this is the honest rehearsal for
 a deploy.
 
-**This no longer builds.** The `postiz` service pulls a prebuilt image from
+**This no longer builds.** The `postaryx` service pulls a prebuilt image from
 GHCR — see §3 for why. So a plain `up -d` fetches whatever CI last published
 from `main`:
 
 ```bash
-docker compose -p postiz-prod pull postiz
-docker compose -p postiz-prod up -d
+docker compose -p postaryx-prod pull postaryx
+docker compose -p postaryx-prod up -d
 # → http://localhost:4007       (webhook testing: ngrok http 4007)
 
-docker compose -p postiz-prod down
+docker compose -p postaryx-prod down
 ```
 
 To run **local, uncommitted** code in the prod stack, build it yourself and
 point the stack at it with env vars — never by editing `docker-compose.yaml`:
 
 ```bash
-docker build -f Dockerfile.dev --build-arg NEXT_PUBLIC_VERSION=local -t postiz-app:local .
-POSTIZ_IMAGE=postiz-app POSTIZ_IMAGE_TAG=local docker compose -p postiz-prod up -d postiz
+docker build -f Dockerfile.dev --build-arg NEXT_PUBLIC_VERSION=local -t postaryx-app:local .
+POSTARYX_IMAGE=postaryx-app POSTARYX_IMAGE_TAG=local docker compose -p postaryx-prod up -d postaryx
 ```
 
 ⚠️ That build needs **~4 GB of free RAM** and takes a while. It is exactly the
@@ -230,27 +230,27 @@ push to main  →  GitHub Actions (arm64 runner)  →  ghcr.io/aitechnologysys-s
 **Deploy** (on the VM, after CI goes green):
 
 ```bash
-cd /opt/postiz/postiz-app
-docker compose -p postiz pull postiz
-docker compose -p postiz up -d postiz
+cd /opt/postaryx/postaryx-app
+docker compose -p postaryx pull postaryx
+docker compose -p postaryx up -d postaryx
 ```
 
 **Roll back** — no rebuild, the old image is already in GHCR:
 
 ```bash
-POSTIZ_IMAGE_TAG=<full-git-sha> docker compose -p postiz pull postiz
-POSTIZ_IMAGE_TAG=<full-git-sha> docker compose -p postiz up -d postiz
+POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx pull postaryx
+POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx up -d postaryx
 ```
 
 Set the variable on **both** commands — `pull` and `up` read it independently.
 The `image:` line in `docker-compose.yaml` is
-`${POSTIZ_IMAGE:-ghcr.io/aitechnologysys-sys/veroza}:${POSTIZ_IMAGE_TAG:-latest}`
+`${POSTARYX_IMAGE:-ghcr.io/aitechnologysys-sys/veroza}:${POSTARYX_IMAGE_TAG:-latest}`
 precisely so rollback never requires editing a tracked file on the server.
 
 > **Note the project name changes between machines.** The **server** stack is
-> `-p postiz` (per [docs/ORACLE-VM-DEPLOYMENT.md](docs/ORACLE-VM-DEPLOYMENT.md),
+> `-p postaryx` (per [docs/ORACLE-VM-DEPLOYMENT.md](docs/ORACLE-VM-DEPLOYMENT.md),
 > which is what it was created with); your **laptop's** prod-rehearsal stack is
-> `-p postiz-prod` (§2) so it stays isolated from `postiz-dev`. If unsure which
+> `-p postaryx-prod` (§2) so it stays isolated from `postaryx-dev`. If unsure which
 > a box is using, run `docker compose ls` — a wrong `-p` silently targets a
 > different, empty project instead of erroring.
 
@@ -270,7 +270,7 @@ are easy to confuse:
 |---|---|---|---|
 | **`.env.prod`** via `env_file:` | injected into the container | every secret: `JWT_SECRET`, API keys, email, billing | **No** — gitignored, and `.dockerignore` excludes `.env*` |
 | **`environment:`** in `docker-compose.yaml` | injected into the container, **overrides `.env.prod`** | container-network wiring: `DATABASE_URL`, `REDIS_URL`, `TEMPORAL_ADDRESS`, `STORAGE_PROVIDER` | Yes |
-| **`.env`** (a *different* file) | **Compose itself**, not the container | `${POSTIZ_PUBLIC_URL}`, `${POSTIZ_IMAGE}`, `${POSTIZ_IMAGE_TAG}` substitutions | No |
+| **`.env`** (a *different* file) | **Compose itself**, not the container | `${POSTARYX_PUBLIC_URL}`, `${POSTARYX_IMAGE}`, `${POSTARYX_IMAGE_TAG}` substitutions | No |
 
 Three consequences:
 
@@ -280,7 +280,7 @@ Three consequences:
    `STORAGE_PROVIDER` in `.env.prod` does nothing — change those in
    `docker-compose.yaml` instead.
 3. **Config changes need no rebuild and no re-pull.** Edit `.env.prod`, then
-   `docker compose -p postiz up -d postiz` to recreate the container. Seconds.
+   `docker compose -p postaryx up -d postaryx` to recreate the container. Seconds.
 
 This runtime-config design is what makes a CI-built image safe: `NEXT_PUBLIC_*`
 values are read in *server* components and passed to the client through
@@ -288,10 +288,10 @@ values are read in *server* components and passed to the client through
 
 > ⚠️ **`docker-compose.yaml` is committed to a public repo, so everything in its
 > `environment:` blocks is world-readable — including
-> `POSTGRES_PASSWORD: postiz-password` and Temporal's `POSTGRES_PASSWORD: temporal`.**
+> `POSTGRES_PASSWORD: postaryx-password` and Temporal's `POSTGRES_PASSWORD: temporal`.**
 > These are upstream's defaults and are currently contained: neither Postgres nor
 > Redis publishes a host port, so they are reachable only from inside the
-> `postiz-network` bridge. But they are publicly-known credentials guarding your
+> `postaryx-network` bridge. But they are publicly-known credentials guarding your
 > database, so a foothold anywhere on the box or in any container needs no
 > password guessing — and anyone who later adds `ports: - "5432:5432"` for
 > debugging exposes the DB with a documented password.

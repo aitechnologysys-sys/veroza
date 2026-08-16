@@ -53,6 +53,7 @@ import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import { weightedLength } from '@gitroom/helpers/utils/count.length';
+import { resolveUploadDirectory } from '@gitroom/helpers/utils/resolve.upload.directory';
 
 type PostWithConditionals = Post & {
   integration?: Integration;
@@ -370,7 +371,8 @@ export class PostsService {
               type: 'image',
               path:
                 m.path.indexOf('http') === -1
-                  ? process.env.UPLOAD_DIRECTORY + m.path
+                  ? resolveUploadDirectory(process.env.UPLOAD_DIRECTORY!) +
+                    m.path
                   : m.path,
             };
           })
@@ -418,7 +420,8 @@ export class PostsService {
                 type: 'image',
                 path:
                   path.indexOf('http') === -1
-                    ? process.env.UPLOAD_DIRECTORY + path
+                    ? resolveUploadDirectory(process.env.UPLOAD_DIRECTORY!) +
+                      path
                     : path,
               };
             }

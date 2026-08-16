@@ -11,7 +11,7 @@ This is a **fork of [Postiz](https://github.com/gitroomhq/postiz-app)** being ta
 | Product / brand (target) | **Postaryx** |
 | Git repository (`origin`) | `aitechnologysys-sys/veroza` — **VEROZA** is the holding-company / repo name, not the product name |
 | Upstream remote (`upstream`) | `gitroomhq/postiz-app` — the original Postiz repo, kept for pulling changes |
-| Local directory | `postiz-app` (unchanged from the original clone) |
+| Local directory | `postaryx-app` (renamed from the original `postiz-app` clone) |
 | `package.json` `name` | `gitroom` (unchanged upstream value) |
 
 The rename to Postaryx is **not complete**. Code, packages, path aliases (`@gitroom/*`), env var names, database identifiers, and user-facing strings still say "postiz"/"gitroom" in most places. Do **not** do a blanket find-and-replace — a rename has to be scoped and deliberate (e.g. user-facing copy first, then env/config, and internal identifiers only if there's a concrete reason). Ask before renaming anything that crosses a runtime boundary: path aliases, env var names, Prisma model/column names, Stripe/Polar metadata values (`service: 'gitroom'` / `service: 'postiz'`), or the published SDK package.

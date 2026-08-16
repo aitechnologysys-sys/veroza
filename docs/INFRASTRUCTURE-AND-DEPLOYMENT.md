@@ -20,7 +20,7 @@ Postiz is **one application split into three Node.js processes** plus a set of
 
 ```
                          ┌─────────────────────────────────────────────┐
-   Browser  ── :4007 ──▶ │  postiz  (single container)                 │
+   Browser  ── :4007 ──▶ │  postaryx  (single container)                 │
                          │                                             │
                          │   nginx :5000  (reverse proxy, the only     │
                          │     │           port exposed)               │
@@ -33,14 +33,14 @@ Postiz is **one application split into three Node.js processes** plus a set of
                          └───────┬───────────────┬────────────┬────────┘
                                  │               │            │
                     ┌────────────▼──┐   ┌────────▼─────┐   ┌──▼──────────────┐
-                    │ postiz-postgres│   │ postiz-redis │   │  Temporal stack │
+                    │ postaryx-postgres│   │ postaryx-redis │   │  Temporal stack │
                     │  (app data)    │   │ (queue/cache)│   │  (5 containers) │
                     └────────────────┘   └──────────────┘   └─────────────────┘
 ```
 
 Two key takeaways:
 
-1. **The `postiz` container runs 3 apps at once**, not one. `nginx` fronts them
+1. **The `postaryx` container runs 3 apps at once**, not one. `nginx` fronts them
    and is the only thing you expose to the world (mapped `4007:5000`).
 2. **The "Temporal stack" is 5 separate containers** that together provide one
    capability: durable, scheduled background jobs. This is where most of the
@@ -48,7 +48,7 @@ Two key takeaways:
 
 ---
 
-## 2. What runs *inside* the `postiz` container
+## 2. What runs *inside* the `postaryx` container
 
 > **This deployment builds the image from source**, not from the published
 > `ghcr.io/gitroomhq/postiz-app`. See [§2a](#2a-our-image-built-in-ci-pulled-everywhere).
@@ -88,7 +88,7 @@ of custom Postiz headers (`Reload`, `Onboarding`, `Auth`, `Showorg`,
 
 On first boot the entrypoint also runs `pnpm run prisma-db-push` (via the `pm2`
 script) to sync the database schema — so the app self-migrates against
-`postiz-postgres`.
+`postaryx-postgres`.
 
 ---
 
@@ -100,15 +100,15 @@ script) to sync the database schema — so the app self-migrates against
 > authoritative walkthrough is the runbook in [../README.md](../README.md) §3;
 > the rationale is [CONTAINMENT-DEPLOYMENT-PLAN.md](./CONTAINMENT-DEPLOYMENT-PLAN.md) §6.
 
-The `postiz` service resolves its image from two overridable variables:
+The `postaryx` service resolves its image from two overridable variables:
 
 ```yaml
-  postiz:
-    image: ${POSTIZ_IMAGE:-ghcr.io/aitechnologysys-sys/veroza}:${POSTIZ_IMAGE_TAG:-latest}
+  postaryx:
+    image: ${POSTARYX_IMAGE:-ghcr.io/aitechnologysys-sys/veroza}:${POSTARYX_IMAGE_TAG:-latest}
 ```
 
 Defaults give you `ghcr.io/aitechnologysys-sys/veroza:latest` — the newest image
-built from `main`. Overriding `POSTIZ_IMAGE_TAG` with a git sha is how you roll
+built from `main`. Overriding `POSTARYX_IMAGE_TAG` with a git sha is how you roll
 back; overriding both is how you run a locally built image. Neither requires
 editing this tracked file, which matters on a server.
 
@@ -123,21 +123,21 @@ is baked in.
 ### Run commands
 ```bash
 # Fetch the newest CI-built image and start the whole stack
-docker compose -p postiz-prod pull postiz
-docker compose -p postiz-prod up -d
+docker compose -p postaryx-prod pull postaryx
+docker compose -p postaryx-prod up -d
 
 # Update just the app after CI publishes a new image
-docker compose -p postiz-prod pull postiz && docker compose -p postiz-prod up -d postiz
+docker compose -p postaryx-prod pull postaryx && docker compose -p postaryx-prod up -d postaryx
 
 # Roll back to a specific build (no rebuild — set the var on BOTH commands)
-POSTIZ_IMAGE_TAG=<full-git-sha> docker compose -p postiz-prod pull postiz
-POSTIZ_IMAGE_TAG=<full-git-sha> docker compose -p postiz-prod up -d postiz
+POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx-prod pull postaryx
+POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx-prod up -d postaryx
 ```
 
 ### Building locally anyway (uncommitted code)
 ```bash
-docker build -f Dockerfile.dev --build-arg NEXT_PUBLIC_VERSION=local -t postiz-app:local .
-POSTIZ_IMAGE=postiz-app POSTIZ_IMAGE_TAG=local docker compose -p postiz-prod up -d postiz
+docker build -f Dockerfile.dev --build-arg NEXT_PUBLIC_VERSION=local -t postaryx-app:local .
+POSTARYX_IMAGE=postaryx-app POSTARYX_IMAGE_TAG=local docker compose -p postaryx-prod up -d postaryx
 ```
 Fine on a dev machine with RAM to spare. **Never do this on the server.**
 
@@ -161,8 +161,8 @@ Fine on a dev machine with RAM to spare. **Never do this on the server.**
 - `env_file: .env` loads all secrets/keys (JWT, Cloudflare, social, email, OpenAI,
   Polar/Stripe) from the repo-root `.env`.
 - The `environment:` block in compose **overrides** `.env` for infra wiring that
-  must use container names: `DATABASE_URL`→`postiz-postgres`, `REDIS_URL`→
-  `postiz-redis`, `TEMPORAL_ADDRESS`→`temporal`, plus the public `*_URL`s and
+  must use container names: `DATABASE_URL`→`postaryx-postgres`, `REDIS_URL`→
+  `postaryx-redis`, `TEMPORAL_ADDRESS`→`temporal`, plus the public `*_URL`s and
   storage paths. (Compose precedence: `environment:` > `env_file:`.)
 - ⚠️ Your `.env` keeps `localhost` values for `DATABASE_URL`/`REDIS_URL`/
   `TEMPORAL_ADDRESS` — that's correct for `pnpm dev` on the host. Inside the
@@ -182,21 +182,21 @@ state working set, not a hard limit. These are estimates — see
 
 ### 3a. The application
 
-#### `postiz`
-- **Image:** `ghcr.io/aitechnologysys-sys/veroza:latest` by default — **built in CI** from this source via `Dockerfile.dev` (see [§2a](#2a-our-image-built-in-ci-pulled-everywhere)). Override with `POSTIZ_IMAGE` / `POSTIZ_IMAGE_TAG`.
+#### `postaryx`
+- **Image:** `ghcr.io/aitechnologysys-sys/veroza:latest` by default — **built in CI** from this source via `Dockerfile.dev` (see [§2a](#2a-our-image-built-in-ci-pulled-everywhere)). Override with `POSTARYX_IMAGE` / `POSTARYX_IMAGE_TAG`.
 - **What:** The app itself (frontend + backend + orchestrator + nginx, see §2).
 - **Why:** This is the product.
 - **Ports:** `4007:5000` — the only user-facing port.
-- **Depends on:** `postiz-postgres` (healthy), `postiz-redis` (healthy).
+- **Depends on:** `postaryx-postgres` (healthy), `postaryx-redis` (healthy).
 - **Config:** `env_file: .env` (secrets) + `environment:` overrides (infra wiring).
 - **Healthcheck:** Node `fetch('http://localhost:5000')`, 90s start period.
-- **Volumes:** `postiz-config:/config/`, `postiz-uploads:/uploads/` (uploaded media when `STORAGE_PROVIDER=local`).
+- **Volumes:** `postaryx-config:/config/`, `postaryx-uploads:/uploads/` (uploaded media when `STORAGE_PROVIDER=local`).
 - **Disk:** ~2.5–3.5 GB (large — bundles Node, three built apps, `sharp`, `canvas`, `polotno`, nginx, and the full `node_modules`). Plus build-cache layers on the host.
 - **RAM:** ~700 MB–1.5 GB at runtime (three Node processes). **Build needs ~4 GB.**
 
 ### 3b. Application data stores (required)
 
-#### `postiz-postgres`
+#### `postaryx-postgres`
 - **Image:** `postgres:17-alpine`
 - **What:** The primary application database (users, orgs, integrations, posts, billing). Schema lives in [schema.prisma](../libraries/nestjs-libraries/src/database/prisma/schema.prisma); accessed via Prisma.
 - **Why:** Postiz's system of record. Connected via `DATABASE_URL`.
@@ -204,11 +204,11 @@ state working set, not a hard limit. These are estimates — see
 - **Disk:** ~280 MB image + your data (grows with usage).
 - **RAM:** ~150–400 MB.
 
-#### `postiz-redis`
+#### `postaryx-redis`
 - **Image:** `redis:7.2`
 - **What:** In-memory store used for caching, rate-limiting (`@nestjs/throttler` + `ioredis`), and as a lightweight queue/pub-sub between processes.
 - **Why:** Fast ephemeral state. Connected via `REDIS_URL`. (Note: durable scheduled jobs go through **Temporal**, not Redis — Redis here is for caching/throttling/short-lived coordination.)
-- **Volume:** `postiz-redis-data:/data` (AOF/RDB persistence).
+- **Volume:** `postaryx-redis-data:/data` (AOF/RDB persistence).
 - **Disk:** ~140 MB image + small data.
 - **RAM:** ~50–200 MB.
 
@@ -255,7 +255,7 @@ Instead of fragile cron jobs or a homegrown queue, Postiz models each job as a
 - `missing.post.workflow.ts` — hourly sweep for posts that should have gone out.
 - `streak.workflow.ts` — user posting-streak reminders.
 
-The **orchestrator** process (inside the `postiz` container) is the Temporal
+The **orchestrator** process (inside the `postaryx` container) is the Temporal
 *worker* — it long-polls the Temporal server for tasks and runs the actual
 side-effecting code ([activities/](../apps/orchestrator/src/activities/)). The
 **backend** is the Temporal *client* — it starts/signals workflows. Both reach
@@ -268,7 +268,7 @@ Now, why each of the 5 containers exists:
    (in this config) a search index.
 
 2. **`temporal-postgresql`** — Temporal persists all workflow state here. It is
-   **deliberately a separate Postgres from `postiz-postgres`** so Temporal's
+   **deliberately a separate Postgres from `postaryx-postgres`** so Temporal's
    internal bookkeeping never mixes with your application data. (`DB=postgres12`,
    `POSTGRES_SEEDS=temporal-postgresql`.)
 
@@ -306,17 +306,17 @@ Now, why each of the 5 containers exists:
 
 ### Networks
 Two bridge networks isolate concerns:
-- **`postiz-network`** — app ↔ its Postgres/Redis ↔ spotlight.
-- **`temporal-network`** — the 5 Temporal containers + the `postiz` app (the app
+- **`postaryx-network`** — app ↔ its Postgres/Redis ↔ spotlight.
+- **`temporal-network`** — the 5 Temporal containers + the `postaryx` app (the app
   joins *both* networks so the orchestrator can reach `temporal:7233`).
 
 ### Named volumes (production compose)
 | Volume | Mounted by | Holds | Back up? |
 |---|---|---|---|
-| `postgres-volume` | `postiz-postgres` | **All app data** | ✅ Critical |
-| `postiz-uploads` | `postiz` | Uploaded media (if `STORAGE_PROVIDER=local`) | ✅ Critical (unless using Cloudflare R2) |
-| `postiz-redis-data` | `postiz-redis` | Redis persistence | ⚠️ Nice-to-have |
-| `postiz-config` | `postiz` | App config | ⚠️ Nice-to-have |
+| `postgres-volume` | `postaryx-postgres` | **All app data** | ✅ Critical |
+| `postaryx-uploads` | `postaryx` | Uploaded media (if `STORAGE_PROVIDER=local`) | ✅ Critical (unless using Cloudflare R2) |
+| `postaryx-redis-data` | `postaryx-redis` | Redis persistence | ⚠️ Nice-to-have |
+| `postaryx-config` | `postaryx` | App config | ⚠️ Nice-to-have |
 | `temporal-postgres-volume` | `temporal-postgresql` | Temporal workflow state | ⚠️ Recommended |
 | `temporal-es-volume` | `temporal-elasticsearch` | Temporal visibility index | ⚠️ Recommended |
 
@@ -339,9 +339,9 @@ Two bridge networks isolate concerns:
 
 | Service | Image disk | Steady RAM | Required? |
 |---|---:|---:|:--|
-| postiz | ~2.5–3.5 GB | ~700 MB–1.5 GB | ✅ Yes |
-| postiz-postgres | ~280 MB | ~150–400 MB | ✅ Yes |
-| postiz-redis | ~140 MB | ~50–200 MB | ✅ Yes |
+| postaryx | ~2.5–3.5 GB | ~700 MB–1.5 GB | ✅ Yes |
+| postaryx-postgres | ~280 MB | ~150–400 MB | ✅ Yes |
+| postaryx-redis | ~140 MB | ~50–200 MB | ✅ Yes |
 | temporal | ~450 MB | ~200–400 MB | ✅ Yes* |
 | temporal-postgresql | ~430 MB | ~150–300 MB | ✅ Yes* |
 | temporal-elasticsearch | ~640 MB | ~300–600 MB | ✅ Yes* (as configured) |
@@ -361,7 +361,7 @@ publishing, emails, token refresh) run through it. Individual Temporal
 - **Disk:** budget **~10–15 GB** total to leave headroom for image layers,
   Postgres growth, uploaded media, and Docker overhead. Pure images are ~6 GB;
   the rest is data + breathing room.
-- **Biggest single consumers:** the `postiz` image (disk) and
+- **Biggest single consumers:** the `postaryx` image (disk) and
   `temporal-elasticsearch` (RAM). If you're squeezed, those are where to look.
 
 ### Dev stack (`docker-compose.dev.yaml`) — does NOT include the app
@@ -371,10 +371,10 @@ The dev compose runs **only dependencies** (you run the apps locally via
 
 | Service | Image | Note vs prod |
 |---|---|---|
-| postiz-postgres | `postgres:17-alpine` | exposes `5432` to host |
-| postiz-redis | `redis:7-alpine` (~40 MB) | lighter than prod's `redis:7.2` |
-| postiz-pg-admin | `dpage/pgadmin4:latest` (~450 MB) | DB GUI on `:8082` — dev only |
-| postiz-redisinsight | `redis/redisinsight:latest` (~350 MB) | Redis GUI on `:5540` — dev only |
+| postaryx-postgres | `postgres:17-alpine` | exposes `5432` to host |
+| postaryx-redis | `redis:7-alpine` (~40 MB) | lighter than prod's `redis:7.2` |
+| postaryx-pg-admin | `dpage/pgadmin4:latest` (~450 MB) | DB GUI on `:8082` — dev only |
+| postaryx-redisinsight | `redis/redisinsight:latest` (~350 MB) | Redis GUI on `:5540` — dev only |
 | temporal (×5) | same as prod | same Temporal stack |
 
 > The dev compose file itself warns: *"Do not use this yml for production."*
@@ -409,8 +409,8 @@ The goal you stated is to deploy this. Here's the short version.
 ### Pull the image first
 This stack pulls a CI-built image ([§2a](#2a-our-image-built-in-ci-pulled-everywhere)):
 ```bash
-docker compose -p postiz-prod pull postiz
-docker compose -p postiz-prod up -d
+docker compose -p postaryx-prod pull postaryx
+docker compose -p postaryx-prod up -d
 ```
 On the server, pull — never build. If you are building on a dev machine instead,
 ensure Docker has ≥4 GB build RAM and internet access.
@@ -419,7 +419,7 @@ ensure Docker has ≥4 GB build RAM and internet access.
 - `JWT_SECRET` — **generate a long random string** (e.g. `openssl rand -base64 48`).
 - `DATABASE_URL`, `REDIS_URL`, `TEMPORAL_ADDRESS` — your `.env` keeps these on
   `localhost` for host-side `pnpm dev`; the compose `environment:` block overrides
-  them to `postiz-postgres` / `postiz-redis` / `temporal` inside the container.
+  them to `postaryx-postgres` / `postaryx-redis` / `temporal` inside the container.
   **No action needed** unless you change the topology.
 - `MAIN_URL` / `FRONTEND_URL` / `NEXT_PUBLIC_BACKEND_URL` / `BACKEND_INTERNAL_URL`
   (set in compose `environment:`) — **must match the exact public URL** users hit.
@@ -431,7 +431,7 @@ ensure Docker has ≥4 GB build RAM and internet access.
   rather than shipping placeholder text.
 
 ### Storage decision
-- `STORAGE_PROVIDER=local` → media saved to the `postiz-uploads` volume, served
+- `STORAGE_PROVIDER=local` → media saved to the `postaryx-uploads` volume, served
   by nginx at `/uploads/`. Simple, but you own the backups.
 - `STORAGE_PROVIDER=cloudflare` → media in Cloudflare R2 (set the `CLOUDFLARE_*`
   vars). Recommended for multi-instance / scale. Note `.env.example` says R2 was
@@ -449,14 +449,14 @@ ensure Docker has ≥4 GB build RAM and internet access.
 1. Put a TLS-terminating reverse proxy (or your platform's ingress) in front of
    port `4007`, and set the `*_URL` vars to the `https://` domain.
 2. ✅ Temporal data already persists via named volumes (done in this compose, §5).
-3. Back up `postgres-volume` and `postiz-uploads` regularly.
+3. Back up `postgres-volume` and `postaryx-uploads` regularly.
 4. Drop `spotlight`, `temporal-ui`, `temporal-admin-tools` if you don't need
    them (smaller attack surface + less RAM).
 5. Set `DISABLE_REGISTRATION=true` once your accounts exist, if it's a private
    instance.
 6. Update by pulling, not rebuilding: merge to `main`, wait for the *Build
-   image* workflow, then `docker compose -p postiz-prod pull postiz && docker
-   compose -p postiz-prod up -d postiz`. Bump `version.txt` if you want a new
+   image* workflow, then `docker compose -p postaryx-prod pull postaryx && docker
+   compose -p postaryx-prod up -d postaryx`. Bump `version.txt` if you want a new
    version string in the UI — CI stamps it as `<version.txt>-<short-sha>`.
 
 > The maintainers' canonical install guide is
@@ -469,9 +469,9 @@ ensure Docker has ≥4 GB build RAM and internet access.
 
 Two commands fetch and run the entire stack. But "everything" means the production way, not dev mode:
 
-Builds the postiz image from source (Dockerfile.dev), which runs pnpm install + pnpm run build (compiles all 3 apps).
+Builds the postaryx image from source (Dockerfile.dev), which runs pnpm install + pnpm run build (compiles all 3 apps).
 Starts all 9 containers — the app + Postgres + Redis + the Temporal stack.
-Inside the postiz container, the entrypoint (CMD) runs nginx && pnpm run pm2, which:
+Inside the postaryx container, the entrypoint (CMD) runs nginx && pnpm run pm2, which:
 runs prisma-db-push (auto-migrates the DB), then
 starts backend + frontend + orchestrator under pm2 using their start scripts (the built dist/ output, e.g. next start, node dist/.../main.js) — not pnpm run dev.
 So: no separate terminal, no manual migration, no pnpm dev. It's pnpm run pm2, the production runner.

@@ -60,7 +60,7 @@ out, so this is evidence, not a guess:
   it — a divergence from upstream Postiz you'd have to keep re-applying on
   every `git pull` from upstream.
 - **The RAM number doesn't actually justify it.** The audit's "1.6–2.6 GB"
-  figure for the `postiz` container is *combined* for all three Node
+  figure for the `postaryx` container is *combined* for all three Node
   processes, not just the frontend. The real RAM danger isn't the frontend's
   steady-state footprint — it's the **~4 GB Next.js build spike** (see §6),
   and moving the build into CI fixes that regardless of where the frontend
@@ -128,7 +128,7 @@ Temporal CLI (e.g. for §4 below), run it on demand instead of keeping it
 running 24/7:
 
 ```bash
-docker compose -p postiz run --rm temporal-admin-tools tctl --namespace default namespace describe
+docker compose -p postaryx run --rm temporal-admin-tools tctl --namespace default namespace describe
 ```
 
 For the UI, reach it via an ad-hoc container + SSH tunnel only when
@@ -136,18 +136,18 @@ debugging, rather than a standing container.
 
 ### 3c. Cap Redis memory (not currently set anywhere in your compose)
 
-Your `postiz-redis` service has no `maxmemory` and no eviction policy today —
+Your `postaryx-redis` service has no `maxmemory` and no eviction policy today —
 it will grow unbounded. Add:
 
 ```yaml
-postiz-redis:
+postaryx-redis:
   image: redis:7.2
   command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
   ...
 ```
 
 256 MB is a starting point for your scale (queues + cache) — watch
-`docker exec postiz-redis redis-cli info memory` after real traffic and
+`docker exec postaryx-redis redis-cli info memory` after real traffic and
 adjust.
 
 ---
@@ -167,15 +167,15 @@ here since I can't verify which path actually ran on your box.
 
 ```bash
 # 1. Check what's actually in effect right now:
-docker compose -p postiz run --rm temporal-admin-tools \
+docker compose -p postaryx run --rm temporal-admin-tools \
   tctl --namespace default namespace describe
 
 # 2. Set it explicitly to 7 days (plenty for scheduled social posts).
 #    Verify the exact flag with --help first — tctl syntax varies by version:
-docker compose -p postiz run --rm temporal-admin-tools \
+docker compose -p postaryx run --rm temporal-admin-tools \
   tctl --namespace default namespace update --help
 # then something along the lines of:
-docker compose -p postiz run --rm temporal-admin-tools \
+docker compose -p postaryx run --rm temporal-admin-tools \
   tctl --namespace default namespace update --retention 168h
 ```
 
@@ -275,11 +275,11 @@ restructuring the Dockerfile to copy `pnpm-lock.yaml` + all workspace
 divergence from upstream's Dockerfile and was left alone for now. Revisit if
 build wall-clock or CI minutes actually start to hurt.
 
-**On the VM**, the `postiz` service in `docker-compose.yaml` now pulls instead
+**On the VM**, the `postaryx` service in `docker-compose.yaml` now pulls instead
 of building — the `build:` block and `pull_policy: never` are gone, replaced by:
 
 ```yaml
-image: ${POSTIZ_IMAGE:-ghcr.io/aitechnologysys-sys/veroza}:${POSTIZ_IMAGE_TAG:-latest}
+image: ${POSTARYX_IMAGE:-ghcr.io/aitechnologysys-sys/veroza}:${POSTARYX_IMAGE_TAG:-latest}
 ```
 
 The two indirections exist so that rollback and local builds need no edit to
@@ -293,15 +293,15 @@ echo "$GHCR_READ_ONLY_PAT" | docker login ghcr.io -u <your-username> --password-
 
 Deploy flow becomes:
 ```bash
-cd /opt/postiz/postiz-app
-docker compose -p postiz pull postiz
-docker compose -p postiz up -d postiz
+cd /opt/postaryx/postaryx-app
+docker compose -p postaryx pull postaryx
+docker compose -p postaryx up -d postaryx
 ```
 No `build`, no 4 GB spike, no risk to the running stack during a deploy.
 Rollback is a tag change, no rebuild — every `main` build also pushes a
 `:<full-git-sha>` tag:
 ```bash
-POSTIZ_IMAGE_TAG=<full-git-sha> docker compose -p postiz up -d postiz
+POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx up -d postaryx
 ```
 
 ### 6a. The other workflows, cleaned up at the same time
@@ -372,7 +372,7 @@ What to do now, so the flip later really is just a config change:
 
 **When you do set up R2** (whenever the account exists): create the bucket,
 generate an API token scoped to that bucket, fill in the real values above,
-uncomment them, flip `STORAGE_PROVIDER=cloudflare`, restart the `postiz`
+uncomment them, flip `STORAGE_PROVIDER=cloudflare`, restart the `postaryx`
 container. Your fork already has the uploader code
 (`libraries/nestjs-libraries/src/upload/`) — this genuinely is just an env
 change, nothing to build. A custom domain for the bucket (e.g.

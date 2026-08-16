@@ -1,19 +1,19 @@
 services:
-  postiz:
+  postaryx:
     # PULL our own image — never build here. Dockerfile.dev builds all three apps
     # inside the image with a 4 GB Node heap, which spikes this box to ~11.4 GB
     # against 12 GB and can OOM the running stack. The build happens in GitHub
     # Actions instead (.github/workflows/build-containers.yml, arm64) and this
     # host only pulls. See docs/CONTAINMENT-DEPLOYMENT-PLAN.md §6.
     #
-    # Project name differs by machine: the server stack is `-p postiz`, a local
-    # prod rehearsal is `-p postiz-prod` (keeps it isolated from `postiz-dev`).
+    # Project name differs by machine: the server stack is `-p postaryx`, a local
+    # prod rehearsal is `-p postaryx-prod` (keeps it isolated from `postaryx-dev`).
     # `docker compose ls` tells you which a box is using. Examples below use the
     # server's name; see README.md §2-3 for the full runbook.
     #
-    # Deploy:   docker compose -p postiz pull postiz && docker compose -p postiz up -d postiz
-    # Rollback: POSTIZ_IMAGE_TAG=<full-git-sha> docker compose -p postiz pull postiz
-    #           POSTIZ_IMAGE_TAG=<full-git-sha> docker compose -p postiz up -d postiz
+    # Deploy:   docker compose -p postaryx pull postaryx && docker compose -p postaryx up -d postaryx
+    # Rollback: POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx pull postaryx
+    #           POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx up -d postaryx
     #           (set it on BOTH — pull and up read it independently. Every build
     #            pushes a :<sha> tag, so old images stay pullable in GHCR.)
     #
@@ -23,10 +23,10 @@ services:
     #
     # To build locally instead (e.g. to test an unpushed change), don't edit this
     # file — override it. Needs ~4 GB free RAM; fine on a laptop, NEVER on the VM:
-    #   docker build -f Dockerfile.dev --build-arg NEXT_PUBLIC_VERSION=local -t postiz-app:local .
-    #   POSTIZ_IMAGE=postiz-app POSTIZ_IMAGE_TAG=local docker compose -p postiz-prod up -d postiz
-    image: ${POSTIZ_IMAGE:-ghcr.io/aitechnologysys-sys/veroza}:${POSTIZ_IMAGE_TAG:-latest}
-    container_name: postiz
+    #   docker build -f Dockerfile.dev --build-arg NEXT_PUBLIC_VERSION=local -t postaryx-app:local .
+    #   POSTARYX_IMAGE=postaryx-app POSTARYX_IMAGE_TAG=local docker compose -p postaryx-prod up -d postaryx
+    image: ${POSTARYX_IMAGE:-ghcr.io/aitechnologysys-sys/veroza}:${POSTARYX_IMAGE_TAG:-latest}
+    container_name: postaryx
     restart: always
 
     # All secrets / API keys come from .env.prod (JWT, Cloudflare, social
@@ -40,23 +40,23 @@ services:
     environment:
       # === Public URLs ===
       # Default to localhost:4007 so running THIS prod compose locally just works
-      # out of the box. NOTE the distinct POSTIZ_PUBLIC_* names: Compose reads the
+      # out of the box. NOTE the distinct POSTARYX_PUBLIC_* names: Compose reads the
       # repo `.env` for ${...} substitution, and `.env` already defines
       # FRONTEND_URL/NEXT_PUBLIC_BACKEND_URL with DEV ports (4200/3000) — using
       # those names here would leak the dev values into this prod stack.
       # On the server, set the real HTTPS domain in a `.env` file next to this
       # compose (Compose auto-reads `.env`), e.g.:
-      #   POSTIZ_PUBLIC_URL=https://postiz.example.com
+      #   POSTARYX_PUBLIC_URL=https://postaryx.example.com
       # These are runtime-read, so changing them needs no rebuild — just
-      # `docker compose -p postiz up -d postiz`. See docs/ORACLE-VM-DEPLOYMENT.md.
-      MAIN_URL: ${POSTIZ_PUBLIC_URL:-http://localhost:4007}
-      FRONTEND_URL: ${POSTIZ_PUBLIC_URL:-http://localhost:4007}
-      NEXT_PUBLIC_BACKEND_URL: ${POSTIZ_PUBLIC_URL:-http://localhost:4007}/api
+      # `docker compose -p postaryx up -d postaryx`. See docs/ORACLE-VM-DEPLOYMENT.md.
+      MAIN_URL: ${POSTARYX_PUBLIC_URL:-http://localhost:4007}
+      FRONTEND_URL: ${POSTARYX_PUBLIC_URL:-http://localhost:4007}
+      NEXT_PUBLIC_BACKEND_URL: ${POSTARYX_PUBLIC_URL:-http://localhost:4007}/api
       BACKEND_INTERNAL_URL: 'http://localhost:3000'
 
       # === Service wiring (container network) ===
-      DATABASE_URL: 'postgresql://postiz-user:postiz-password@postiz-postgres:5432/postiz-db-prod'
-      REDIS_URL: 'redis://postiz-redis:6379'
+      DATABASE_URL: 'postgresql://postaryx-user:postaryx-password@postaryx-postgres:5432/postaryx-db-prod'
+      REDIS_URL: 'redis://postaryx-redis:6379'
       TEMPORAL_ADDRESS: 'temporal:7233'
 
       # === Required flags ===
@@ -73,14 +73,14 @@ services:
       NEXT_PUBLIC_UPLOAD_DIRECTORY: '/uploads'
 
     volumes:
-      - postiz-config:/config/
-      - postiz-uploads:/uploads/
+      - postaryx-config:/config/
+      - postaryx-uploads:/uploads/
     ports:
       # Loopback-only: the host nginx (port 80/443) is the sole public listener.
       # Binding to 0.0.0.0 would expose the app directly (Docker bypasses ufw).
       - '127.0.0.1:4007:5000'
     networks:
-      - postiz-network
+      - postaryx-network
       - temporal-network
     healthcheck:
       # node:bookworm-slim has no curl/wget; use Node 22's global fetch.
@@ -96,9 +96,9 @@ services:
       retries: 5
       start_period: 90s
     depends_on:
-      postiz-postgres:
+      postaryx-postgres:
         condition: service_healthy
-      postiz-redis:
+      postaryx-redis:
         condition: service_healthy
       # Not optional: the backend requires Temporal at module-init time, so
       # starting without it produces a container that serves the frontend but
@@ -106,29 +106,29 @@ services:
       temporal:
         condition: service_healthy
 
-  postiz-postgres:
+  postaryx-postgres:
     image: postgres:17-alpine
-    container_name: postiz-postgres
+    container_name: postaryx-postgres
     restart: always
     environment:
-      POSTGRES_PASSWORD: postiz-password
-      POSTGRES_USER: postiz-user
-      POSTGRES_DB: postiz-db-prod
+      POSTGRES_PASSWORD: postaryx-password
+      POSTGRES_USER: postaryx-user
+      POSTGRES_DB: postaryx-db-prod
     volumes:
       - postgres-volume:/var/lib/postgresql/data
-    # No host port: the app reaches Postgres over postiz-network. Publishing 5432
+    # No host port: the app reaches Postgres over postaryx-network. Publishing 5432
     # would expose the DB to the internet (Docker bypasses ufw) and clash with any
     # other Postgres on the host. For ad-hoc psql access, SSH-tunnel instead.
     networks:
-      - postiz-network
+      - postaryx-network
     healthcheck:
-      test: pg_isready -U postiz-user -d postiz-db-local
+      test: pg_isready -U postaryx-user -d postaryx-db-local
       interval: 10s
       timeout: 3s
       retries: 3
-  postiz-redis:
+  postaryx-redis:
     image: redis:7.2
-    container_name: postiz-redis
+    container_name: postaryx-redis
     restart: always
     healthcheck:
       test: redis-cli ping
@@ -136,9 +136,9 @@ services:
       timeout: 3s
       retries: 3
     volumes:
-      - postiz-redis-data:/data
+      - postaryx-redis-data:/data
     networks:
-      - postiz-network
+      - postaryx-network
 
   # -----------------------
   # Temporal Stack
@@ -209,8 +209,8 @@ services:
     # frontend keeps serving, so the only symptom is nginx logging
     # `111: Connection refused` on every /api/* request. Observed twice.
     #
-    # So `postiz` must wait for Temporal to be READY, not merely started —
-    # hence this healthcheck plus `condition: service_healthy` on postiz.
+    # So `postaryx` must wait for Temporal to be READY, not merely started —
+    # hence this healthcheck plus `condition: service_healthy` on postaryx.
     #
     # `namespace describe default` rather than `cluster health` on purpose: it
     # proves both that the frontend is serving AND that the `default` namespace
@@ -261,13 +261,13 @@ volumes:
   postgres-volume:
     external: false
 
-  postiz-redis-data:
+  postaryx-redis-data:
     external: false
 
-  postiz-config:
+  postaryx-config:
     external: false
 
-  postiz-uploads:
+  postaryx-uploads:
     external: false
 
   # Temporal's own data — named so workflow history survives container recreates.
@@ -278,7 +278,7 @@ volumes:
     external: false
 
 networks:
-  postiz-network:
+  postaryx-network:
     external: false
   temporal-network:
     driver: bridge

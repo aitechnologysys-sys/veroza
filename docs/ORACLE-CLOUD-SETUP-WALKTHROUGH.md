@@ -252,15 +252,16 @@ sudo systemctl restart docker
 ### 7.1 Get the code
 
 ```bash
-sudo mkdir -p /opt/postiz && sudo chown $USER:$USER /opt/postiz
-cd /opt/postiz
-git clone https://github.com/aitechnologysys-sys/veroza.git postiz-app
-cd postiz-app
+sudo mkdir -p /opt/postaryx && sudo chown $USER:$USER /opt/postaryx
+cd /opt/postaryx
+git clone https://github.com/aitechnologysys-sys/veroza.git postaryx-app
+cd postaryx-app
 ```
 
-(The directory is named `postiz-app` on purpose — see the naming table in
-[CLAUDE.md](../CLAUDE.md): the repo is `veroza`, the product is Postaryx,
-but the local clone directory and internal identifiers still say `postiz`.)
+(The directory is named `postaryx-app` to match the local dev clone — see the
+naming table in [CLAUDE.md](../CLAUDE.md): the repo is `veroza`, the product is
+Postaryx. Docker container/network/volume names, the compose project name, and
+the clone directory itself all say `postaryx` now.)
 
 ### 7.2 The image is pulled, never built here
 
@@ -320,9 +321,9 @@ short version — edit `docker-compose.yaml`:
    neither is required for the app to run. Run them on demand later if you
    need to debug:
    ```bash
-   docker compose -p postiz run --rm temporal-admin-tools tctl --namespace default namespace describe
+   docker compose -p postaryx run --rm temporal-admin-tools tctl --namespace default namespace describe
    ```
-3. **Cap Redis memory** — nothing bounds it today. In the `postiz-redis`
+3. **Cap Redis memory** — nothing bounds it today. In the `postaryx-redis`
    service, add:
    ```yaml
    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
@@ -335,15 +336,15 @@ inside 12 GB.
 ### 7.5 Bring it up
 
 ```bash
-docker compose -p postiz pull postiz
-docker compose -p postiz up -d
-docker compose -p postiz logs -f postiz     # watch nginx + pm2 + prisma-db-push start (~90s)
+docker compose -p postaryx pull postaryx
+docker compose -p postaryx up -d
+docker compose -p postaryx logs -f postaryx     # watch nginx + pm2 + prisma-db-push start (~90s)
 ```
 
 Open another terminal (or Ctrl-C once logs settle) and verify:
 
 ```bash
-docker compose -p postiz ps          # every container: healthy/running
+docker compose -p postaryx ps          # every container: healthy/running
 curl -I http://127.0.0.1:4007        # expect: HTTP/1.1 200 OK
 ```
 
@@ -358,9 +359,9 @@ covered in full in [../README.md](../README.md) §3 and
 [CI-BUILD-CUTOVER.md](./CI-BUILD-CUTOVER.md):
 
 ```bash
-cd /opt/postiz/postiz-app
-docker compose -p postiz pull postiz
-docker compose -p postiz up -d postiz
+cd /opt/postaryx/postaryx-app
+docker compose -p postaryx pull postaryx
+docker compose -p postaryx up -d postaryx
 ```
 
 No rebuild, no manual migration — `prisma-db-push` runs automatically on
@@ -406,15 +407,15 @@ dig +short postaryx.com
 ### 8.3 Set the app's public URL and install Nginx
 
 ```bash
-cd /opt/postiz/postiz-app
-echo 'POSTIZ_PUBLIC_URL=https://postaryx.com' > .env
+cd /opt/postaryx/postaryx-app
+echo 'POSTARYX_PUBLIC_URL=https://postaryx.com' > .env
 ```
 
 This one variable drives `MAIN_URL`, `FRONTEND_URL`, and
 `NEXT_PUBLIC_BACKEND_URL` consistently (see the comments in
 `docker-compose.yaml`). It's runtime-read, so no rebuild is needed — just
 recreate the container after this and after Certbot runs:
-`docker compose -p postiz up -d postiz`.
+`docker compose -p postaryx up -d postaryx`.
 
 ```bash
 sudo apt install -y nginx
@@ -476,10 +477,10 @@ sudo certbot renew --dry-run                     # confirm renewal actually work
 
 Certbot rewrites `postaryx.conf` to serve `:443` and redirect `:80 → :443`.
 
-Recreate the app container so it picks up the HTTPS `POSTIZ_PUBLIC_URL`
+Recreate the app container so it picks up the HTTPS `POSTARYX_PUBLIC_URL`
 from §8.3:
 ```bash
-docker compose -p postiz up -d postiz
+docker compose -p postaryx up -d postaryx
 ```
 
 ### 8.5 Add security headers (do this after HTTPS works, not before)
@@ -504,7 +505,7 @@ fallback while you're still debugging — that's why this is last.)
 
 ## 9. Final verification checklist
 
-1. `docker compose -p postiz ps` → every container `healthy`/`running`.
+1. `docker compose -p postaryx ps` → every container `healthy`/`running`.
 2. On the VM: `curl -I http://127.0.0.1:4007` → `200`.
 3. On the VM: `curl -I https://postaryx.com` → `200` with a valid cert.
 4. From your Mac (outside the VM):
@@ -516,7 +517,7 @@ fallback while you're still debugging — that's why this is last.)
 6. **Schedule a test post a few minutes out** and confirm it actually
    publishes — this is the real end-to-end proof that Temporal/the
    orchestrator works, not just that the frontend loads.
-7. `docker compose -p postiz logs postiz | grep -i prisma` → migration ran
+7. `docker compose -p postaryx logs postaryx | grep -i prisma` → migration ran
    clean, no errors.
 
 ---
@@ -526,7 +527,7 @@ fallback while you're still debugging — that's why this is last.)
 You're live. A few things worth doing in the first week, each already
 written up elsewhere in `docs/`:
 
-- **Rotate the hardcoded Postgres passwords** (`postiz-password`,
+- **Rotate the hardcoded Postgres passwords** (`postaryx-password`,
   `temporal`) that ship in the committed `docker-compose.yaml` — P0-2 in
   [1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md). Cheap now,
   a migration exercise once you have real customer data.

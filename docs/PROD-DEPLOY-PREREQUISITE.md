@@ -33,8 +33,8 @@ The compose file's `environment:` block always wins over `.env.prod` for these:
 
 | Variable | Hardcoded value |
 |---|---|
-| `DATABASE_URL` | `postgresql://postiz-user:postiz-password@postiz-postgres:5432/postiz-db-local` |
-| `REDIS_URL` | `redis://postiz-redis:6379` |
+| `DATABASE_URL` | `postgresql://postaryx-user:postaryx-password@postaryx-postgres:5432/postaryx-db-local` |
+| `REDIS_URL` | `redis://postaryx-redis:6379` |
 | `TEMPORAL_ADDRESS` | `temporal:7233` |
 | `MAIN_URL` | `http://localhost:4007` |
 | `FRONTEND_URL` | `http://localhost:4007` |
@@ -60,14 +60,14 @@ The compose file's `environment:` block always wins over `.env.prod` for these:
 ## Starting prod
 
 ```bash
-docker compose -p postiz-prod pull postiz
-docker compose -p postiz-prod up -d
+docker compose -p postaryx-prod pull postaryx
+docker compose -p postaryx-prod up -d
 ```
 
-- The `postiz` service **pulls** a CI-built image from GHCR; it no longer builds
+- The `postaryx` service **pulls** a CI-built image from GHCR; it no longer builds
   locally. See the deployment runbook in [../README.md](../README.md).
 - First boot takes ~30–60s after the pull: runs `prisma-db-push`, starts Temporal.
 - App is available at [http://localhost:4007](http://localhost:4007).
-- Stop with: `docker compose -p postiz-prod down`
+- Stop with: `docker compose -p postaryx-prod down`
 
 See [RUNNING-DEV-AND-PROD.md](./RUNNING-DEV-AND-PROD.md) for volume isolation details and the dev ↔ prod switching guide.

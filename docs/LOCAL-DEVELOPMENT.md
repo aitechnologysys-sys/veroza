@@ -13,8 +13,8 @@ build-from-source, all-in-Docker prod setup.
 ```
   Docker (deps only)                         Host (pnpm run dev)
   ────────────────────                       ───────────────────────────
-  postiz-postgres   :5432  ◀───────────────  backend       :3000  (NestJS)
-  postiz-redis      :6379  ◀───────────────  frontend      :4200  (Next.js)
+  postaryx-postgres :5432  ◀───────────────  backend       :3000  (NestJS)
+  postaryx-redis    :6379  ◀───────────────  frontend      :4200  (Next.js)
   temporal          :7233  ◀───────────────  orchestrator  :3002  (Temporal worker)
   + temporal deps (es, pg, ui, admin)        extension            (browser ext build)
   + pgAdmin :8082, RedisInsight :5540
@@ -48,7 +48,7 @@ cp .env.example .env
 ```
 The minimum that must be correct for local dev (the repo `.env` already has these):
 ```bash
-DATABASE_URL="postgresql://postiz-local:postiz-local-pwd@localhost:5432/postiz-db-local"
+DATABASE_URL="postgresql://postaryx-local:postaryx-local-pwd@localhost:5432/postaryx-db-local"
 REDIS_URL="redis://localhost:6379"
 TEMPORAL_ADDRESS="localhost:7233"
 JWT_SECRET="any-long-random-string"
@@ -56,13 +56,19 @@ FRONTEND_URL="http://localhost:4200"
 NEXT_PUBLIC_BACKEND_URL="http://localhost:3000"
 BACKEND_INTERNAL_URL="http://localhost:3000"
 STORAGE_PROVIDER="local"
-UPLOAD_DIRECTORY="/absolute/path/to/postiz-app/uploads"
+UPLOAD_DIRECTORY="uploads"
 IS_GENERAL="true"
 ```
-> ⚠️ The DB credentials in `.env` (`postiz-local` / `postiz-local-pwd` /
-> `postiz-db-local`) **must match** the `POSTGRES_*` values in
+> ⚠️ The DB credentials in `.env` (`postaryx-local` / `postaryx-local-pwd` /
+> `postaryx-db-local`) **must match** the `POSTGRES_*` values in
 > [docker-compose.dev.yaml](../docker-compose.dev.yaml). They already do — don't
 > change one without the other.
+>
+> `UPLOAD_DIRECTORY="uploads"` is relative — it resolves against the monorepo
+> root (found by walking up to `pnpm-workspace.yaml`), not `process.cwd()`, so
+> it works the same regardless of which machine or user account clones the
+> repo. Use an absolute path only if you actually want uploads stored
+> somewhere outside the repo.
 >
 > Social/AI/billing keys are optional — leave a key blank to disable that
 > feature rather than leaving placeholder text in it.
@@ -198,5 +204,5 @@ docker compose -f docker-compose.dev.yaml down -v
 | DB migration | Manual `pnpm run prisma-db-push` | Automatic on container boot |
 | Config source | `.env` via `dotenv` | `env_file: .env` + compose `environment:` overrides |
 | Dev GUIs | pgAdmin, RedisInsight included | Not included |
-| Image | None (runs from source on host) | Built from `Dockerfile.dev` (`postiz-app:local`) |
+| Image | None (runs from source on host) | Built from `Dockerfile.dev` (`postaryx-app:local`) |
 </content>

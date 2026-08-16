@@ -20,17 +20,17 @@ error. Here's exactly why, and how to do it cleanly.
 
 ```bash
 # DEV  (deps in Docker, app on host)
-docker compose -p postiz-dev -f docker-compose.dev.yaml up -d
+docker compose -p postaryx-dev -f docker-compose.dev.yaml up -d
 pnpm run prisma-db-push      # first time / after schema changes
 pnpm run dev
 # stop it:
-docker compose -p postiz-dev -f docker-compose.dev.yaml down
+docker compose -p postaryx-dev -f docker-compose.dev.yaml down
 
 # PROD (everything in Docker; pulls a CI-built image, does NOT build)
-docker compose -p postiz-prod pull postiz
-docker compose -p postiz-prod up -d
+docker compose -p postaryx-prod pull postaryx
+docker compose -p postaryx-prod up -d
 # stop it:
-docker compose -p postiz-prod down
+docker compose -p postaryx-prod down
 ```
 
 Always pass the **same `-p <name>`** to every command for that stack (`up`,
@@ -49,7 +49,7 @@ Even with separate projects, the two stacks collide if run simultaneously:
   `8080` (dev also publishes `5432`, `6379`, `8082`, `5540`; prod also `4007`,
   `8969`).
 - **Container names are hardcoded and global:** both files set
-  `container_name: postiz-postgres`, `temporal`, `temporal-ui`, etc.
+  `container_name: postaryx-postgres`, `temporal`, `temporal-ui`, etc.
   `container_name` is **not** namespaced by project, so the second stack fails
   with *"container name already in use"*.
 
@@ -61,22 +61,29 @@ other. (That's fine — you don't need both running.)
 ## 2. Why naive switching **breaks the database** (the auth error)
 
 This is the part that bites people. Both compose files declare the **same volume
-names**, and with the **default** project name (`postiz-app`, taken from the repo
+names**, and with the **default** project name (`postaryx-app`, taken from the repo
 folder) they resolve to the **same physical Docker volumes**:
 
 | Volume (declared in both files) | Default-project volume | Shared? | Problem? |
 |---|---|---|---|
-| `postgres-volume` (app DB) | `postiz-app_postgres-volume` | ✅ shared | ⚠️ **YES** — see below |
-| `temporal-postgres-volume` | `postiz-app_temporal-postgres-volume` | ✅ shared | harmless (same creds) |
-| `temporal-es-volume` | `postiz-app_temporal-es-volume` | ✅ shared | harmless |
+| `postgres-volume` (app DB) | `postaryx-app_postgres-volume` | ✅ shared | ⚠️ **YES** — see below |
+| `temporal-postgres-volume` | `postaryx-app_temporal-postgres-volume` | ✅ shared | harmless (same creds) |
+| `temporal-es-volume` | `postaryx-app_temporal-es-volume` | ✅ shared | harmless |
+
+> The default-project volume names above say `postaryx-app` because that name
+> comes from the repo folder (`docker-compose`'s default project name is the
+> directory basename) — see [CLAUDE.md](../CLAUDE.md). This differs from the
+> explicit `-p postaryx-dev` / `-p postaryx-prod` names used everywhere else in
+> this guide, which is exactly the source of the confusion this doc exists to
+> prevent.
 
 The app's Postgres is the problem, because **dev and prod use different
 credentials**:
 
 | | User | Password | DB |
 |---|---|---|---|
-| **Dev** (`docker-compose.dev.yaml` + `.env`) | `postiz-local` | `postiz-local-pwd` | `postiz-db-local` |
-| **Prod** (`docker-compose.yaml` env override) | `postiz-user` | `postiz-password` | `postiz-db-local` |
+| **Dev** (`docker-compose.dev.yaml` + `.env`) | `postaryx-local` | `postaryx-local-pwd` | `postaryx-db-local` |
+| **Prod** (`docker-compose.yaml` env override) | `postaryx-user` | `postaryx-password` | `postaryx-db-local` |
 
 The official `postgres` image only runs its initialization (which **creates the
 user/password from `POSTGRES_USER`/`POSTGRES_PASSWORD`**) **when the data
@@ -86,18 +93,18 @@ start it sees existing data and **skips** init.
 So, the breaking sequence:
 
 1. You run **dev** first → `postgres-volume` is initialized with role
-   `postiz-local`. Works fine.
+   `postaryx-local`. Works fine.
 2. You `down` dev, run **prod** (same default project → same volume) → Postgres
-   sees existing data, **skips** init, so role `postiz-user` is **never created**.
-   Prod connects with `postiz-user:postiz-password` and you get:
+   sees existing data, **skips** init, so role `postaryx-user` is **never created**.
+   Prod connects with `postaryx-user:postaryx-password` and you get:
 
    ```
-   FATAL: password authentication failed for user "postiz-user"
-   # (or)  role "postiz-user" does not exist
+   FATAL: password authentication failed for user "postaryx-user"
+   # (or)  role "postaryx-user" does not exist
    ```
    `prisma-db-push` and the backend fail to start.
 
-> On this machine there is already a `postiz-app_postgres-volume` (initialized by
+> On this machine there is already a `postaryx-app_postgres-volume` (initialized by
 > a prior dev run), so a prod run with the default project name **would** hit this
 > immediately. That's exactly the situation this guide prevents.
 
@@ -106,28 +113,28 @@ So, the breaking sequence:
 ## 3. The fix: isolate by project name (recommended)
 
 Give each stack its own project with `-p`. Volumes then become
-`postiz-dev_postgres-volume` and `postiz-prod_postgres-volume` — **completely
+`postaryx-dev_postgres-volume` and `postaryx-prod_postgres-volume` — **completely
 separate**. Each stack initializes its own DB with its own credentials, once, and
 keeps it. No clashes, no data loss on switching.
 
 ```bash
 # ---- DEV ----
-docker compose -p postiz-dev -f docker-compose.dev.yaml up -d
+docker compose -p postaryx-dev -f docker-compose.dev.yaml up -d
 pnpm run prisma-db-push    # only needed the first time (or after schema changes)
 pnpm run dev
 # ... work ...
-docker compose -p postiz-dev -f docker-compose.dev.yaml down
+docker compose -p postaryx-dev -f docker-compose.dev.yaml down
 
 # ---- PROD ----
-docker compose -p postiz-prod pull postiz
-docker compose -p postiz-prod up -d
+docker compose -p postaryx-prod pull postaryx
+docker compose -p postaryx-prod up -d
 # ... verify at http://localhost:4007 ...
-docker compose -p postiz-prod down
+docker compose -p postaryx-prod down
 ```
 
 ⚠️ **Be consistent.** Every command for a stack must carry the same `-p`. For
-example `docker compose down` *without* `-p` targets the default `postiz-app`
-project, not `postiz-prod` — so it won't stop what you started.
+example `docker compose down` *without* `-p` targets the default `postaryx-app`
+project, not `postaryx-prod` — so it won't stop what you started.
 
 ---
 
@@ -137,24 +144,24 @@ With project isolation, this is clean and **no auth error ever**:
 
 ```bash
 # 1) DEV
-docker compose -p postiz-dev -f docker-compose.dev.yaml up -d
+docker compose -p postaryx-dev -f docker-compose.dev.yaml up -d
 pnpm run prisma-db-push        # first time only
 pnpm run dev                   # Ctrl-C when done
-docker compose -p postiz-dev -f docker-compose.dev.yaml down
+docker compose -p postaryx-dev -f docker-compose.dev.yaml down
 
 # 2) PROD
-docker compose -p postiz-prod pull postiz
-docker compose -p postiz-prod up -d            # creates its OWN db on first run
+docker compose -p postaryx-prod pull postaryx
+docker compose -p postaryx-prod up -d            # creates its OWN db on first run
 # check http://localhost:4007
-docker compose -p postiz-prod down
+docker compose -p postaryx-prod down
 
 # 3) DEV again — your dev DB is still there, untouched
-docker compose -p postiz-dev -f docker-compose.dev.yaml up -d
+docker compose -p postaryx-dev -f docker-compose.dev.yaml up -d
 pnpm run dev                   # no prisma-db-push needed; schema/data persisted
 ```
 
-Why it works: step 2 uses `postiz-prod_*` volumes, so it never touches the
-`postiz-dev_*` data from step 1. Step 3 finds your dev DB exactly as you left it.
+Why it works: step 2 uses `postaryx-prod_*` volumes, so it never touches the
+`postaryx-dev_*` data from step 1. Step 3 finds your dev DB exactly as you left it.
 
 > First time you `up` **prod**, give it ~30–60s: it builds the image, runs
 > `prisma-db-push` automatically (prod self-migrates on boot), and boots Temporal.
@@ -168,25 +175,25 @@ with the top-level **`name:`** key, then plain commands isolate correctly:
 
 ```yaml
 # docker-compose.yaml      (prod) — add at the very top:
-name: postiz-prod
+name: postaryx-prod
 
 # docker-compose.dev.yaml  (dev)  — add at the very top:
-name: postiz-dev
+name: postaryx-dev
 ```
 
 After that:
 ```bash
-docker compose up -d                               # → project postiz-prod
-docker compose -f docker-compose.dev.yaml up -d    # → project postiz-dev
+docker compose up -d                               # → project postaryx-prod
+docker compose -f docker-compose.dev.yaml up -d    # → project postaryx-dev
 ```
 No `-p` needed, and they can never share volumes.
 
 > ⚠️ **Migration note:** your existing data lives in the **old** default-project
-> volumes (`postiz-app_*`). After adding `name:`, the stacks point at new
-> `postiz-dev_*` / `postiz-prod_*` volumes, which start **empty** — so re-run
+> volumes (`postaryx-app_*`). After adding `name:`, the stacks point at new
+> `postaryx-dev_*` / `postaryx-prod_*` volumes, which start **empty** — so re-run
 > `pnpm run prisma-db-push` for dev and re-register. Your old data isn't deleted;
 > it's just no longer referenced (clean it up later with `docker volume rm
-> postiz-app_postgres-volume …` once you're sure you don't need it).
+> postaryx-app_postgres-volume …` once you're sure you don't need it).
 
 Ask and I can apply this edit for you.
 
@@ -196,9 +203,9 @@ Ask and I can apply this edit for you.
 
 | Approach | How | Use when |
 |---|---|---|
-| **Separate projects** (recommended) | `-p postiz-dev` / `-p postiz-prod`, or `name:` in files | Always. Keeps both DBs, clean switching. |
+| **Separate projects** (recommended) | `-p postaryx-dev` / `-p postaryx-prod`, or `name:` in files | Always. Keeps both DBs, clean switching. |
 | **Wipe on switch** | `docker compose down -v` before switching | You don't care about the other stack's data; quick and dirty. |
-| **Align credentials** | Make dev `.env` + dev compose use `postiz-user`/`postiz-password` (match prod) | You *want* one shared DB across both. Rare; mixes concerns. |
+| **Align credentials** | Make dev `.env` + dev compose use `postaryx-user`/`postaryx-password` (match prod) | You *want* one shared DB across both. Rare; mixes concerns. |
 
 `down -v` deletes that project's named volumes (DB, Redis, Temporal pg + es). Only
 use it when you intend to throw the data away. After a `-v` you'll re-run
@@ -210,17 +217,17 @@ use it when you intend to throw the data away. After a `-v` you'll re-run
 
 ```bash
 # What's running, and under which project?
-docker compose -p postiz-dev  -f docker-compose.dev.yaml ps
-docker compose -p postiz-prod ps
+docker compose -p postaryx-dev  -f docker-compose.dev.yaml ps
+docker compose -p postaryx-prod ps
 
 # See which volumes exist (note the project prefix)
-docker volume ls | grep -E 'postiz|temporal'
+docker volume ls | grep -E 'postiz|postaryx|temporal'
 
 # Tail logs for a stack
-docker compose -p postiz-prod logs -f postiz
+docker compose -p postaryx-prod logs -f postaryx
 
 # Remove a stack entirely, including its data
-docker compose -p postiz-prod down -v
+docker compose -p postaryx-prod down -v
 ```
 
 ---
@@ -229,11 +236,11 @@ docker compose -p postiz-prod down -v
 
 | Goal | Command |
 |---|---|
-| Start dev deps | `docker compose -p postiz-dev -f docker-compose.dev.yaml up -d` |
+| Start dev deps | `docker compose -p postaryx-dev -f docker-compose.dev.yaml up -d` |
 | Run dev apps | `pnpm run prisma-db-push` (first time) → `pnpm run dev` |
-| Stop dev | `docker compose -p postiz-dev -f docker-compose.dev.yaml down` |
-| Start/verify prod | `docker compose -p postiz-prod pull postiz && docker compose -p postiz-prod up -d` → http://localhost:4007 |
-| Stop prod | `docker compose -p postiz-prod down` |
+| Stop dev | `docker compose -p postaryx-dev -f docker-compose.dev.yaml down` |
+| Start/verify prod | `docker compose -p postaryx-prod pull postaryx && docker compose -p postaryx-prod up -d` → http://localhost:4007 |
+| Stop prod | `docker compose -p postaryx-prod down` |
 | Never | run both stacks at the same time |
 | Never | use the default project for both (causes the auth error) |
 </content>

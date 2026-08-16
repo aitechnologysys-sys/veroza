@@ -210,7 +210,8 @@ state working set, not a hard limit. These are estimates — see
 - **Image:** `redis:7.2`
 - **What:** In-memory store used for caching, rate-limiting (`@nestjs/throttler` + `ioredis`), and as a lightweight queue/pub-sub between processes.
 - **Why:** Fast ephemeral state. Connected via `REDIS_URL`. (Note: durable scheduled jobs go through **Temporal**, not Redis — Redis here is for caching/throttling/short-lived coordination.)
-- **Auth + memory cap:** requires a password (`--requirepass ${POSTARYX_REDIS_PASSWORD}` from `.env`) and caps memory at `256mb` with `allkeys-lru` eviction — see [1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md) P1-3. No host port published.
+- **Auth + memory cap:** requires a password (`--requirepass ${POSTARYX_REDIS_PASSWORD}` from `.env`) and caps memory at `256mb` with `allkeys-lru` eviction — see [1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md) P1-3.
+- **Ports:** `127.0.0.1:6379:6379` — loopback-only, for GUI clients (Another Redis Desktop Manager etc.), mirroring the Postgres pattern above.
 - **Volume:** `postaryx-redis-data:/data` (AOF/RDB persistence).
 - **Disk:** ~140 MB image + small data.
 - **RAM:** ~50–200 MB.

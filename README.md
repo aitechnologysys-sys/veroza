@@ -301,10 +301,11 @@ values are read in *server* components and passed to the client through
 > (`POSTARYX_TEMPORAL_DB_PASSWORD`) are all sourced from `${...}` substitution
 > in the gitignored `.env`, not hardcoded — see
 > [docs/1.SECURITY-HARDENING-TODO.md](docs/1.SECURITY-HARDENING-TODO.md) P0-2/P1-3.
-> Redis publishes no host port at all. Postgres publishes `127.0.0.1:5432`
-> only, loopback-bound for DBeaver access (P1-2) — the `127.0.0.1:` prefix is
-> the entire security control standing between that and a fully open database,
-> so never widen it to a bare `"5432:5432"`.
+> Postgres (`127.0.0.1:5432`, P1-2) and Redis (`127.0.0.1:6379`, added for
+> Another Redis Desktop Manager / GUI access) both publish loopback-only —
+> the `127.0.0.1:` prefix on each is the entire security control standing
+> between that and a fully open service, so never widen either to a bare
+> `"5432:5432"` / `"6379:6379"`.
 
 ## 4. GHCR package visibility — read this once
 

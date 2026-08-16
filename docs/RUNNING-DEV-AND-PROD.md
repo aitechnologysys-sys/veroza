@@ -51,10 +51,11 @@ data loss. (Prefer not typing `-p` every time? See
 
 Even with separate projects, the two stacks collide if run simultaneously:
 
-- **Published ports overlap:** both publish Postgres `5432` (as of P1-2 —
-  prod's `postaryx-postgres` didn't use to publish a host port, so this is a
-  newer collision), Temporal `7233`, and Temporal UI `8080` (dev also publishes
-  `6379`, `8082`, `5540`; prod also `4007`).
+- **Published ports overlap:** both publish Postgres `5432` (as of P1-2) and
+  Redis `6379` (just added, for GUI clients like Another Redis Desktop
+  Manager) — neither prod service used to publish a host port, so these are
+  newer collisions — plus Temporal `7233` and Temporal UI `8080` (dev also
+  publishes `8082`, `5540`; prod also `4007`).
 - **Container names are hardcoded and global:** both files set
   `container_name: postaryx-postgres`, `temporal`, `temporal-ui`, etc.
   `container_name` is **not** namespaced by project, so the second stack fails

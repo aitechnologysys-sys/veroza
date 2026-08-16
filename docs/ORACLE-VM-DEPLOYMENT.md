@@ -184,6 +184,7 @@ These edits are already applied to `docker-compose.yaml` in this repo:
 ```yaml
 postaryx:        ports: ["127.0.0.1:4007:5000"]   # entry point, loopback-only
 postaryx-postgres:  ports: ["127.0.0.1:5432:5432"]  # loopback-only, for DBeaver
+postaryx-redis:  ports: ["127.0.0.1:6379:6379"]  # loopback-only, for GUI clients
 temporal:      ports: ["127.0.0.1:7233:7233"]
 temporal-ui:   ports: ["127.0.0.1:8080:8080"]   # reach via SSH tunnel
 # spotlight service removed (dev-only error viewer)
@@ -312,8 +313,9 @@ mechanism for all.
 
 **Layer A — OCI Security List / NSG (cloud).** VCN → your subnet's Security List →
 **Ingress Rules** → add stateful `0.0.0.0/0 TCP 80` and `0.0.0.0/0 TCP 443`. Keep
-SSH (22) restricted to your IP. Do **not** open 4007/5432/7233/8080 — they're
-loopback-only (`5432` since P1-2, for DBeaver — see
+SSH (22) restricted to your IP. Do **not** open 4007/5432/6379/7233/8080 —
+they're loopback-only (`5432` since P1-2 for DBeaver, `6379` added later for
+GUI Redis clients — see
 [1.SECURITY-HARDENING-TODO.md](./1.SECURITY-HARDENING-TODO.md)).
 
 **Layer B — host firewall (`ufw`).**
@@ -329,6 +331,7 @@ sudo ufw status verbose
 curl --max-time 5 http://<VM_PUBLIC_IP>:4007   # must TIME OUT
 curl --max-time 5 http://<VM_PUBLIC_IP>:8080   # must TIME OUT
 nc -z -w5 <VM_PUBLIC_IP> 5432 && echo "EXPOSED — fix immediately" || echo "OK: not reachable"
+nc -z -w5 <VM_PUBLIC_IP> 6379 && echo "EXPOSED — fix immediately" || echo "OK: not reachable"
 curl -I https://postaryx.example.com             # must return 200
 ```
 
@@ -521,8 +524,9 @@ touches `schema.prisma`**.
 3. On the VM: `curl -I http://127.0.0.1:4007` → `200`.
 4. On the VM: `curl -I https://postaryx.example.com` → `200` with a valid cert.
 5. From outside the VM: `curl --max-time 5 http://<VM_PUBLIC_IP>:4007` and `:8080`,
-   plus `nc -z -w5 <VM_PUBLIC_IP> 5432` → all **timeout/not reachable** (confirms
-   loopback binding + firewall, including Postgres since P1-2).
+   plus `nc -z -w5 <VM_PUBLIC_IP> 5432` and `:6379` → all **timeout/not
+   reachable** (confirms loopback binding + firewall, including Postgres
+   since P1-2 and Redis added later for GUI clients).
 6. In a browser: load the site, register/login, and **schedule a test post a few
    minutes out** → confirms the Temporal orchestrator works end-to-end (the real
    integration test for this app).

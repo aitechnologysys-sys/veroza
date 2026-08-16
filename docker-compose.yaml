@@ -161,6 +161,12 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
+    ports:
+      # Loopback-ONLY, for GUI clients (Another Redis Desktop Manager etc.) —
+      # mirrors the Postgres pattern in P1-2. Never remove the 127.0.0.1
+      # prefix: Docker bypasses ufw, so a bare "6379:6379" publishes Redis
+      # straight to the internet, guarded only by whatever's in .env.
+      - '127.0.0.1:6379:6379'
     volumes:
       - postaryx-redis-data:/data
     networks:

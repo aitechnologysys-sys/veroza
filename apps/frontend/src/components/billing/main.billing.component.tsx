@@ -12,6 +12,8 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import dayjs from 'dayjs';
 import clsx from 'clsx';
 import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { foundingPrice } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/founding.promo';
+import { useFoundingPromo } from '@gitroom/frontend/components/billing/use.founding.promo';
 import { FAQComponent } from '@gitroom/frontend/components/billing/faq.component';
 import { useSWRConfig } from 'swr';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
@@ -166,6 +168,40 @@ const Accept: FC<{ resolve: (res: boolean) => void }> = ({ resolve }) => {
     </div>
   );
 };
+// Founding members are excluded from the 50%-for-3-months offer: accepting it
+// would replace their forever coupon and drop them to full price after three
+// months. What they lose is a stronger argument than another discount anyway.
+const KeepFoundingRate: FC<{
+  resolve: (res: boolean) => void;
+  slotNumber: number;
+  discountPercent: number;
+}> = ({ resolve, slotNumber, discountPercent }) => {
+  const t = useT();
+
+  return (
+    <div>
+      <div className="mb-[20px]">
+        {t('founding_cancel_you_are', "You're founding member #")}
+        {slotNumber}
+        {t('founding_cancel_locked', '. Your ')}
+        {discountPercent}
+        {t(
+          'founding_cancel_locked_rest',
+          '% off is locked for life — no one after the first 100 can get this rate, and cancelling gives up the spot for good.'
+        )}
+      </div>
+      <div className="flex gap-[10px]">
+        <Button onClick={() => resolve(true)}>
+          {t('founding_cancel_keep', 'Keep my founding rate')}
+        </Button>
+        <Button onClick={() => resolve(false)} className="!bg-red-800">
+          {t('founding_cancel_proceed', 'Cancel my subscription')}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 const Info: FC<{
   proceed: (feedback: string) => void;
 }> = (props) => {
@@ -241,6 +277,10 @@ export const MainBillingComponent: FC<{
   const [initialChannels, setInitialChannels] = useState(
     sub?.totalChannels || 1
   );
+  const { data: foundingPromo } = useFoundingPromo();
+  // Only unsubscribed orgs can claim a slot, so only they see the promo price.
+  const founding =
+    foundingPromo?.active && !subscription ? foundingPromo : null;
   useEffect(() => {
     if (initialChannels !== sub?.totalChannels) {
       setInitialChannels(sub?.totalChannels || 1);
@@ -314,6 +354,34 @@ export const MainBillingComponent: FC<{
               'Cancel Subscription'
             ))
           ) {
+            // Founding members never get the coupon offer (checkDiscount
+            // excludes them server-side), so show them what they'd forfeit.
+            const foundingMember = foundingPromo?.member;
+            if (foundingMember && !foundingMember.forfeited) {
+              const stay = await new Promise((res) => {
+                modal.openModal({
+                  title: 'Before you cancel',
+                  withCloseButton: true,
+                  classNames: {
+                    modal: 'bg-transparent text-textColor',
+                  },
+                  children: (
+                    <KeepFoundingRate
+                      resolve={res}
+                      slotNumber={foundingMember.slotNumber}
+                      discountPercent={foundingMember.discountPercent}
+                    />
+                  ),
+                });
+              });
+
+              modal.closeAll();
+
+              if (stay) {
+                return;
+              }
+            }
+
             const checkDiscount = await (
               await fetch('/billing/check-discount')
             ).json();
@@ -461,9 +529,24 @@ export const MainBillingComponent: FC<{
             >
               <div className="text-[18px]">{name}</div>
               <div className="text-[38px] flex gap-[2px] items-center">
+                {founding && (
+                  <div className="text-[20px] line-through opacity-60">
+                    $
+                    {monthlyOrYearly === 'on'
+                      ? values.year_price
+                      : values.month_price}
+                  </div>
+                )}
                 <div>
                   $
-                  {monthlyOrYearly === 'on'
+                  {founding
+                    ? foundingPrice(
+                        monthlyOrYearly === 'on'
+                          ? values.year_price
+                          : values.month_price,
+                        monthlyOrYearly === 'on' ? 'YEARLY' : 'MONTHLY'
+                      )
+                    : monthlyOrYearly === 'on'
                     ? values.year_price
                     : values.month_price}
                 </div>

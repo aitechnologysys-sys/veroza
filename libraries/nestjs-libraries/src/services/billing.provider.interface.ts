@@ -4,6 +4,9 @@ export interface CheckoutResult {
   client_secret?: string;
   url?: string;
   auto_apply_coupon?: string;
+  // Set when the Founding-100 coupon was attached server-side. The session then
+  // cannot accept promotion codes, so the UI must hide the coupon input.
+  founding?: { percent: number };
 }
 
 export interface SubscribeResult {

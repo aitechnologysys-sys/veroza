@@ -12,6 +12,11 @@ import NotificationComponent from '@gitroom/frontend/components/notifications/no
 import dynamic from 'next/dynamic';
 import { LogoTextComponent } from '@gitroom/frontend/components/ui/logo-text.component';
 import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  FoundingPeriod,
+  foundingPrice,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/founding.promo';
+import { useFoundingPromo } from '@gitroom/frontend/components/billing/use.founding.promo';
 import { capitalize } from 'lodash';
 import clsx from 'clsx';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
@@ -58,6 +63,8 @@ export const FirstBillingComponent = () => {
   const t = useT();
   const [datafast_visitor_id] = useCookie('datafast_visitor_id', '');
   const [datafast_session_id] = useCookie('datafast_session_id', '');
+  const { data: foundingPromo } = useFoundingPromo();
+  const founding = foundingPromo?.active ? foundingPromo : null;
 
   useEffect(() => {
     if (stripeClient) {
@@ -218,8 +225,9 @@ export const FirstBillingComponent = () => {
             <EmbeddedBilling
               stripe={stripe}
               secret={data.client_secret}
-              showCoupon={period === 'MONTHLY'}
+              showCoupon={period === 'MONTHLY' && !data.founding}
               autoApplyCoupon={data.auto_apply_coupon}
+              foundingPercent={data.founding?.percent}
             />
           ) : (
             <LoadingComponent />
@@ -257,7 +265,12 @@ export const FirstBillingComponent = () => {
                 >
                   <div>{t('billing_yearly', 'Yearly')}</div>
                   <div className="bg-[#AA0FA4] text-[white] px-[8px] rounded-[4px] mobile:hidden">
-                    {t('billing_20_percent_off', '20% Off')}
+                    {founding
+                      ? `${founding.discount.YEARLY}${t(
+                          'billing_percent_off',
+                          '% Off'
+                        )}`
+                      : t('billing_20_percent_off', '20% Off')}
                   </div>
                 </div>
               </div>
@@ -279,13 +292,34 @@ export const FirstBillingComponent = () => {
                       {capitalize(key)}
                     </div>
                     <div className="text-[24px] mobile:text-[18px] font-[400]">
+                      {founding && (
+                        <span className="me-[8px] text-[20px] mobile:text-[16px] line-through opacity-60">
+                          $
+                          {
+                            value[
+                              period === 'MONTHLY'
+                                ? 'month_price'
+                                : 'year_price'
+                            ]
+                          }
+                        </span>
+                      )}
                       <span className="text-[44px] mobile:text-[30px] font-[600]">
                         $
-                        {
-                          value[
-                            period === 'MONTHLY' ? 'month_price' : 'year_price'
-                          ]
-                        }
+                        {founding
+                          ? foundingPrice(
+                              value[
+                                period === 'MONTHLY'
+                                  ? 'month_price'
+                                  : 'year_price'
+                              ],
+                              period as FoundingPeriod
+                            )
+                          : value[
+                              period === 'MONTHLY'
+                                ? 'month_price'
+                                : 'year_price'
+                            ]}
                       </span>{' '}
                       {period === 'MONTHLY'
                         ? t('billing_per_month', '/ month')
@@ -296,6 +330,19 @@ export const FirstBillingComponent = () => {
                 []
               )}
             </div>
+            {founding && (
+              <div className="mt-[12px] flex items-center gap-[8px] text-[14px] font-[500]">
+                <span className="bg-[#AA0FA4] text-white px-[8px] py-[2px] rounded-[4px]">
+                  {founding.discount[period as FoundingPeriod]}
+                  {t('founding_off_forever', '% off forever')}
+                </span>
+                <span className="text-newTextColor/60">
+                  {t('founding_claimed', 'Founding 100 —')}{' '}
+                  {founding.slotsClaimed} {t('founding_of', 'of')}{' '}
+                  {founding.slotsTotal} {t('founding_claimed_suffix', 'claimed')}
+                </span>
+              </div>
+            )}
             <div className="flex flex-col mt-[54px] gap-[24px] tablet:mt-[40px]">
               <div className="text-[24px] font-[700]">
                 {t('billing_features', 'Features')}

@@ -6,6 +6,14 @@ import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/o
 import { Organization } from '@prisma/client';
 import dayjs from 'dayjs';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { isBillingEnabled } from '@gitroom/helpers/utils/is.billing.enabled';
+import { isFoundingPromoEnabled } from '@gitroom/helpers/utils/is.founding.promo.enabled';
+import {
+  FOUNDING_DISCOUNT,
+  FOUNDING_TOTAL_SLOTS,
+  FoundingPeriod,
+  FoundingPromoStatus,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/founding.promo';
 
 @Injectable()
 export class SubscriptionService {
@@ -39,9 +47,79 @@ export class SubscriptionService {
       pricing.FREE.channel || 0,
       'FREE'
     );
+
+    // Cancelling forfeits the founding rate. The ledger row stays, so the slot
+    // remains consumed and resubscribing does not restore the discount.
+    const organization =
+      await this._subscriptionRepository.getOrganizationByCustomerId(customerId);
+    if (organization) {
+      await this._subscriptionRepository.forfeitFoundingSlot(organization.id);
+    }
+
     return this._subscriptionRepository.deleteSubscriptionByCustomerId(
       customerId
     );
+  }
+
+  countFoundingMembers() {
+    return this._subscriptionRepository.countFoundingMembers();
+  }
+
+  getFoundingMemberByOrg(organizationId: string) {
+    return this._subscriptionRepository.getFoundingMemberByOrg(organizationId);
+  }
+
+  getActiveFoundingMemberByOrg(organizationId: string) {
+    return this._subscriptionRepository.getActiveFoundingMemberByOrg(
+      organizationId
+    );
+  }
+
+  async hasFoundingSlotAvailable() {
+    if (!isFoundingPromoEnabled() || !isBillingEnabled()) {
+      return false;
+    }
+
+    return (await this.countFoundingMembers()) < FOUNDING_TOTAL_SLOTS;
+  }
+
+  async claimFoundingSlot(
+    organizationId: string,
+    period: FoundingPeriod,
+    discountPercent: number,
+    couponId: string
+  ) {
+    const claimed = await this._subscriptionRepository.claimFoundingSlot(
+      organizationId,
+      period,
+      discountPercent,
+      couponId
+    );
+
+    // Slots are checked at checkout, not reserved, so concurrent checkouts can
+    // overshoot. Honoured deliberately — clawing a coupon back from someone who
+    // already paid is worse than a small overshoot.
+    if (claimed.slotNumber > FOUNDING_TOTAL_SLOTS) {
+      console.warn(
+        `Founding slot ${claimed.slotNumber} exceeds the ${FOUNDING_TOTAL_SLOTS} cap (organization ${organizationId})`
+      );
+    }
+
+    return claimed;
+  }
+
+  async getFoundingPromoStatus(): Promise<FoundingPromoStatus> {
+    const enabled = isFoundingPromoEnabled() && isBillingEnabled();
+    const slotsClaimed = enabled ? await this.countFoundingMembers() : 0;
+    const slotsRemaining = Math.max(0, FOUNDING_TOTAL_SLOTS - slotsClaimed);
+
+    return {
+      active: enabled && slotsRemaining > 0,
+      slotsTotal: FOUNDING_TOTAL_SLOTS,
+      slotsClaimed,
+      slotsRemaining,
+      discount: FOUNDING_DISCOUNT,
+    };
   }
 
   updateCustomerId(organizationId: string, customerId: string) {

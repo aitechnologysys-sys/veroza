@@ -13,7 +13,8 @@ export class SubscriptionRepository {
     private readonly _organization: PrismaRepository<'organization'>,
     private readonly _user: PrismaRepository<'user'>,
     private readonly _credits: PrismaRepository<'credits'>,
-    private _usedCodes: PrismaRepository<'usedCodes'>
+    private _usedCodes: PrismaRepository<'usedCodes'>,
+    private readonly _foundingMember: PrismaRepository<'foundingMember'>
   ) {}
 
   getUserAccount(userId: string) {
@@ -132,6 +133,78 @@ export class SubscriptionRepository {
       where: {
         paymentId: customerId,
       },
+    });
+  }
+
+  // Counts forfeited rows too — a cancelled founding slot stays consumed.
+  countFoundingMembers() {
+    return this._foundingMember.model.foundingMember.count();
+  }
+
+  getFoundingMemberByOrg(organizationId: string) {
+    return this._foundingMember.model.foundingMember.findUnique({
+      where: { organizationId },
+    });
+  }
+
+  getActiveFoundingMemberByOrg(organizationId: string) {
+    return this._foundingMember.model.foundingMember.findFirst({
+      where: { organizationId, forfeitedAt: null },
+    });
+  }
+
+  // Idempotent: Stripe redelivers webhooks, and the organizationId unique
+  // constraint makes a repeat claim return the original row rather than a second
+  // slot. The slotNumber unique constraint absorbs the concurrent-claim race —
+  // two checkouts completing at once compute the same next number, one loses and
+  // recomputes.
+  async claimFoundingSlot(
+    organizationId: string,
+    period: 'MONTHLY' | 'YEARLY',
+    discountPercent: number,
+    couponId: string
+  ) {
+    const existing = await this.getFoundingMemberByOrg(organizationId);
+    if (existing) {
+      return existing;
+    }
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const slotNumber = (await this.countFoundingMembers()) + 1;
+
+      try {
+        return await this._foundingMember.model.foundingMember.create({
+          data: {
+            organizationId,
+            slotNumber,
+            period,
+            discountPercent,
+            couponId,
+          },
+        });
+      } catch (err) {
+        if ((err as { code?: string })?.code !== 'P2002') {
+          throw err;
+        }
+
+        const claimed = await this.getFoundingMemberByOrg(organizationId);
+        if (claimed) {
+          return claimed;
+        }
+      }
+    }
+
+    throw new Error(
+      `Could not allocate a founding slot for organization ${organizationId}`
+    );
+  }
+
+  // The row is deliberately kept: the slot stays consumed out of the 100 and the
+  // org does not get the rate back by resubscribing.
+  forfeitFoundingSlot(organizationId: string) {
+    return this._foundingMember.model.foundingMember.updateMany({
+      where: { organizationId, forfeitedAt: null },
+      data: { forfeitedAt: new Date() },
     });
   }
 

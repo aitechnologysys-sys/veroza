@@ -29,6 +29,26 @@ export class BillingController {
     };
   }
 
+  @Get('/founding-promo')
+  async foundingPromo(@GetOrgFromRequest() org: Organization) {
+    const status = await this._subscriptionService.getFoundingPromoStatus();
+    const member = await this._subscriptionService.getFoundingMemberByOrg(
+      org.id
+    );
+
+    return {
+      ...status,
+      member: member
+        ? {
+            slotNumber: member.slotNumber,
+            period: member.period,
+            discountPercent: member.discountPercent,
+            forfeited: !!member.forfeitedAt,
+          }
+        : null,
+    };
+  }
+
   @Get('/check-discount')
   async checkDiscount(@GetOrgFromRequest() org: Organization) {
     return {

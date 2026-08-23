@@ -12,6 +12,10 @@ import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import { IBillingProvider } from '@gitroom/nestjs-libraries/services/billing.provider.interface';
+import {
+  FOUNDING_DISCOUNT,
+  FoundingPeriod,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/founding.promo';
 
 // Pinned explicitly rather than inheriting whatever the installed stripe-node
 // happens to pin. The Stripe webhook endpoint must be configured with this same
@@ -109,11 +113,15 @@ export class StripeService implements IBillingProvider {
   }
 
   async createSubscription(event: Stripe.CustomerSubscriptionCreatedEvent) {
-    const { uniqueId, billing, period } = event.data.object.metadata as {
-      billing: 'STANDARD' | 'PRO';
-      period: 'MONTHLY' | 'YEARLY';
-      uniqueId: string;
-    };
+    const { uniqueId, billing, period, founding, foundingPercent, foundingCoupon } =
+      event.data.object.metadata as {
+        billing: 'STANDARD' | 'PRO';
+        period: 'MONTHLY' | 'YEARLY';
+        uniqueId: string;
+        founding?: string;
+        foundingPercent?: string;
+        foundingCoupon?: string;
+      };
 
     try {
       const check = await this.checkValidCard(event);
@@ -124,7 +132,7 @@ export class StripeService implements IBillingProvider {
       return { ok: false };
     }
 
-    return this._subscriptionService.createOrUpdateSubscription(
+    const result = await this._subscriptionService.createOrUpdateSubscription(
       event.data.object.status !== 'active',
       uniqueId,
       event.data.object.customer as string,
@@ -133,6 +141,33 @@ export class StripeService implements IBillingProvider {
       period,
       event.data.object.cancel_at
     );
+
+    // The founding decision was stamped into subscription metadata at checkout,
+    // so claiming the slot needs no extra Stripe call. Idempotent — Stripe
+    // redelivers webhooks.
+    if (founding === 'true') {
+      try {
+        const org = await this._organizationService.getOrgByCustomerId(
+          event.data.object.customer as string
+        );
+
+        if (org) {
+          await this._subscriptionService.claimFoundingSlot(
+            org.id,
+            period,
+            Number(foundingPercent),
+            foundingCoupon!
+          );
+        }
+      } catch (err) {
+        // The customer already has the coupon on their subscription; a failed
+        // ledger write must not fail the webhook and trigger a Stripe retry
+        // storm. Logged so the slot can be reconciled by hand.
+        console.error('Error claiming founding slot:', err);
+      }
+    }
+
+    return result;
   }
   async updateSubscription(event: Stripe.CustomerSubscriptionUpdatedEvent) {
     const { uniqueId, billing, period } = event.data.object.metadata as {
@@ -363,7 +398,9 @@ export class StripeService implements IBillingProvider {
     };
   }
 
-  async getCustomerByOrganizationId(organizationId: string): Promise<string | null> {
+  async getCustomerByOrganizationId(
+    organizationId: string
+  ): Promise<string | null> {
     const org = (await this._organizationService.getOrgById(organizationId))!;
     return org.paymentId ?? null;
   }
@@ -427,6 +464,63 @@ export class StripeService implements IBillingProvider {
     }
   }
 
+  /**
+   * The Founding-100 coupon for this org and period, or null when they do not
+   * qualify.
+   *
+   * Coupons are find-or-created on first use, mirroring how products and prices
+   * are handled in this file — nothing is pre-made in the dashboard. The match
+   * keys on percent_off as well as the metadata marker because Stripe coupons are
+   * immutable: changing a percentage has to produce a new coupon, leaving
+   * existing founding members on their original rate.
+   */
+  private async resolveFoundingCoupon(
+    organizationId: string,
+    period: FoundingPeriod
+  ): Promise<{ couponId: string; percent: number } | null> {
+    try {
+      if (!(await this._subscriptionService.hasFoundingSlotAvailable())) {
+        return null;
+      }
+
+      // Any existing row, forfeited included: cancelling gives up the rate for
+      // good, and an existing member must not consume a second slot.
+      if (await this._subscriptionService.getFoundingMemberByOrg(organizationId)) {
+        return null;
+      }
+
+      const percent = FOUNDING_DISCOUNT[period];
+      const { data: coupons } = await stripe.coupons.list({ limit: 100 });
+
+      const existing = coupons.find(
+        (coupon) =>
+          coupon.metadata?.founding === period &&
+          coupon.percent_off === percent &&
+          coupon.valid
+      );
+
+      if (existing) {
+        return { couponId: existing.id, percent };
+      }
+
+      const created = await stripe.coupons.create({
+        percent_off: percent,
+        duration: 'forever',
+        name: `Founding 100 — ${period}`,
+        metadata: {
+          service: 'gitroom',
+          founding: period,
+        },
+      });
+
+      return { couponId: created.id, percent };
+    } catch (err) {
+      // Degrade to list price rather than 500 the paywall.
+      console.error('Error resolving founding coupon:', err);
+      return null;
+    }
+  }
+
   private async createEmbeddedCheckout(
     ud: string,
     uniqueId: string,
@@ -434,7 +528,8 @@ export class StripeService implements IBillingProvider {
     body: BillingSubscribeDto,
     price: string,
     userId: string,
-    allowTrial: boolean
+    allowTrial: boolean,
+    organizationId: string
   ) {
     const user = await this._userService.getUserById(userId);
 
@@ -455,9 +550,16 @@ export class StripeService implements IBillingProvider {
       });
     } catch (err) {}
 
-    // Check for auto-apply promotion code (only for monthly plans)
+    const founding = await this.resolveFoundingCoupon(
+      organizationId,
+      body.period
+    );
+
+    // Check for auto-apply promotion code (only for monthly plans). Skipped
+    // under the founding promo: a session cannot both carry discounts[] and
+    // allow promotion codes.
     let autoApplyPromoCode: string | null = null;
-    if (body.period === 'MONTHLY') {
+    if (!founding && body.period === 'MONTHLY') {
       autoApplyPromoCode = await this.findAutoApplyPromotionCode();
     }
 
@@ -477,6 +579,13 @@ export class StripeService implements IBillingProvider {
           userId,
           uniqueId,
           ud,
+          ...(founding
+            ? {
+                founding: 'true',
+                foundingPercent: String(founding.percent),
+                foundingCoupon: founding.couponId,
+              }
+            : {}),
         },
       },
       ...(body.datafast_session_id && body.datafast_visitor_id
@@ -487,7 +596,9 @@ export class StripeService implements IBillingProvider {
             },
           }
         : {}),
-      allow_promotion_codes: body.period === 'MONTHLY',
+      ...(founding
+        ? { discounts: [{ coupon: founding.couponId }] }
+        : { allow_promotion_codes: body.period === 'MONTHLY' }),
       line_items: [
         {
           price,
@@ -500,6 +611,7 @@ export class StripeService implements IBillingProvider {
     return {
       client_secret,
       ...(autoApplyPromoCode ? { auto_apply_coupon: autoApplyPromoCode } : {}),
+      ...(founding ? { founding: { percent: founding.percent } } : {}),
     };
   }
 
@@ -510,7 +622,8 @@ export class StripeService implements IBillingProvider {
     body: BillingSubscribeDto,
     price: string,
     userId: string,
-    allowTrial: boolean
+    allowTrial: boolean,
+    organizationId: string
   ) {
     const isUtm = body.utm ? `&utm_source=${body.utm}` : '';
 
@@ -522,6 +635,11 @@ export class StripeService implements IBillingProvider {
         },
       });
     }
+
+    const founding = await this.resolveFoundingCoupon(
+      organizationId,
+      body.period
+    );
 
     const { url } = await stripe.checkout.sessions.create({
       customer,
@@ -538,9 +656,18 @@ export class StripeService implements IBillingProvider {
           userId,
           uniqueId,
           ud,
+          ...(founding
+            ? {
+                founding: 'true',
+                foundingPercent: String(founding.percent),
+                foundingCoupon: founding.couponId,
+              }
+            : {}),
         },
       },
-      allow_promotion_codes: body.period === 'MONTHLY',
+      ...(founding
+        ? { discounts: [{ coupon: founding.couponId }] }
+        : { allow_promotion_codes: body.period === 'MONTHLY' }),
       line_items: [
         {
           price,
@@ -566,6 +693,23 @@ export class StripeService implements IBillingProvider {
 
   async checkDiscount(customer: string) {
     if (!process.env.STRIPE_DISCOUNT_ID) {
+      return false;
+    }
+
+    // Founding members are excluded. Accepting the cancel offer would *replace*
+    // their forever coupon rather than stack on it (subscriptions.update
+    // overwrites discounts[]), dropping them to full price after three months —
+    // strictly worse for them. The discounts.length check below also happens to
+    // block this today, but only while the coupon sits on the subscription.
+    const foundingOrg = await this._organizationService.getOrgByCustomerId(
+      customer
+    );
+    if (
+      foundingOrg &&
+      (await this._subscriptionService.getActiveFoundingMemberByOrg(
+        foundingOrg.id
+      ))
+    ) {
       return false;
     }
 
@@ -604,7 +748,7 @@ export class StripeService implements IBillingProvider {
   }
 
   async applyDiscount(customer: string) {
-    const check = this.checkDiscount(customer);
+    const check = await this.checkDiscount(customer);
     if (!check) {
       return false;
     }
@@ -720,7 +864,8 @@ export class StripeService implements IBillingProvider {
       body,
       findPrice!.id,
       userId,
-      allowTrial
+      allowTrial,
+      organizationId
     );
   }
 
@@ -790,7 +935,8 @@ export class StripeService implements IBillingProvider {
         body,
         findPrice!.id,
         userId,
-        allowTrial
+        allowTrial,
+        organizationId
       );
     }
 

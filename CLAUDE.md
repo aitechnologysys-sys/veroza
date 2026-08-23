@@ -37,6 +37,18 @@ The Stripe API version is pinned explicitly in `stripe.service.ts` (`STRIPE_API_
 
 See **`docs/billing-current-state.md`** for the full picture: provider wiring, Stripe setup and test-mode products, webhook/ngrok setup, and the Polar feature gaps. Background: `docs/stripe-implementation.md` (pre-migration reference) and `docs/polar-integration-plan.md` (original plan, partially superseded).
 
+### Founding-100 launch promo
+
+`FOUNDING_PROMO_ENABLED` is a **third, independent switch** alongside the two above: the first 100 paying customers get 52% off yearly / 24% off monthly, forever, attached server-side at checkout. Read it only through `isFoundingPromoEnabled()` (`libraries/helpers/src/utils/is.founding.promo.enabled.ts`) — same rule as `isBillingEnabled()`.
+
+- **Stripe only.** Has no effect under `BILLING_PROVIDER=polar`; `IBillingProvider` was deliberately left unchanged so Polar and upstream merges stay untouched.
+- Percentages and the slot count live **only** in `founding.promo.ts` (next to `pricing.ts`, imported by the frontend too). Never hardcode them in a component.
+- **New checkouts only** — never in-place plan changes. Cancelling forfeits the rate and the slot stays consumed.
+- A Checkout Session cannot set both `discounts` and `allow_promotion_codes`. Attaching the founding coupon turns promotion codes off for that session, so the UI must hide the coupon input.
+- Stripe coupons are immutable: changing a percentage creates a new coupon, which is why the matcher keys on `percent_off` as well as the metadata marker.
+
+See **`implementation-docs/founding-100-promo.md`** for the runbook. `implementation-docs/` holds specs for features we build that upstream does not have — check there before designing something that may already be documented.
+
 ## Monorepo Structure
 
 PNPM workspace with two top-level areas:

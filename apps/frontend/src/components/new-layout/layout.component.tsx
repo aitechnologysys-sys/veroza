@@ -30,7 +30,7 @@ import { ContextWrapper } from '@gitroom/frontend/components/layout/user.context
 import { CopilotKit } from '@copilotkit/react-core';
 import { MantineWrapper } from '@gitroom/react/helpers/mantine.wrapper';
 import { Impersonate } from '@gitroom/frontend/components/layout/impersonate';
-import { AnnouncementBanner } from '@gitroom/frontend/components/layout/announcement.banner';
+import { TopBanners } from '@gitroom/frontend/components/new-layout/top.banners';
 import { Title } from '@gitroom/frontend/components/layout/title';
 import { TopMenu } from '@gitroom/frontend/components/layout/top.menu';
 import { LanguageComponent } from '@gitroom/frontend/components/layout/language.component';
@@ -69,6 +69,8 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
 
   if (!user) return null;
 
+  const isPaywalled = user.tier === 'FREE' && isGeneral && billingEnabled;
+
   return (
     <ContextWrapper user={user}>
       <CopilotKit
@@ -95,19 +97,24 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
               )}
             >
               <div>{user?.admin ? <Impersonate /> : <div />}</div>
-              {user.tier === 'FREE' && isGeneral && billingEnabled ? (
+              <TopBanners showAnnouncements={!isPaywalled} />
+              {isPaywalled ? (
                 <FirstBillingComponent />
               ) : (
                 <>
-                  <AnnouncementBanner />
                   <div className="flex-1 flex gap-[8px]">
                     <Support />
                     <div className="flex flex-col bg-newBgColorInner w-[80px] rounded-[12px]">
                       <div
                         id="left-menu"
+                        style={{
+                          paddingTop: `calc(${
+                            user?.admin ? '60px' : '0px'
+                          } + var(--top-banners-height, 0px))`,
+                        }}
                         className={clsx(
                           'fixed h-full w-[64px] start-[17px] flex flex-1 top-0',
-                          user?.admin && 'pt-[60px] max-h-[1000px]:w-[500px]'
+                          user?.admin && 'max-h-[1000px]:w-[500px]'
                         )}
                       >
                         <div className="flex flex-col h-full gap-[32px] flex-1 py-[12px]">

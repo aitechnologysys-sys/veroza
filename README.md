@@ -168,6 +168,7 @@ Dependencies in Docker, the three apps on the host.
 
 ```bash
 docker compose -p postaryx-dev -f docker-compose.dev.yaml up -d   # Postgres, Redis, Temporal
+# in the claude.md, pnpm prisma-generate (regenerate Prisma client after schema change - need to read about it )
 pnpm run prisma-db-push        # first time, and after any schema change
 pnpm run dev                   # backend + frontend + orchestrator
 # → http://localhost:4200
@@ -229,11 +230,11 @@ push to main  →  GitHub Actions (arm64 runner)  →  ghcr.io/aitechnologysys-s
 
 **Tags the workflow publishes:**
 
-| Tag | When | Purpose |
-|---|---|---|
-| `:<full-git-sha>` | every run | immutable rollback handle |
-| `:latest` | **`main` only** | what the VM pulls |
-| `:branch-<name>` | any other branch | manual test builds — deliberately cannot move `:latest` |
+| Tag               | When             | Purpose                                                 |
+| ----------------- | ---------------- | ------------------------------------------------------- |
+| `:<full-git-sha>` | every run        | immutable rollback handle                               |
+| `:latest`         | **`main` only**  | what the VM pulls                                       |
+| `:branch-<name>`  | any other branch | manual test builds — deliberately cannot move `:latest` |
 
 **Deploy** (on the VM, after CI goes green):
 
@@ -262,10 +263,10 @@ precisely so rollback never requires editing a tracked file on the server.
 > a box is using, run `docker compose ls` — a wrong `-p` silently targets a
 > different, empty project instead of erroring.
 
-**Running the workflow by hand:** the *Run workflow* button only appears once a
+**Running the workflow by hand:** the _Run workflow_ button only appears once a
 workflow containing `workflow_dispatch` exists on the **default branch**. Until
 `build-containers.yml` is merged to `main` there is no button anywhere. After
-that, Actions → *Build image* → *Run workflow* → pick any branch.
+that, Actions → _Build image_ → _Run workflow_ → pick any branch.
 
 ### Where configuration comes from
 
@@ -274,11 +275,11 @@ variables total, of which the only meaningful one is the `NEXT_PUBLIC_VERSION`
 build stamp. Config arrives at container start, from three different places that
 are easy to confuse:
 
-| Source | Read by | Contains | Committed? |
-|---|---|---|---|
-| **`.env.prod`** via `env_file:` | injected into the container | every secret: `JWT_SECRET`, API keys, email, billing | **No** — gitignored, and `.dockerignore` excludes `.env*` |
-| **`environment:`** in `docker-compose.yaml` | injected into the container, **overrides `.env.prod`** | container-network wiring: `DATABASE_URL`, `REDIS_URL`, `TEMPORAL_ADDRESS`, `STORAGE_PROVIDER` | Yes |
-| **`.env`** (a *different* file) | **Compose itself**, not the container | `${POSTARYX_PUBLIC_URL}`, `${POSTARYX_IMAGE}`, `${POSTARYX_IMAGE_TAG}` substitutions | No |
+| Source                                      | Read by                                                | Contains                                                                                      | Committed?                                                |
+| ------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| **`.env.prod`** via `env_file:`             | injected into the container                            | every secret: `JWT_SECRET`, API keys, email, billing                                          | **No** — gitignored, and `.dockerignore` excludes `.env*` |
+| **`environment:`** in `docker-compose.yaml` | injected into the container, **overrides `.env.prod`** | container-network wiring: `DATABASE_URL`, `REDIS_URL`, `TEMPORAL_ADDRESS`, `STORAGE_PROVIDER` | Yes                                                       |
+| **`.env`** (a _different_ file)             | **Compose itself**, not the container                  | `${POSTARYX_PUBLIC_URL}`, `${POSTARYX_IMAGE}`, `${POSTARYX_IMAGE_TAG}` substitutions          | No                                                        |
 
 Three consequences:
 
@@ -291,7 +292,7 @@ Three consequences:
    `docker compose -p postaryx up -d postaryx` to recreate the container. Seconds.
 
 This runtime-config design is what makes a CI-built image safe: `NEXT_PUBLIC_*`
-values are read in *server* components and passed to the client through
+values are read in _server_ components and passed to the client through
 `VariableContextComponent`, so none of them are compiled into the bundle.
 
 > ⚠️ **`docker-compose.yaml` is committed to a public repo, so everything in its
@@ -312,17 +313,17 @@ values are read in *server* components and passed to the client through
 **A new GHCR package is created PRIVATE, even when the repo is public.** It does
 not inherit the repository's visibility. This bites everyone exactly once, so:
 
-| | Package **private** (the default) | Package **public** |
-|---|---|---|
-| Storage | 500 MB free, then $0.25/GB/month | Unlimited, free |
-| Transfer out | 1 GB/month free, then $0.50/GB | Unlimited, free |
-| VM can pull | Only after `docker login ghcr.io` | Yes, unauthenticated |
+|              | Package **private** (the default) | Package **public**   |
+| ------------ | --------------------------------- | -------------------- |
+| Storage      | 500 MB free, then $0.25/GB/month  | Unlimited, free      |
+| Transfer out | 1 GB/month free, then $0.50/GB    | Unlimited, free      |
+| VM can pull  | Only after `docker login ghcr.io` | Yes, unauthenticated |
 
 Our image is several GB, so on the private default you blow the free allowance
 immediately. **After the first successful build, flip it once:**
 
 `github.com/users/aitechnologysys-sys/packages/container/veroza/settings`
-→ *Danger Zone* → *Change visibility* → **Public**
+→ _Danger Zone_ → _Change visibility_ → **Public**
 
 (That is the URL shape for a **user**-owned package. An org-owned one lives
 under `/orgs/<org>/packages/...`.)
@@ -341,21 +342,22 @@ Two consequences worth holding onto:
   ```
 
 Old versions are pruned automatically (newest 20 kept) by the workflow's
-*Prune old image versions* step. That is hygiene, not cost — on a public
+_Prune old image versions_ step. That is hygiene, not cost — on a public
 package storage is free.
 
 ## 5. Where the rest of it is written down
 
-| Doc | Covers |
-|---|---|
-| [docs/CI-BUILD-CUTOVER.md](docs/CI-BUILD-CUTOVER.md) | **Do this once**, right after the CI-build change merges: make the GHCR package public, then test and deploy step by step |
-| [docs/UPSTREAM-ISOLATION.md](docs/UPSTREAM-ISOLATION.md) | Proof that nothing of ours reaches Postiz, the one gap that was closed, and where we still link to them |
-| [docs/UPSTREAM-SYNC.md](docs/UPSTREAM-SYNC.md) | Pulling Postiz's fixes in: cherry-pick vs merge, the known conflict hotspots, and how to verify |
-| [docs/RUNNING-DEV-AND-PROD.md](docs/RUNNING-DEV-AND-PROD.md) | Switching stacks safely, Compose project isolation, the Postgres auth error |
-| [docs/LOCAL-DEVELOPMENT.md](docs/LOCAL-DEVELOPMENT.md) | Dev setup in depth |
-| [docs/PROD-DEPLOY-PREREQUISITE.md](docs/PROD-DEPLOY-PREREQUISITE.md) | What must exist before a deploy |
-| [docs/ORACLE-VM-DEPLOYMENT.md](docs/ORACLE-VM-DEPLOYMENT.md) | Server build-out: Nginx, Certbot, firewall, backups |
-| [docs/CONTAINMENT-DEPLOYMENT-PLAN.md](docs/CONTAINMENT-DEPLOYMENT-PLAN.md) | Fitting the stack in 2 OCPU / 12 GB; the CI-build rationale (§6) |
-| [docs/INFRASTRUCTURE-AND-DEPLOYMENT.md](docs/INFRASTRUCTURE-AND-DEPLOYMENT.md) | Architecture overview |
-| [docs/billing-current-state.md](docs/billing-current-state.md) | Stripe/Polar wiring, `BILLING_ENABLED` |
-| [CLAUDE.md](CLAUDE.md) | Repo conventions, the Postaryx rename policy, upstream-parity rule |
+| Doc                                                                                    | Covers                                                                                                                    |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| [docs/CI-BUILD-CUTOVER.md](docs/CI-BUILD-CUTOVER.md)                                   | **Do this once**, right after the CI-build change merges: make the GHCR package public, then test and deploy step by step |
+| [docs/UPSTREAM-ISOLATION.md](docs/UPSTREAM-ISOLATION.md)                               | Proof that nothing of ours reaches Postiz, the one gap that was closed, and where we still link to them                   |
+| [docs/UPSTREAM-SYNC.md](docs/UPSTREAM-SYNC.md)                                         | Pulling Postiz's fixes in: cherry-pick vs merge, the known conflict hotspots, and how to verify                           |
+| [docs/RUNNING-DEV-AND-PROD.md](docs/RUNNING-DEV-AND-PROD.md)                           | Switching stacks safely, Compose project isolation, the Postgres auth error                                               |
+| [docs/LOCAL-DEVELOPMENT.md](docs/LOCAL-DEVELOPMENT.md)                                 | Dev setup in depth                                                                                                        |
+| [docs/PROD-DEPLOY-PREREQUISITE.md](docs/PROD-DEPLOY-PREREQUISITE.md)                   | What must exist before a deploy                                                                                           |
+| [docs/ORACLE-VM-DEPLOYMENT.md](docs/ORACLE-VM-DEPLOYMENT.md)                           | Server build-out: Nginx, Certbot, firewall, backups                                                                       |
+| [docs/CONTAINMENT-DEPLOYMENT-PLAN.md](docs/CONTAINMENT-DEPLOYMENT-PLAN.md)             | Fitting the stack in 2 OCPU / 12 GB; the CI-build rationale (§6)                                                          |
+| [docs/INFRASTRUCTURE-AND-DEPLOYMENT.md](docs/INFRASTRUCTURE-AND-DEPLOYMENT.md)         | Architecture overview                                                                                                     |
+| [docs/billing-current-state.md](docs/billing-current-state.md)                         | Stripe/Polar wiring, `BILLING_ENABLED`                                                                                    |
+| [implementation-docs/founding-100-promo.md](implementation-docs/founding-100-promo.md) | Founding-100 launch promo: coupons, slot ledger, `FOUNDING_PROMO_ENABLED`                                                 |
+| [CLAUDE.md](CLAUDE.md)                                                                 | Repo conventions, the Postaryx rename policy, upstream-parity rule                                                        |

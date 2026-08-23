@@ -21,7 +21,8 @@ export const EmbeddedBilling: FC<{
   secret: string;
   showCoupon?: boolean;
   autoApplyCoupon?: string;
-}> = ({ stripe, secret, showCoupon = false, autoApplyCoupon }) => {
+  foundingPercent?: number;
+}> = ({ stripe, secret, showCoupon = false, autoApplyCoupon, foundingPercent }) => {
   const [saveSecret, setSaveSecret] = useState(secret);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useCookie('mode', 'dark');
@@ -84,16 +85,18 @@ export const EmbeddedBilling: FC<{
         <FormWrapper
           showCoupon={showCoupon}
           autoApplyCoupon={autoApplyCoupon}
+          foundingPercent={foundingPercent}
         />
       </CheckoutProvider>
     </div>
   );
 };
 
-const FormWrapper: FC<{ showCoupon?: boolean; autoApplyCoupon?: string }> = ({
-  showCoupon = false,
-  autoApplyCoupon,
-}) => {
+const FormWrapper: FC<{
+  showCoupon?: boolean;
+  autoApplyCoupon?: string;
+  foundingPercent?: number;
+}> = ({ showCoupon = false, autoApplyCoupon, foundingPercent }) => {
   const checkoutState = useCheckout();
   const toaster = useToaster();
   const [loading, setLoading] = useState(false);
@@ -122,6 +125,7 @@ const FormWrapper: FC<{ showCoupon?: boolean; autoApplyCoupon?: string }> = ({
       <StripeInputs
         showCoupon={showCoupon}
         autoApplyCoupon={autoApplyCoupon}
+        foundingPercent={foundingPercent}
         loading={loading}
       />
     </form>
@@ -131,8 +135,9 @@ const FormWrapper: FC<{ showCoupon?: boolean; autoApplyCoupon?: string }> = ({
 const StripeInputs: FC<{
   showCoupon: boolean;
   autoApplyCoupon?: string;
+  foundingPercent?: number;
   loading: boolean;
-}> = ({ showCoupon, autoApplyCoupon, loading }) => {
+}> = ({ showCoupon, autoApplyCoupon, foundingPercent, loading }) => {
   const checkout = useCheckout();
   const t = useT();
   const [ready, setReady] = useState(false);
@@ -161,6 +166,16 @@ const StripeInputs: FC<{
         {ready && <PriceBreakdown />}
         {showCoupon && ready && (
           <CouponInput autoApplyCoupon={autoApplyCoupon} />
+        )}
+        {!!foundingPercent && ready && (
+          <div className="mt-[24px] flex items-center gap-[8px] px-[16px] py-[12px] rounded-[8px] bg-[#AA0FA4]/10 border border-[#AA0FA4] text-[14px] font-[600]">
+            <span className="bg-[#AA0FA4] text-white px-[8px] py-[2px] rounded-[4px]">
+              -{foundingPercent}%
+            </span>
+            <span>
+              {t('founding_applied', 'Founding 100 discount applied — locked in forever')}
+            </span>
+          </div>
         )}
         {ready && <SubmitBar loading={loading} />}
         {checkout.type === 'loading' ? null : (

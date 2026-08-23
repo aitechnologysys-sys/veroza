@@ -189,7 +189,7 @@ a deploy.
 > `POSTARYX_DB_USER`/`POSTARYX_DB_PASSWORD`/`POSTARYX_DB_NAME`,
 > `POSTARYX_REDIS_PASSWORD`, and `POSTARYX_TEMPORAL_DB_PASSWORD` — Compose
 > refuses to start without them. See
-> [docs/PROD-DEPLOY-PREREQUISITE.md](docs/PROD-DEPLOY-PREREQUISITE.md) for the
+> [docs/PROD-DEPLOY-PREREQUISITE.md](docs/5.%20PROD-DEPLOY-PREREQUISITE.md) for the
 > one-time setup, and §3's ["Where configuration comes
 > from"](#where-configuration-comes-from) for why `.env.prod` alone isn't enough.
 
@@ -344,18 +344,115 @@ Old versions are pruned automatically (newest 20 kept) by the workflow's
 *Prune old image versions* step. That is hygiene, not cost — on a public
 package storage is free.
 
-## 5. Where the rest of it is written down
+## 5. Tearing down and reclaiming disk
+
+Four Docker object types, four different commands. Mixing them up is how people
+either fail to free any space or delete a database they wanted.
+
+| Command | Removes | Keeps |
+|---|---|---|
+| `docker compose -p <p> stop` | nothing — just stops processes | everything |
+| `docker compose -p <p> down` | containers + project networks | **volumes**, images |
+| `docker compose -p <p> down -v` | containers, networks, **and volumes** | images |
+| `docker image prune` | untagged (dangling) images | tagged images, volumes |
+
+### Restarting a service after an env change
+
+`env_file` is read when a container is **created**, not when it starts. So
+`restart` does nothing for a changed `.env.prod` — you need a recreate:
+
+```bash
+docker compose -p postaryx up -d postaryx        # recreates just this service
+docker compose -p postaryx up -d --force-recreate postaryx   # if it reports "up-to-date"
+```
+
+Confirm the container actually took the value — a quoted or truncated paste is
+invisible by eye:
+
+```bash
+docker compose -p postaryx exec postaryx sh -c 'printf "[%s]\n" "$STRIPE_SIGNING_KEY"'
+```
+
+### Full reset — destroys all data
+
+⚠️ **`-v` deletes `postgres-volume` (the database), `postaryx-uploads` (all
+media), `postaryx-redis-data`, `postaryx-config`, and
+`temporal-postgres-volume` (workflow history — every scheduled post).** There is
+no undo. Only do this on a stack with nothing you need.
+
+```bash
+cd /opt/postaryx/postaryx-app
+
+# 1. Look at what you're about to delete
+docker compose -p postaryx ps -a
+docker volume ls | grep -Ei 'postaryx|temporal'
+
+# 2. Destroy
+docker compose -p postaryx down -v --remove-orphans
+
+# 3. Verify — both should print nothing
+docker volume ls | grep -Ei 'postaryx|temporal'
+docker ps -a     | grep -Ei 'postaryx|temporal'
+
+# 4. Rebuild from scratch
+docker compose -p postaryx pull postaryx
+docker compose -p postaryx up -d
+docker compose -p postaryx logs -f postaryx
+```
+
+Cold start is slower than a recreate: Temporal's `auto-setup` rebuilds its schema
+and recreates the `default` namespace, and `prisma-db-push` builds the app schema
+from nothing. Budget 2–3 minutes, and ignore Temporal connection errors in the
+first 90s — that is what `start_period: 120s` on the healthcheck is for.
+
+Step 3 is not ceremony. If the stack was ever started without `-p postaryx`,
+Compose owns a *second* project whose volumes `down -v` never touched.
+`docker compose ls -a` reveals it; remove strays with `docker volume rm <name>`.
+
+Files on disk are **not** volumes and survive all of the above: `.env`,
+`.env.prod`, `docker-compose.yaml`, the nginx vhost, and the TLS cert.
+
+**What survives `--remove-orphans` and is protected from `-v`:** a volume marked
+`external: true` is considered someone else's property and is skipped. Every
+volume in our file is `external: false`, which is exactly why `-v` clears them.
+That flag is the switch to flip if a volume ever holds something you can't lose.
+
+### Reclaiming disk after a deploy
+
+`pull` moves the `:latest` **tag** to the new digest; the previous image keeps
+its layers, loses its only tag, and lingers as `<none> <none>` forever. Nothing
+cleans it up on its own, and the image is several GB against a 50 GB boot volume.
+
+```bash
+docker system df                       # where the space actually went
+docker images | grep -E 'veroza|none'
+docker image prune -f                  # dangling only
+```
+
+Two cautions:
+
+- **Don't habitually run `docker system prune -a`.** It removes every image not
+  attached to a container, so running it while the stack is down also deletes
+  `postgres:17-alpine`, `redis:7.2`, and the Temporal images — the next `up -d`
+  re-downloads them for nothing.
+- **Pruning does not cost you a rollback.** You only ever pull `:latest`, so the
+  previous image is untagged locally and pruning it is free; GHCR still has the
+  `:<full-git-sha>` tag (§3). Deleting the *package version* in GHCR is the
+  destructive one.
+
+## 6. Where the rest of it is written down
 
 | Doc | Covers |
 |---|---|
-| [docs/CI-BUILD-CUTOVER.md](docs/CI-BUILD-CUTOVER.md) | **Do this once**, right after the CI-build change merges: make the GHCR package public, then test and deploy step by step |
+| [docs/CI-BUILD-CUTOVER.md](docs/3.%20(First%20time%20important)%20CI-BUILD-CUTOVER.md) | **Do this once**, right after the CI-build change merges: make the GHCR package public, then test and deploy step by step |
 | [docs/UPSTREAM-ISOLATION.md](docs/UPSTREAM-ISOLATION.md) | Proof that nothing of ours reaches Postiz, the one gap that was closed, and where we still link to them |
 | [docs/UPSTREAM-SYNC.md](docs/UPSTREAM-SYNC.md) | Pulling Postiz's fixes in: cherry-pick vs merge, the known conflict hotspots, and how to verify |
 | [docs/RUNNING-DEV-AND-PROD.md](docs/RUNNING-DEV-AND-PROD.md) | Switching stacks safely, Compose project isolation, the Postgres auth error |
 | [docs/LOCAL-DEVELOPMENT.md](docs/LOCAL-DEVELOPMENT.md) | Dev setup in depth |
-| [docs/PROD-DEPLOY-PREREQUISITE.md](docs/PROD-DEPLOY-PREREQUISITE.md) | What must exist before a deploy |
+| [docs/PROD-DEPLOY-PREREQUISITE.md](docs/5.%20PROD-DEPLOY-PREREQUISITE.md) | What must exist before a deploy |
 | [docs/ORACLE-VM-DEPLOYMENT.md](docs/ORACLE-VM-DEPLOYMENT.md) | Server build-out: Nginx, Certbot, firewall, backups |
-| [docs/CONTAINMENT-DEPLOYMENT-PLAN.md](docs/CONTAINMENT-DEPLOYMENT-PLAN.md) | Fitting the stack in 2 OCPU / 12 GB; the CI-build rationale (§6) |
+| [docs/7. MULTI-DOMAIN-DEPLOYMENT-WALKTHROUGH.md](docs/7.%20MULTI-DOMAIN-DEPLOYMENT-WALKTHROUGH.md) | Landing on the apex, app on `app.`, API at `app./api` — DNS, vhost, TLS, Vercel env, and the one-string swap to a new domain |
+| [docs/CONTAINMENT-DEPLOYMENT-PLAN.md](docs/4.%20CONTAINMENT-DEPLOYMENT-PLAN.md) | Fitting the stack in 2 OCPU / 12 GB; the CI-build rationale (§6) |
 | [docs/INFRASTRUCTURE-AND-DEPLOYMENT.md](docs/INFRASTRUCTURE-AND-DEPLOYMENT.md) | Architecture overview |
 | [docs/billing-current-state.md](docs/billing-current-state.md) | Stripe/Polar wiring, `BILLING_ENABLED` |
 | [CLAUDE.md](CLAUDE.md) | Repo conventions, the Postaryx rename policy, upstream-parity rule |

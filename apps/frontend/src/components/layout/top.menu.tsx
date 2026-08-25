@@ -248,7 +248,7 @@ export const useMenuItem = () => {
           />
         </svg>
       ),
-      path: 'https://affiliate.postiz.com',
+      path: 'https://github.com/aitechnologysys-sys/veroza',
       role: ['ADMIN', 'SUPERADMIN', 'USER'],
       requireBilling: true,
     },

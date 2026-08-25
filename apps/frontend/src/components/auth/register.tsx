@@ -219,20 +219,22 @@ export function RegisterAfter({
                 )}
                 &nbsp;
                 <a
-                  href={`https://postiz.com/terms`}
+                  href="https://github.com/aitechnologysys-sys/veroza"
                   className="underline hover:font-bold"
                   rel="nofollow"
+                  target="_blank"
                 >
-                  {t('terms_of_service', 'Terms of Service')}
+                  {t('terms_of_service', 'Terms of Service / Repository')}
                 </a>
                 &nbsp;
                 {t('and', 'and')}&nbsp;
                 <a
-                  href={`https://postiz.com/privacy`}
+                  href="https://github.com/aitechnologysys-sys/veroza"
                   rel="nofollow"
                   className="underline hover:font-bold"
+                  target="_blank"
                 >
-                  {t('privacy_policy', 'Privacy Policy')}
+                  {t('privacy_policy', 'Privacy Policy / Repository')}
                 </a>
                 &nbsp;
               </div>

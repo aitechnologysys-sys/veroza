@@ -43,13 +43,7 @@
 - `libraries/nestjs-libraries/src/database/prisma/schema.prisma` — Database schema
 
 ## Documentation
-- Main docs: https://docs.postiz.com/
-- Developer guide: https://docs.postiz.com/developer-guide
-- Public API: https://docs.postiz.com/public-api
-
----
-
-# Logs
+- Main docs: https://github.com/aitechnologysys-sys/veroza Developer guide: https://github.com/aitechnologysys-sys/veroza Public API: https://github.com/aitechnologysys-sys/veroza Logs
 
 - Where logs are used, ensure Sentry is imported using `import * as Sentry from "@sentry/nextjs"`
 - Enable logging in Sentry using `Sentry.init({ enableLogs: true })`

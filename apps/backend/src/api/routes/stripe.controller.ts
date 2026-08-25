@@ -26,7 +26,7 @@ export class StripeController {
     if (
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
-      event?.data?.object?.metadata?.service !== 'gitroom' &&
+      event?.data?.object?.metadata?.service !== 'postaryx' &&
       event.type !== 'invoice.payment_succeeded'
     ) {
       return { ok: true };

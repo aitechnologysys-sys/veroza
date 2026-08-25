@@ -32,6 +32,25 @@ const jakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
 });
 
+const genericOauthEnabled =
+  process.env.POSTARYX_GENERIC_OAUTH ?? process.env.POSTIZ_GENERIC_OAUTH;
+const oauthLogoUrl =
+  process.env.NEXT_PUBLIC_POSTARYX_OAUTH_LOGO_URL ||
+  process.env.NEXT_PUBLIC_POSTIZ_OAUTH_LOGO_URL;
+const oauthDisplayName =
+  process.env.NEXT_PUBLIC_POSTARYX_OAUTH_DISPLAY_NAME ||
+  process.env.NEXT_PUBLIC_POSTIZ_OAUTH_DISPLAY_NAME;
+const analyticsDomainSource =
+  process.env.POSTARYX_PUBLIC_URL || process.env.FRONTEND_URL || 'localhost';
+
+const analyticsHostname = (() => {
+  try {
+    return new URL(analyticsDomainSource).hostname;
+  } catch {
+    return analyticsDomainSource;
+  }
+})();
+
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const cookieStore = await cookies();
   const language = cookieStore.get(cookieName)?.value || fallbackLng;
@@ -43,7 +62,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         {!!process.env.DATAFAST_WEBSITE_ID && (
           <Script
             data-website-id={process.env.DATAFAST_WEBSITE_ID}
-            data-domain="postiz.com"
+            data-domain={analyticsHostname}
             src="https://datafa.st/js/script.js"
             strategy="afterInteractive"
           />
@@ -65,9 +84,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           discordUrl={process.env.NEXT_PUBLIC_DISCORD_SUPPORT!}
           frontEndUrl={process.env.FRONTEND_URL!}
           isGeneral={!!process.env.IS_GENERAL}
-          genericOauth={!!process.env.POSTIZ_GENERIC_OAUTH}
-          oauthLogoUrl={process.env.NEXT_PUBLIC_POSTIZ_OAUTH_LOGO_URL!}
-          oauthDisplayName={process.env.NEXT_PUBLIC_POSTIZ_OAUTH_DISPLAY_NAME!}
+          genericOauth={!!genericOauthEnabled}
+          oauthLogoUrl={oauthLogoUrl!}
+          oauthDisplayName={oauthDisplayName!}
           uploadDirectory={process.env.NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY!}
           cloudflareUrl={process.env.CLOUDFLARE_BUCKET_URL || ''}
           mainUrl={process.env.MAIN_URL || ''}
@@ -100,7 +119,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             <FacebookComponent />
             <GoogleTagManagerComponent gtmId={process.env.NEXT_PUBLIC_GTM_ID} />
             <Plausible
-              domain={!!process.env.IS_GENERAL ? 'postiz.com' : 'gitroom.com'}
+              domain={analyticsHostname}
             >
               <PHProvider
                 phkey={process.env.NEXT_PUBLIC_POSTHOG_KEY}

@@ -261,7 +261,7 @@ export class PolarService implements IBillingProvider {
         process.env['FRONTEND_URL'] + `/launches?onboarding=true&check=${id}`,
       allow_discount_codes: body.period === 'MONTHLY',
       metadata: {
-        service: 'postiz',
+        service: 'postaryx',
         billing: body.billing,
         period: body.period,
         userId,

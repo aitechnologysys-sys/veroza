@@ -10,6 +10,23 @@ export class AgenciesService {
     private _agenciesRepository: AgenciesRepository,
     private _notificationService: NotificationService
   ) {}
+
+  private getPostaryxDomain() {
+    return (
+      process.env.POSTARYX_DOMAIN ||
+      process.env.FRONTEND_URL ||
+      'https://postaryx.com'
+    ).replace(/\/$/, '');
+  }
+
+  private getPostaryxSupportEmail() {
+    return (
+      process.env.POSTARYX_SUPPORT_EMAIL ||
+      process.env.EMAIL_FROM_ADDRESS ||
+      'support@postaryx.com'
+    );
+  }
+
   getAgencyByUser(user: User) {
     return this._agenciesRepository.getAgencyByUser(user);
   }
@@ -33,25 +50,26 @@ export class AgenciesService {
   async approveOrDecline(email: string, action: string, id: string) {
     await this._agenciesRepository.approveOrDecline(action, id);
     const agency = await this._agenciesRepository.getAgencyById(id);
+    const postaryxDomain = this.getPostaryxDomain();
 
     if (action === 'approve') {
       await this._notificationService.sendEmail(
         agency?.user?.email!,
-        'Your Agency has been approved and added to Postiz 🚀',
+        'Your Agency has been approved and added to Postaryx 🚀',
         `
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Agency has been approved and added to Postiz 🚀</title>
+    <title>Your Agency has been approved and added to Postaryx 🚀</title>
 </head>
 
 <body style="font-family: Arial, sans-serif; margin: 0; padding: 0;">
   Hi there, <br /><br />
-  Your agency ${agency?.name} has been added to Postiz!<br />
-  You can <a href="https://postiz.com/agencies/${agency?.slug}">check it here</a><br />
-  It will appear on the main agency of Postiz in the next 24 hours.<br /><br />
+  Your agency ${agency?.name} has been added to Postaryx!<br />
+  You can <a href="${postaryxDomain}/agencies/${agency?.slug}">check it here</a><br />
+  It will appear on the main agency of Postaryx in the next 24 hours.<br /><br />
 </body>
 </html>`
       );
@@ -73,7 +91,7 @@ export class AgenciesService {
 
 <body style="font-family: Arial, sans-serif; margin: 0; padding: 0;">
   Hi there, <br /><br />
-  Your agency ${agency?.name} has been declined to Postiz!<br />
+  Your agency ${agency?.name} has been declined to Postaryx!<br />
   If you think we have made a mistake, please reply to this email and let us know
 </body>
 </html>`
@@ -84,8 +102,9 @@ export class AgenciesService {
 
   async createAgency(user: User, body: CreateAgencyDto) {
     const agency = await this._agenciesRepository.createAgency(user, body);
+    const postaryxDomain = this.getPostaryxDomain();
     await this._notificationService.sendEmail(
-      'nevo@postiz.com',
+      this.getPostaryxSupportEmail(),
       'New agency created',
       `
 <html lang="en">
@@ -193,17 +212,17 @@ export class AgenciesService {
         </tr>
         <tr>
             <td style="padding: 20px; text-align: center; background-color: #000;">
-                <a href="https://postiz.com/agencies/action/approve/${
+                <a href="${postaryxDomain}/agencies/action/approve/${
                   agency.id
                 }" style="margin: 0 10px; text-decoration: none; color: #007bff;">To approve click here</a><br /><br /><br />
-                <a href="https://postiz.com/agencies/action/decline/${
+                <a href="${postaryxDomain}/agencies/action/decline/${
                   agency.id
                 }" style="margin: 0 10px; text-decoration: none; color: #007bff;">To decline click here</a><br /><br /><br />
             </td>
         </tr>
         <tr>
             <td style="padding: 20px; text-align: center; background-color: #f4f4f4;">
-                <p style="color: #777; font-size: 14px;">&copy; 2024 Your Gitroom Limited All rights reserved.</p>
+                <p style="color: #777; font-size: 14px;">&copy; 2024 Your Postaryx Limited All rights reserved.</p>
             </td>
         </tr>
     </table>

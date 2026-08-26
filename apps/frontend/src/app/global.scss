@@ -19,6 +19,13 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+:root {
+  --app-radius-control: var(--radius-control);
+  --app-radius-button: var(--radius-button);
+  --app-radius-card: var(--radius-card);
+  --app-radius-panel: var(--radius-panel);
+}
+
 h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.02em;
   font-weight: 600;
@@ -117,7 +124,7 @@ body * {
   font-size: 14px;
   background-color: var(--new-bgColorInner);
   height: 42px;
-  border-radius: 8px;
+  border-radius: var(--app-radius-button);
   /* shared font styles */
   line-height: 1.2;
   /* clicking anywhere will focus the input */
@@ -173,7 +180,7 @@ body * {
   margin: 0 0.25rem 0 0;
   padding: 0.15rem 0.5rem;
   border: 0;
-  border-radius: 3px;
+  border-radius: var(--app-radius-control);
   @apply bg-seventh;
   /* match the font styles */
   font-size: inherit;
@@ -249,9 +256,8 @@ body * {
   max-height: 12.5rem;
   overflow-y: auto;
   @apply bg-input border border-customColor54;
-  border-radius: 6px;
-  box-shadow: rgba(0, 0, 0, 0.1) 0 10px 15px -4px,
-    rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  border-radius: var(--app-radius-card);
+  box-shadow: var(--menu-shadow);
 }
 
 .react-tags__listbox-option {
@@ -664,7 +670,8 @@ html[dir='rtl'] [dir='ltr'] {
 .mantine-Modal-modal {
   padding: 0;
   @apply bg-newBgColorInner;
-  border-radius: 24px;
+  border-radius: var(--app-radius-panel);
+  box-shadow: var(--menu-shadow);
 }
 
 .mantine-Overlay-root {
@@ -675,7 +682,7 @@ html[dir='rtl'] [dir='ltr'] {
   @apply shadow-menu;
   background: var(--new-bgColorInner);
   border: 1px solid var(--new-bgLineColor);
-  border-radius: 18px;
+  border-radius: var(--app-radius-panel);
   display: flex;
   flex-direction: column;
   overflow: auto;
@@ -687,7 +694,7 @@ html[dir='rtl'] [dir='ltr'] {
     display: flex;
     text-align: left;
     width: 100%;
-    padding: 10px;
+    padding: var(--space-2);
 
     &:hover,
     &:hover.is-selected {
@@ -780,14 +787,47 @@ html[dir='rtl'] [dir='ltr'] {
 }
 
 .menu-shadow {
-  border-radius: 12px;
-  box-shadow: 0 8px 30px 0 rgba(0, 0, 0, 0.5);
+  border-radius: var(--app-radius-card);
+  box-shadow: var(--menu-shadow);
 }
 
 .post-now {
-  box-shadow: -33px 57px 18px 0 rgba(0, 0, 0, 0.01),
-    -21px 36px 17px 0 rgba(0, 0, 0, 0.06), -12px 20px 14px 0 rgba(0, 0, 0, 0.2),
-    -5px 9px 11px 0 rgba(0, 0, 0, 0.34), -1px 2px 6px 0 rgba(0, 0, 0, 0.39);
+  box-shadow: var(--menu-shadow);
+}
+
+button,
+[role='button'] {
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+input,
+textarea,
+select {
+  border-radius: var(--app-radius-button);
+}
+
+.bg-newBgColorInner.rounded-\[12px\],
+.bg-newTableHeader.rounded-\[12px\],
+.bg-newSettings.rounded-\[12px\],
+.border.rounded-\[12px\],
+.border-2.rounded-\[12px\] {
+  box-shadow: var(--preview-box-shadow);
+}
+
+.rounded-\[8px\] {
+  border-radius: var(--app-radius-control);
+}
+
+.rounded-\[12px\] {
+  border-radius: var(--app-radius-card);
+}
+
+.rounded-\[16px\] {
+  border-radius: var(--app-radius-panel);
 }
 
 .uppyChange .uppy-Dashboard-inner {

@@ -26,10 +26,20 @@
     --new-col-color: #2a2620;
     --new-menu-dots: #5f5b52;
     --new-menu-hover: #fff;
-    --menu-shadow: 0 8px 30px 0 rgba(0, 0, 0, 0.5);
+    --radius-control: 8px;
+    --radius-button: 10px;
+    --radius-card: 12px;
+    --radius-panel: 16px;
+    --space-1: 8px;
+    --space-2: 12px;
+    --space-3: 16px;
+    --space-4: 20px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --menu-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 24px 48px -24px rgba(0, 0, 0, 0.6);
     --popup-color: rgba(42, 38, 32, 0.45);
     --border-preview: transparent;
-    --preview-box-shadow: none;
+    --preview-box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 24px 48px -24px rgba(0, 0, 0, 0.6);
     --linkedin-border: #7e73db;
     --linkedin-bg: #24211c;
     --linkedin-text: #f4f1ea;
@@ -70,17 +80,22 @@
     --new-col-color: #f4f1ea;
     --new-menu-dots: #5f5b52;
     --new-menu-hover: #000;
-    --menu-shadow: -22px 83px 24px 0 rgba(55, 52, 75, 0),
-      -14px 53px 22px 0 rgba(55, 52, 75, 0.01),
-      -8px 30px 19px 0 rgba(55, 52, 75, 0.05),
-      -3px 13px 14px 0 rgba(55, 52, 75, 0.09),
-      -1px 3px 8px 0 rgba(55, 52, 75, 0.1);
+    --radius-control: 8px;
+    --radius-button: 10px;
+    --radius-card: 12px;
+    --radius-panel: 16px;
+    --space-1: 8px;
+    --space-2: 12px;
+    --space-3: 16px;
+    --space-4: 20px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --menu-shadow: 0 1px 2px rgba(25, 23, 18, 0.04),
+      0 24px 48px -24px rgba(25, 23, 18, 0.14);
     --popup-color: rgba(95, 91, 82, 0.14);
     --border-preview: #e7e3db;
-    --preview-box-shadow: 0 386px 108px 0 rgba(38, 32, 64, 0),
-      0 247px 99px 0 rgba(38, 32, 64, 0.01),
-      0 139px 83px 0 rgba(38, 32, 64, 0.03),
-      0 62px 62px 0 rgba(38, 32, 64, 0.04), 0 15px 34px 0 rgba(38, 32, 64, 0.05);
+    --preview-box-shadow: 0 1px 2px rgba(25, 23, 18, 0.04),
+      0 24px 48px -24px rgba(25, 23, 18, 0.14);
     --linkedin-border: #e7e3db;
     --linkedin-bg: #fff;
     --linkedin-text: #5f5b52;

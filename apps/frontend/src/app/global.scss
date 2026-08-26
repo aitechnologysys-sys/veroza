@@ -14,6 +14,18 @@
 body {
   background: var(--new-bgColor) !important;
   color: var(--new-btn-text);
+  font-family: theme('fontFamily.sans');
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
+em, i {
+  font-family: theme('fontFamily.serif');
 }
 
 body * {

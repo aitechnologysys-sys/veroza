@@ -6,7 +6,7 @@ import 'react-tooltip/dist/react-tooltip.css';
 import '@copilotkit/react-ui/styles.css';
 import LayoutContext from '@gitroom/frontend/components/layout/layout.context';
 import { ReactNode } from 'react';
-import { Plus_Jakarta_Sans } from 'next/font/google';
+import { Fraunces, Geist, Geist_Mono } from 'next/font/google';
 import PlausibleProvider from 'next-plausible';
 import clsx from 'clsx';
 import { VariableContextComponent } from '@gitroom/react/helpers/variable.context';
@@ -26,11 +26,43 @@ import Script from 'next/script';
 import { ChangeDirClient } from '@gitroom/frontend/components/new-layout/change.dir.client';
 import { isBillingEnabled } from '@gitroom/helpers/utils/is.billing.enabled';
 
-const jakartaSans = Plus_Jakarta_Sans({
-  weight: ['600', '500'],
-  style: ['normal', 'italic'],
+const geist = Geist({
   subsets: ['latin'],
+  variable: '--font-geist',
+  display: 'swap',
 });
+
+const geistMono = Geist_Mono({
+  subsets: ['latin'],
+  variable: '--font-geist-mono',
+  display: 'swap',
+});
+
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  style: ['normal', 'italic'],
+  variable: '--font-fraunces',
+  display: 'swap',
+});
+
+const genericOauthEnabled =
+  process.env.POSTARYX_GENERIC_OAUTH ?? process.env.POSTIZ_GENERIC_OAUTH;
+const oauthLogoUrl =
+  process.env.NEXT_PUBLIC_POSTARYX_OAUTH_LOGO_URL ||
+  process.env.NEXT_PUBLIC_POSTIZ_OAUTH_LOGO_URL;
+const oauthDisplayName =
+  process.env.NEXT_PUBLIC_POSTARYX_OAUTH_DISPLAY_NAME ||
+  process.env.NEXT_PUBLIC_POSTIZ_OAUTH_DISPLAY_NAME;
+const analyticsDomainSource =
+  process.env.POSTARYX_PUBLIC_URL || process.env.FRONTEND_URL || 'localhost';
+
+const analyticsHostname = (() => {
+  try {
+    return new URL(analyticsDomainSource).hostname;
+  } catch {
+    return analyticsDomainSource;
+  }
+})();
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const cookieStore = await cookies();
@@ -43,7 +75,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         {!!process.env.DATAFAST_WEBSITE_ID && (
           <Script
             data-website-id={process.env.DATAFAST_WEBSITE_ID}
-            data-domain="postiz.com"
+            data-domain={analyticsHostname}
             src="https://datafa.st/js/script.js"
             strategy="afterInteractive"
           />
@@ -51,7 +83,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       </head>
       <ChangeDirClient />
       <body
-        className={clsx(jakartaSans.className, 'dark text-primary !bg-primary')}
+        className={clsx(
+          geist.variable,
+          geistMono.variable,
+          fraunces.variable,
+          'dark font-sans text-primary !bg-primary'
+        )}
       >
         <VariableContextComponent
           storageProvider={
@@ -65,9 +102,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           discordUrl={process.env.NEXT_PUBLIC_DISCORD_SUPPORT!}
           frontEndUrl={process.env.FRONTEND_URL!}
           isGeneral={!!process.env.IS_GENERAL}
-          genericOauth={!!process.env.POSTIZ_GENERIC_OAUTH}
-          oauthLogoUrl={process.env.NEXT_PUBLIC_POSTIZ_OAUTH_LOGO_URL!}
-          oauthDisplayName={process.env.NEXT_PUBLIC_POSTIZ_OAUTH_DISPLAY_NAME!}
+          genericOauth={!!genericOauthEnabled}
+          oauthLogoUrl={oauthLogoUrl!}
+          oauthDisplayName={oauthDisplayName!}
           uploadDirectory={process.env.NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY!}
           cloudflareUrl={process.env.CLOUDFLARE_BUCKET_URL || ''}
           mainUrl={process.env.MAIN_URL || ''}
@@ -100,7 +137,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             <FacebookComponent />
             <GoogleTagManagerComponent gtmId={process.env.NEXT_PUBLIC_GTM_ID} />
             <Plausible
-              domain={!!process.env.IS_GENERAL ? 'postiz.com' : 'gitroom.com'}
+              domain={analyticsHostname}
             >
               <PHProvider
                 phkey={process.env.NEXT_PUBLIC_POSTHOG_KEY}

@@ -254,31 +254,36 @@ export const CustomVariables: FC<{
 const ExtensionNotFound: FC = () => {
   const modals = useModals();
   const t = useT();
+  const extensionStoreUrl = process.env.NEXT_PUBLIC_POSTARYX_EXTENSION_URL;
   return (
     <div className="flex flex-col gap-[16px] pt-[8px]">
       <p className="text-[14px] text-textColor/80">
         {t(
           'extension_not_available',
-          'The Postiz browser extension is not installed. You need to install it before connecting this channel.'
+          extensionStoreUrl
+            ? 'The Postaryx browser extension is not installed. You need to install it before connecting this channel.'
+            : 'The Postaryx browser extension is not installed. A public install link is not configured yet, so this channel cannot be connected from here.'
         )}
       </p>
       <div className="flex gap-[10px]">
+        {extensionStoreUrl ? (
+          <Button
+            type="button"
+            className="flex-1"
+            onClick={() => {
+              window.open(extensionStoreUrl, '_blank');
+              modals.closeCurrent();
+            }}
+          >
+            {t('install_extension', 'Install Extension')}
+          </Button>
+        ) : null}
         <Button
           type="button"
-          className="flex-1"
-          onClick={() => {
-            window.open(
-              'https://chromewebstore.google.com/detail/postiz/cidhffagahknaeodkplfbcpfeielnkjl?hl=en',
-              '_blank'
-            );
-            modals.closeCurrent();
-          }}
-        >
-          {t('install_extension', 'Install Extension')}
-        </Button>
-        <Button
-          type="button"
-          className="flex-1 !bg-transparent border border-tableBorder text-textColor"
+          className={clsx(
+            extensionStoreUrl ? 'flex-1' : 'w-full',
+            '!bg-transparent border border-tableBorder text-textColor'
+          )}
           onClick={() => modals.closeCurrent()}
         >
           {t('cancel', 'Cancel')}
@@ -325,7 +330,7 @@ const ChromeExtensionWarning: FC<{
           We will store your cookies securely to facilitate the connection.
         </li>
         <li>
-          Postiz does not take responsibility for any issues arising or account
+          Postaryx does not take responsibility for any issues arising or account
           termination due to the use of this method.
         </li>
       </ul>
@@ -443,14 +448,14 @@ export const AddProviderComponent: FC<{
         };
         const gotoIntegration = async (externalUrl?: string) => {
           // Mobile WebView: reuse the existing `externalUrl` param to
-          // carry the `postiz://` deep link so the backend redirects
+          // carry the `postaryx://` deep link so the backend redirects
           // back to the iOS/Android app after OAuth completes, instead
           // of the default web redirect.
           const params = [
             `externalUrl=${encodeURIComponent(externalUrl)}`,
             onboardingParam,
             isMobile
-              ? `redirectUrl=${encodeURIComponent('postiz://integrations')}`
+              ? `redirectUrl=${encodeURIComponent('postaryx://integrations')}`
               : '',
           ]
             .filter(Boolean)
@@ -488,7 +493,7 @@ export const AddProviderComponent: FC<{
             // `window.open`/`location.href` aren't reliable here because
             // RN WebView doesn't always route them through the native
             // navigation intercept. The backend redirects back to the
-            // app via `postiz://` once OAuth completes.
+            // app via `postaryx://` once OAuth completes.
             const rn = (window as any).ReactNativeWebView;
             if (rn && typeof rn.postMessage === 'function') {
               rn.postMessage(JSON.stringify({ type: 'open-external', url }));
@@ -551,7 +556,7 @@ export const AddProviderComponent: FC<{
             toaster.show(
               t(
                 'extension_not_installed',
-                'Postiz browser extension is not installed or not reachable.'
+                'Postaryx browser extension is not installed or not reachable.'
               ),
               'warning'
             );

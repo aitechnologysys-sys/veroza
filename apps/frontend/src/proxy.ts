@@ -10,6 +10,9 @@ import {
 } from '@gitroom/react/translation/i18n.config';
 acceptLanguage.languages(languages);
 
+const genericOauthEnabled =
+  process.env.POSTARYX_GENERIC_OAUTH ?? process.env.POSTIZ_GENERIC_OAUTH;
+
 // This function can be marked `async` if using `await` inside
 export async function proxy(request: NextRequest) {
   const nextUrl = request.nextUrl;
@@ -95,7 +98,7 @@ export async function proxy(request: NextRequest) {
       ? ''
       : (url.indexOf('?') > -1 ? '&' : '?') +
         `provider=${(findIndex === 'settings'
-          ? process.env.POSTIZ_GENERIC_OAUTH
+          ? genericOauthEnabled
             ? 'generic'
             : 'github'
           : findIndex

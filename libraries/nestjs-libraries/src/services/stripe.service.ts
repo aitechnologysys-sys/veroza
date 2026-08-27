@@ -324,7 +324,7 @@ export class StripeService implements IBillingProvider {
     if (sub.cancel_at_period_end) {
       const { cancel_at } = await stripe.subscriptions.update(sub.id, {
         cancel_at_period_end: false,
-        metadata: { service: 'gitroom', id },
+        metadata: { service: 'postaryx', id },
       });
 
       return {
@@ -354,7 +354,7 @@ export class StripeService implements IBillingProvider {
     // Payment succeeded — cancel at end of billing period
     const { cancel_at } = await stripe.subscriptions.update(sub.id, {
       cancel_at_period_end: true,
-      metadata: { service: 'gitroom', id },
+      metadata: { service: 'postaryx', id },
     });
 
     return {
@@ -472,7 +472,7 @@ export class StripeService implements IBillingProvider {
       subscription_data: {
         ...(allowTrial ? { trial_period_days: 7 } : {}),
         metadata: {
-          service: 'gitroom',
+          service: 'postaryx',
           ...body,
           userId,
           uniqueId,
@@ -533,7 +533,7 @@ export class StripeService implements IBillingProvider {
       subscription_data: {
         ...(allowTrial ? { trial_period_days: 7 } : {}),
         metadata: {
-          service: 'gitroom',
+          service: 'postaryx',
           ...body,
           userId,
           uniqueId,
@@ -807,7 +807,7 @@ export class StripeService implements IBillingProvider {
       await stripe.subscriptions.update(currentUserSubscription.data[0].id, {
         cancel_at_period_end: false,
         metadata: {
-          service: 'gitroom',
+          service: 'postaryx',
           ...body,
           userId,
           id,

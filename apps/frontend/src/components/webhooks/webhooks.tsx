@@ -17,6 +17,10 @@ import clsx from 'clsx';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
+const sampleUploadUrl =
+  process.env.NEXT_PUBLIC_POSTARYX_UPLOAD_URL ||
+  'https://uploads.postaryx.com';
+
 export const Webhooks: FC = () => {
   const fetch = useFetch();
   const user = useUser();
@@ -66,7 +70,7 @@ export const Webhooks: FC = () => {
       <div className="text-customColor18 mt-[4px]">
         {t(
           'webhooks_are_a_way_to_get_notified_when_something_happens_in_postiz_via_an_http_request',
-          'Webhooks are a way to get notified when something happens in Postiz via\n        an HTTP request.'
+          'Webhooks are a way to get notified when something happens in Postaryx via\n        an HTTP request.'
         )}
       </div>
       <div className="my-[16px] mt-[16px] bg-sixth border-fifth items-center border rounded-[4px] p-[24px] flex gap-[24px]">
@@ -216,7 +220,7 @@ export const AddOrEditWebhook: FC<{
               id: 'cm6s4uyou0001i2r47pxix6z1',
               name: 'test',
               providerIdentifier: 'instagram',
-              picture: 'https://uploads.gitroom.com/F6LSCD8wrrQ.jpeg',
+              picture: `${sampleUploadUrl}/F6LSCD8wrrQ.jpeg`,
               type: 'social',
             },
           },
@@ -230,7 +234,7 @@ export const AddOrEditWebhook: FC<{
               id: 'cm6s4uyou0001i2r47pxix6z1',
               name: 'test2',
               providerIdentifier: 'facebook',
-              picture: 'https://uploads.gitroom.com/F6LSCD8wrrQ.jpeg',
+              picture: `${sampleUploadUrl}/F6LSCD8wrrQ.jpeg`,
               type: 'social',
             },
           },

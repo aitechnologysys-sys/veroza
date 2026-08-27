@@ -7,6 +7,11 @@ import {
 export class OauthProvider extends AuthProviderAbstract {
   private getConfig() {
     const {
+      POSTARYX_OAUTH_AUTH_URL,
+      POSTARYX_OAUTH_CLIENT_ID,
+      POSTARYX_OAUTH_CLIENT_SECRET,
+      POSTARYX_OAUTH_TOKEN_URL,
+      POSTARYX_OAUTH_USERINFO_URL,
       POSTIZ_OAUTH_AUTH_URL,
       POSTIZ_OAUTH_CLIENT_ID,
       POSTIZ_OAUTH_CLIENT_SECRET,
@@ -15,23 +20,33 @@ export class OauthProvider extends AuthProviderAbstract {
       FRONTEND_URL,
     } = process.env;
 
+    const authUrl = POSTARYX_OAUTH_AUTH_URL || POSTIZ_OAUTH_AUTH_URL;
+    const clientId = POSTARYX_OAUTH_CLIENT_ID || POSTIZ_OAUTH_CLIENT_ID;
+    const clientSecret =
+      POSTARYX_OAUTH_CLIENT_SECRET || POSTIZ_OAUTH_CLIENT_SECRET;
+    const tokenUrl = POSTARYX_OAUTH_TOKEN_URL || POSTIZ_OAUTH_TOKEN_URL;
+    const userInfoUrl =
+      POSTARYX_OAUTH_USERINFO_URL || POSTIZ_OAUTH_USERINFO_URL;
+
     if (
-      !POSTIZ_OAUTH_USERINFO_URL ||
-      !POSTIZ_OAUTH_TOKEN_URL ||
-      !POSTIZ_OAUTH_CLIENT_ID ||
-      !POSTIZ_OAUTH_CLIENT_SECRET ||
-      !POSTIZ_OAUTH_AUTH_URL ||
+      !userInfoUrl ||
+      !tokenUrl ||
+      !clientId ||
+      !clientSecret ||
+      !authUrl ||
       !FRONTEND_URL
     ) {
-      throw new Error('POSTIZ_OAUTH environment variables are not set');
+      throw new Error(
+        'POSTARYX_OAUTH environment variables are not set (POSTIZ_OAUTH_* is still accepted as a fallback)'
+      );
     }
 
     return {
-      authUrl: POSTIZ_OAUTH_AUTH_URL,
-      clientId: POSTIZ_OAUTH_CLIENT_ID,
-      clientSecret: POSTIZ_OAUTH_CLIENT_SECRET,
-      tokenUrl: POSTIZ_OAUTH_TOKEN_URL,
-      userInfoUrl: POSTIZ_OAUTH_USERINFO_URL,
+      authUrl,
+      clientId,
+      clientSecret,
+      tokenUrl,
+      userInfoUrl,
       frontendUrl: FRONTEND_URL,
     };
   }

@@ -19,12 +19,12 @@ const ModeComponent = () => {
     document.body.classList.add(mode);
   }, [mode]);
   return (
-    <div onClick={changeMode} className="select-none cursor-pointer">
+    <div onClick={changeMode} className="select-none cursor-pointer transition-colors">
       {mode === 'dark' ? (
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          width="22"
-          height="22"
+          width="18"
+          height="18"
           viewBox="0 0 22 22"
           fill="none"
         >
@@ -39,8 +39,8 @@ const ModeComponent = () => {
       ) : (
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
+          width="18"
+          height="18"
           viewBox="0 0 24 24"
           fill="none"
         >

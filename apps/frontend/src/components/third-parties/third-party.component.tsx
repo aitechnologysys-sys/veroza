@@ -116,7 +116,7 @@ export const ThirdPartyComponent = () => {
     <>
       <div
         className={clsx(
-          'bg-newBgColorInner p-[20px] flex flex-col gap-[15px] transition-all',
+          'px-card p-[20px] flex flex-col gap-[15px] transition-all shrink-0 overflow-y-auto',
           collapseMenu === '1' ? 'group sidebar w-[100px]' : 'w-[260px]'
         )}
       >
@@ -200,7 +200,7 @@ export const ThirdPartyComponent = () => {
           </div>
         </div>
       </div>
-      <div className="bg-newBgColorInner flex-1 flex-col flex p-[20px] gap-[12px]">
+      <div className="px-card flex-1 min-w-0 flex-col flex p-[20px] gap-[12px] overflow-y-auto">
         <ThirdPartyListComponent reload={mutate} />
       </div>
     </>

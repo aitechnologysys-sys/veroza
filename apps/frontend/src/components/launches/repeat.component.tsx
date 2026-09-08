@@ -76,7 +76,7 @@ export const RepeatComponent: FC<{
     <div
       ref={ref}
       className={clsx(
-        'border rounded-[8px] justify-center flex items-center relative h-[44px] text-[15px] font-[600] select-none',
+        'border rounded-[10px] justify-center flex items-center relative h-[44px] text-[14px] font-[600] select-none',
         isOpen ? 'border-[#c2410c]' : 'border-newTextColor/10',
       )}
     >

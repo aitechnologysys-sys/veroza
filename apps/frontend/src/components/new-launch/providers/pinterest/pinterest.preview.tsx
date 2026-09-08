@@ -140,7 +140,7 @@ export const PinterestPreview: FC<{
       </div>
       <div
         style={{ background: 'url(/no-video-youtube.png)' }}
-        className="!bg-cover w-full aspect-[calc(16/9)] rounded-[20px] overflow-hidden"
+        className="!bg-cover w-full aspect-[calc(16/9)] rounded-[16px] overflow-hidden"
       >
         {!!renderContent?.[0]?.images?.[0]?.path && (
           <VideoOrImage

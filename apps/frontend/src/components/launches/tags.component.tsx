@@ -161,7 +161,7 @@ export const TagsComponentInner: FC<{
     <div
       ref={ref}
       className={clsx(
-        'border rounded-[8px] justify-center flex items-center relative h-[44px] text-[15px] font-[600] select-none',
+        'border rounded-[10px] justify-center flex items-center relative h-[44px] text-[14px] font-[600] select-none',
         isOpen ? 'border-[#c2410c]' : 'border-newTextColor/10'
       )}
     >
@@ -243,12 +243,12 @@ export const TagsComponentInner: FC<{
           ))}
           <div
             onClick={addTag}
-            className="cursor-pointer gap-[8px] flex w-full h-[34px] rounded-[8px] mt-[12px] px-[16px] justify-center items-center bg-[#c2410c] text-white"
+            className="cursor-pointer gap-[8px] flex w-full h-[44px] rounded-[10px] mt-[12px] px-[20px] justify-center items-center bg-btnPrimary hover:opacity-95 text-white transition-all"
           >
             <div>
               <PlusIcon />
             </div>
-            <div className="text-[13px] font-[600]">
+            <div className="text-[14px] font-[600]">
               {t('add_new_tag', 'Add New Tag')}
             </div>
           </div>

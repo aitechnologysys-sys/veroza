@@ -36,7 +36,7 @@ export const CreationMethodBadge: FC<Props> = ({
         creationMethod === 'WEB' && 'bg-[#6b7280]',
         creationMethod === 'API' && 'bg-[#2563eb]',
         creationMethod === 'MCP' && 'bg-[#9333ea]',
-        creationMethod === 'AUTOPOST' && 'bg-[#d97706]',
+        creationMethod === 'AUTOPOST' && 'bg-pxWarning',
         creationMethod === 'CLI' && 'bg-[#0f766e]',
         className
       )}

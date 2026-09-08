@@ -46,15 +46,18 @@ export const ModalWrapperComponent: FC<{
         <div className="absolute -top-[30px] left-0" ref={ref} />
       </div>
       <div
-        className="p-[32px] flex flex-col text-newTextColor bg-newBgColorInner rounded-[24px]"
+        className="p-[28px] flex flex-col text-newTextColor bg-newBgColorInner border border-newBorder rounded-[20px] shadow-menu"
       >
-        <div className="flex items-start mb-[24px]">
-          <div className="flex-1 text-[24px]">{title}</div>
-          <div className="cursor-pointer" onClick={closeModal}>
+        <div className="flex items-start mb-[24px] gap-[16px]">
+          <div className="flex-1 px-h1 text-[22px]">{title}</div>
+          <div
+            className="cursor-pointer shrink-0 w-[28px] h-[28px] rounded-[8px] border border-newBorder text-textItemBlur flex items-center justify-center transition-colors hover:text-newTextColor hover:bg-boxHover"
+            onClick={closeModal}
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="21"
-              height="21"
+              width="15"
+              height="15"
               viewBox="0 0 21 21"
               fill="none"
             >

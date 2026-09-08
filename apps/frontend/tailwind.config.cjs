@@ -89,6 +89,13 @@ module.exports = {
         chart1: 'var(--px-chart-1)',
         chart2: 'var(--px-chart-2)',
         chart3: 'var(--px-chart-3)',
+        pxDanger: 'var(--px-danger)',
+        pxSuccess: 'var(--px-success)',
+        pxWarning: 'var(--px-warning)',
+        ink: 'var(--px-ink)',
+        inkRaised: 'var(--px-ink-raised)',
+        inkHover: 'var(--px-ink-hover)',
+        inkHairline: 'var(--px-ink-hairline)',
 
         newBgColor: 'var(--new-bgColor)',
         newBackdrop: 'var(--new-back-drop)',

@@ -240,7 +240,7 @@ const McpSection = ({
         </div>
         <div className="flex gap-[6px] shrink-0 pt-[2px]">
           <a
-            className="cursor-pointer px-[16px] h-[36px] bg-btnPrimary hover:bg-[#5520CB] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
+            className="cursor-pointer px-[16px] h-[36px] bg-btnPrimary hover:opacity-90 text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
             href="https://postaryx.com/docs/mcp/introduction"
             target="_blank"
           >
@@ -428,7 +428,7 @@ const CliSection = ({ apiKey }: { apiKey: string }) => {
         </div>
         <div className="flex gap-[6px] shrink-0 pt-[2px]">
           <a
-            className="cursor-pointer px-[16px] h-[36px] bg-btnPrimary hover:bg-[#5520CB] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
+            className="cursor-pointer px-[16px] h-[36px] bg-btnPrimary hover:opacity-90 text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
             href="https://postaryx.com/docs/cli/introduction"
             target="_blank"
           >
@@ -584,7 +584,7 @@ const PublicApiContent = () => {
           </div>
           <div className="flex gap-[6px] shrink-0 pt-[2px]">
             <a
-              className="cursor-pointer px-[16px] h-[36px] bg-btnPrimary hover:bg-[#5520CB] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
+              className="cursor-pointer px-[16px] h-[36px] bg-btnPrimary hover:opacity-90 text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
               href="https://postaryx.com/docs/public-api"
               target="_blank"
             >
@@ -592,7 +592,7 @@ const PublicApiContent = () => {
             {t('read_the_docs', 'Docs')}
             </a>
             <a
-              className="cursor-pointer px-[16px] h-[36px] bg-btnPrimary hover:bg-[#5520CB] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
+              className="cursor-pointer px-[16px] h-[36px] bg-btnPrimary hover:opacity-90 text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
               href="https://www.npmjs.com/package/n8n-nodes-postiz"
               target="_blank"
             >

@@ -89,7 +89,7 @@ export const DelayComponent: FC<{
         }
         className={clsx(
           'cursor-pointer flex items-center gap-[4px]',
-          currentDelay > 0 && 'bg-[#D82D7E] text-white rounded-full'
+          currentDelay > 0 && 'bg-btnPrimary text-white rounded-full'
         )}
       >
         <DelayIcon />

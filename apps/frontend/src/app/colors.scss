@@ -274,6 +274,14 @@
     --px-chart-1: #c2410c;
     --px-chart-2: #3f7d4e;
     --px-chart-3: #0f766e;
+    --px-danger: #f97066;
+    --px-success: #3f7d4e;
+    --px-warning: #a9711f;
+    /* Always-dark surfaces (auth, oauth, provider shells) */
+    --px-ink: #191712;
+    --px-ink-raised: #1f1c17;
+    --px-ink-hover: #2a251d;
+    --px-ink-hairline: #2a2620;
   }
   .light {
     --px-rail-bg: #191712;
@@ -292,5 +300,13 @@
     --px-chart-1: #c2410c;
     --px-chart-2: #3f7d4e;
     --px-chart-3: #0f766e;
+    --px-danger: #b42318;
+    --px-success: #3f7d4e;
+    --px-warning: #a9711f;
+    /* Always-dark surfaces (auth, oauth, provider shells) */
+    --px-ink: #191712;
+    --px-ink-raised: #1f1c17;
+    --px-ink-hover: #2a251d;
+    --px-ink-hairline: #2a2620;
   }
 }

@@ -25,7 +25,7 @@ const TrendIndicator: FC<{ value: number; average?: boolean }> = ({
   return (
     <div
       className={`flex items-center gap-[4px] text-[13px] font-medium ${
-        isPositive ? 'text-[#32d583]' : 'text-[#f97066]'
+        isPositive ? 'text-pxSuccess' : 'text-pxDanger'
       }`}
     >
       <svg

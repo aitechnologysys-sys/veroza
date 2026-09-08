@@ -264,7 +264,7 @@ export const ContinueIntegration: FC<{
         {/* Background gradient decoration */}
         <div className="absolute inset-0 opacity-30">
           <div className="absolute top-[20%] left-[10%] w-[300px] h-[300px] bg-btnPrimary rounded-full blur-[120px]" />
-          <div className="absolute bottom-[20%] right-[10%] w-[250px] h-[250px] bg-[#FC69FF] rounded-full blur-[120px]" />
+          <div className="absolute bottom-[20%] right-[10%] w-[250px] h-[250px] bg-btnPrimary rounded-full blur-[120px]" />
         </div>
 
         <div className="relative z-10 text-center">
@@ -303,12 +303,12 @@ export const ContinueIntegration: FC<{
         {/* Background gradient decoration */}
         <div className="absolute inset-0 opacity-30">
           <div className="absolute top-[20%] left-[10%] w-[300px] h-[300px] bg-btnPrimary rounded-full blur-[120px]" />
-          <div className="absolute bottom-[20%] right-[10%] w-[250px] h-[250px] bg-[#FC69FF] rounded-full blur-[120px]" />
+          <div className="absolute bottom-[20%] right-[10%] w-[250px] h-[250px] bg-btnPrimary rounded-full blur-[120px]" />
         </div>
 
         {/* Content */}
         <div className="relative z-10 w-full max-w-[550px] mx-auto px-[20px]">
-          <div className="bg-[#1A1919] rounded-[16px] p-[32px] flex flex-col gap-[24px]">
+          <div className="bg-inkRaised rounded-[16px] p-[32px] flex flex-col gap-[24px]">
             <div className="flex flex-col gap-[8px] text-center">
               <h1 className="text-[24px] font-semibold">
                 {t('configure_your_channel', 'Configure Your Channel')}
@@ -361,7 +361,7 @@ export const ContinueIntegration: FC<{
         {/* Background gradient decoration */}
         <div className="absolute inset-0 opacity-30">
           <div className="absolute top-[20%] left-[10%] w-[300px] h-[300px] bg-btnPrimary rounded-full blur-[120px]" />
-          <div className="absolute bottom-[20%] right-[10%] w-[250px] h-[250px] bg-[#FC69FF] rounded-full blur-[120px]" />
+          <div className="absolute bottom-[20%] right-[10%] w-[250px] h-[250px] bg-btnPrimary rounded-full blur-[120px]" />
         </div>
 
         <div className="relative z-10 text-center">
@@ -400,7 +400,7 @@ export const ContinueIntegration: FC<{
       {/* Background gradient decoration */}
       <div className="absolute inset-0 opacity-30">
         <div className="absolute top-[20%] left-[10%] w-[300px] h-[300px] bg-btnPrimary rounded-full blur-[120px]" />
-        <div className="absolute bottom-[20%] right-[10%] w-[250px] h-[250px] bg-[#FC69FF] rounded-full blur-[120px]" />
+        <div className="absolute bottom-[20%] right-[10%] w-[250px] h-[250px] bg-btnPrimary rounded-full blur-[120px]" />
       </div>
 
       <div className="relative z-10 text-center">

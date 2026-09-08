@@ -137,7 +137,7 @@ export const PlatformAnalytics = () => {
 
   if (isLoading) {
     return (
-      <div className="bg-newBgColorInner p-[20px] flex flex-1 flex-col gap-[15px] transition-all items-center justify-center">
+      <div className="px-card p-[20px] flex flex-1 flex-col gap-[15px] transition-all items-center justify-center">
         <LoadingComponent />
       </div>
     );
@@ -145,11 +145,11 @@ export const PlatformAnalytics = () => {
 
   if (!sortedIntegrations.length && !isLoading) {
     return (
-      <div className="bg-newBgColorInner p-[20px] flex flex-col gap-[15px] transition-all flex-1 justify-center items-center text-center">
+      <div className="px-card p-[20px] flex flex-col gap-[15px] transition-all flex-1 justify-center items-center text-center">
         <div>
           <img src="/peoplemarketplace.svg" />
         </div>
-        <div className="text-[48px]">
+        <div className="px-h1 text-[30px] leading-[1.25]">
           {t('can_t_show_analytics_yet', "Can't show analytics yet")}
           <br />
           {t(
@@ -157,7 +157,7 @@ export const PlatformAnalytics = () => {
             'You have to add Social Media channels'
           )}
         </div>
-        <div className="text-[20px]">
+        <div className="text-[13px] text-textItemBlur">
           {t('supported', 'Supported:')}
           {allowedIntegrations.map((p) => capitalize(p)).join(', ')}
         </div>
@@ -174,18 +174,18 @@ export const PlatformAnalytics = () => {
     <>
       <div
         className={clsx(
-          'bg-newBgColorInner p-[20px] flex flex-col gap-[15px] transition-all',
+          'px-card p-[20px] flex flex-col gap-[15px] transition-all shrink-0 overflow-y-auto',
           collapseMenu === '1' ? 'group sidebar w-[100px]' : 'w-[260px]'
         )}
       >
         <div className="flex gap-[12px] flex-col">
           <div className="flex items-center">
-            <h2 className="group-[.sidebar]:hidden flex-1 text-[20px] font-[500]">
+            <h2 className="group-[.sidebar]:hidden flex-1 px-h2">
               {t('channels')}
             </h2>
             <div
               onClick={() => setCollapseMenu(collapseMenu === '1' ? '0' : '1')}
-              className="group-[.sidebar]:rotate-[180deg] group-[.sidebar]:mx-auto text-btnText bg-btnSimple rounded-[6px] w-[24px] h-[24px] flex items-center justify-center cursor-pointer select-none"
+              className="group-[.sidebar]:rotate-[180deg] group-[.sidebar]:mx-auto text-textItemBlur bg-btnSimple border border-newBorder rounded-[8px] w-[26px] h-[26px] flex items-center justify-center cursor-pointer select-none transition-colors hover:text-newTextColor"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -272,7 +272,7 @@ export const PlatformAnalytics = () => {
           ))}
         </div>
       </div>
-      <div className="bg-newBgColorInner flex-1 flex-col flex p-[20px] gap-[12px]">
+      <div className="px-card flex-1 min-w-0 flex-col flex p-[20px] gap-[12px] overflow-y-auto">
         {!!options.length && (
           <div className="flex-1 flex flex-col gap-[14px]">
             <div className="max-w-[200px]">

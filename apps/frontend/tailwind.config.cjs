@@ -86,6 +86,9 @@ module.exports = {
         hairline: 'var(--px-hairline)',
         dangerBg: 'var(--px-danger-bg)',
         dangerBorder: 'var(--px-danger-border)',
+        chart1: 'var(--px-chart-1)',
+        chart2: 'var(--px-chart-2)',
+        chart3: 'var(--px-chart-3)',
 
         newBgColor: 'var(--new-bgColor)',
         newBackdrop: 'var(--new-back-drop)',

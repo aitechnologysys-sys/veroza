@@ -62,13 +62,10 @@ const AnalyticsCard: FC<{
     <div className="group relative">
       <div
         className={`
-          flex flex-col h-full
-          bg-newTableHeader
-          border border-newTableBorder
-          rounded-[12px]
+          px-card flex flex-col h-full
           overflow-hidden
-          transition-all duration-200
-          hover:border-[#612bd3]/50
+          transition-colors duration-200
+          hover:border-btnPrimary/50
         `}
       >
         {/* Header */}
@@ -77,14 +74,12 @@ const AnalyticsCard: FC<{
             <div
               className={`
                 w-[8px] h-[8px] rounded-full
-                ${color === 'purple' ? 'bg-[#612bd3]' : ''}
-                ${color === 'green' ? 'bg-[#32d583]' : ''}
-                ${color === 'blue' ? 'bg-[#1d9bf0]' : ''}
+                ${color === 'purple' ? 'bg-chart1' : ''}
+                ${color === 'green' ? 'bg-chart2' : ''}
+                ${color === 'blue' ? 'bg-chart3' : ''}
               `}
             />
-            <span className="text-[15px] font-medium text-newTableText">
-              {item.label}
-            </span>
+            <span className="px-eyebrow">{item.label}</span>
           </div>
           {item.percentageChange !== undefined && (
             <TrendIndicator value={item.percentageChange} average={item.average} />
@@ -103,7 +98,7 @@ const AnalyticsCard: FC<{
 
             {/* Value */}
             <div className="px-[16px] pb-[14px]">
-              <div className="text-[36px] leading-[42px] font-semibold tracking-tight">
+              <div className="px-h1 text-[34px] leading-[40px]">
                 {total}
               </div>
             </div>
@@ -111,7 +106,7 @@ const AnalyticsCard: FC<{
         ) : (
           /* Single value display */
           <div className="flex-1 flex flex-col items-center justify-center py-[32px] px-[16px]">
-            <div className="text-[48px] leading-[56px] font-semibold tracking-tight">
+            <div className="px-h1 text-[44px] leading-[52px]">
               {total}
             </div>
           </div>
@@ -125,8 +120,8 @@ const EmptyState: FC<{ onRefresh: () => void }> = ({ onRefresh }) => {
   const t = useT();
 
   return (
-    <div className="col-span-full flex flex-col items-center justify-center py-[48px] px-[24px] bg-newTableHeader border border-newTableBorder rounded-[12px]">
-      <div className="w-[48px] h-[48px] mb-[16px] rounded-full bg-[#612bd3]/10 flex items-center justify-center">
+    <div className="col-span-full px-card flex flex-col items-center justify-center py-[48px] px-[24px]">
+      <div className="w-[48px] h-[48px] mb-[16px] rounded-full bg-boxFocused flex items-center justify-center">
         <svg
           width="24"
           height="24"
@@ -134,13 +129,13 @@ const EmptyState: FC<{ onRefresh: () => void }> = ({ onRefresh }) => {
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
-          className="text-[#612bd3]"
+          className="text-btnPrimary"
         >
           <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           <path d="M12 8v4l2 2" />
         </svg>
       </div>
-      <p className="text-[15px] text-newTableText text-center mb-[12px]">
+      <p className="text-[13px] text-textItemBlur text-center mb-[12px]">
         {t(
           'this_channel_needs_to_be_refreshed',
           'This channel needs to be refreshed to display analytics'
@@ -148,7 +143,7 @@ const EmptyState: FC<{ onRefresh: () => void }> = ({ onRefresh }) => {
       </p>
       <button
         onClick={onRefresh}
-        className="inline-flex items-center gap-[6px] px-[16px] py-[8px] text-[14px] font-medium text-white bg-[#612bd3] hover:bg-[#5023b8] rounded-[8px] transition-colors"
+        className="px-btn"
       >
         <svg
           width="16"

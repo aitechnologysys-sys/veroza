@@ -486,7 +486,7 @@ export const LaunchesComponent = () => {
   }, []);
   if (isLoading || reload) {
     return (
-      <div className="px-card p-[20px] flex flex-1 flex-col gap-[15px] transition-all items-center justify-center">
+      <div className="ds-card p-[20px] flex flex-1 flex-col gap-[15px] transition-all items-center justify-center">
         <LoadingComponent />
       </div>
     );
@@ -499,7 +499,7 @@ export const LaunchesComponent = () => {
       <CalendarWeekProvider integrations={sortedIntegrations}>
         <div
           className={clsx(
-            'flex relative flex-col px-card overflow-hidden shrink-0',
+            'flex relative flex-col ds-card overflow-hidden shrink-0',
             collapseMenu === '1' ? 'group sidebar w-[100px]' : 'w-[260px]'
           )}
         >
@@ -509,7 +509,7 @@ export const LaunchesComponent = () => {
             )}
           >
             <div className="flex items-center">
-              <h2 className="group-[.sidebar]:hidden flex-1 px-h2">
+              <h2 className="group-[.sidebar]:hidden flex-1 ds-h2">
                 {t('channels')}
               </h2>
               <div
@@ -557,7 +557,7 @@ export const LaunchesComponent = () => {
                       alt="No channels"
                       className="mx-auto min-w-[100%]"
                     />
-                    <div className="px-h2 text-[19px]">
+                    <div className="ds-h2 text-[19px]">
                       {t('no_channels', 'No channels yet')}
                     </div>
                     <div className="text-[13px] text-textItemBlur">
@@ -580,7 +580,7 @@ export const LaunchesComponent = () => {
                 />
               ))}
             </div>
-            <div className="mt-[5px] text-center flex flex-col gap-[2px] px-mono text-[10px] text-pxMuted">
+            <div className="mt-[5px] text-center flex flex-col gap-[2px] ds-mono text-[10px] text-pxMuted">
               {billingEnabled && user?.isLifetime && (
                 <div>{capitalize(user?.tier?.current || '')} TIER</div>
               )}
@@ -592,7 +592,7 @@ export const LaunchesComponent = () => {
             </div>
           </div>
         </div>
-        <div className="px-card flex-1 min-w-0 flex-col flex p-[20px] gap-[12px] overflow-hidden">
+        <div className="ds-card flex-1 min-w-0 flex-col flex p-[20px] gap-[12px] overflow-hidden">
           <Filters />
           <div className="flex-1 flex">
             <Calendar />

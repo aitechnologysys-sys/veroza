@@ -48,7 +48,7 @@ export const StreakComponent: FC = () => {
           fill="currentColor"
         />
       </svg>
-      <span className="px-mono text-[12px] font-semibold">{streakDays}</span>
+      <span className="ds-mono text-[12px] font-semibold">{streakDays}</span>
     </div>
   );
 };

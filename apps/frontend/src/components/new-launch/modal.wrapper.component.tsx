@@ -49,7 +49,7 @@ export const ModalWrapperComponent: FC<{
         className="p-[28px] flex flex-col text-newTextColor bg-newBgColorInner border border-newBorder rounded-[20px] shadow-menu"
       >
         <div className="flex items-start mb-[24px] gap-[16px]">
-          <div className="flex-1 px-h1 text-[22px]">{title}</div>
+          <div className="flex-1 ds-h1 text-[22px]">{title}</div>
           <div
             className="cursor-pointer shrink-0 w-[28px] h-[28px] rounded-[8px] border border-newBorder text-textItemBlur flex items-center justify-center transition-colors hover:text-newTextColor hover:bg-boxHover"
             onClick={closeModal}

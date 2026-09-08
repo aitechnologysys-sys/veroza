@@ -62,7 +62,7 @@ const AnalyticsCard: FC<{
     <div className="group relative">
       <div
         className={`
-          px-card flex flex-col h-full
+          ds-card flex flex-col h-full
           overflow-hidden
           transition-colors duration-200
           hover:border-btnPrimary/50
@@ -79,7 +79,7 @@ const AnalyticsCard: FC<{
                 ${color === 'blue' ? 'bg-chart3' : ''}
               `}
             />
-            <span className="px-eyebrow">{item.label}</span>
+            <span className="ds-eyebrow">{item.label}</span>
           </div>
           {item.percentageChange !== undefined && (
             <TrendIndicator value={item.percentageChange} average={item.average} />
@@ -98,7 +98,7 @@ const AnalyticsCard: FC<{
 
             {/* Value */}
             <div className="px-[16px] pb-[14px]">
-              <div className="px-h1 text-[34px] leading-[40px]">
+              <div className="ds-h1 text-[34px] leading-[40px]">
                 {total}
               </div>
             </div>
@@ -106,7 +106,7 @@ const AnalyticsCard: FC<{
         ) : (
           /* Single value display */
           <div className="flex-1 flex flex-col items-center justify-center py-[32px] px-[16px]">
-            <div className="px-h1 text-[44px] leading-[52px]">
+            <div className="ds-h1 text-[44px] leading-[52px]">
               {total}
             </div>
           </div>
@@ -120,7 +120,7 @@ const EmptyState: FC<{ onRefresh: () => void }> = ({ onRefresh }) => {
   const t = useT();
 
   return (
-    <div className="col-span-full px-card flex flex-col items-center justify-center py-[48px] px-[24px]">
+    <div className="col-span-full ds-card flex flex-col items-center justify-center py-[48px] px-[24px]">
       <div className="w-[48px] h-[48px] mb-[16px] rounded-full bg-boxFocused flex items-center justify-center">
         <svg
           width="24"
@@ -143,7 +143,7 @@ const EmptyState: FC<{ onRefresh: () => void }> = ({ onRefresh }) => {
       </p>
       <button
         onClick={onRefresh}
-        className="px-btn"
+        className="ds-btn"
       >
         <svg
           width="16"

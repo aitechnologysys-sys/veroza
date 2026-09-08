@@ -876,12 +876,12 @@ select {
    ───────────────────────────────────────────────────────────── */
 
 /* Fraunces display headings */
-.px-h1 {
+.ds-h1 {
   font-family: theme('fontFamily.serif');
   font-weight: 600;
   letter-spacing: -0.01em;
 }
-.px-h2 {
+.ds-h2 {
   font-family: theme('fontFamily.serif');
   font-weight: 600;
   font-size: 17px;
@@ -889,7 +889,7 @@ select {
 }
 
 /* Mono eyebrow above a section title */
-.px-eyebrow {
+.ds-eyebrow {
   font-family: theme('fontFamily.mono');
   font-size: 10px;
   letter-spacing: 0.1em;
@@ -898,7 +898,7 @@ select {
 }
 
 /* Mono table header */
-.px-th {
+.ds-th {
   font-family: theme('fontFamily.mono');
   font-size: 9.5px;
   letter-spacing: 0.09em;
@@ -907,13 +907,13 @@ select {
 }
 
 /* Mono metadata (times, counts, tokens) */
-.px-mono {
+.ds-mono {
   font-family: theme('fontFamily.mono');
   letter-spacing: 0.06em;
 }
 
 /* Small mono status badge */
-.px-badge {
+.ds-badge {
   font-family: theme('fontFamily.mono');
   font-size: 9px;
   letter-spacing: 0.07em;
@@ -925,27 +925,27 @@ select {
 }
 
 /* Panel: white on paper, hairline border */
-.px-card {
+.ds-card {
   background: var(--new-bgColorInner);
   border: 1px solid var(--new-border);
   border-radius: 16px;
 }
 
 /* Secondary caption text */
-.px-sub {
+.ds-sub {
   font-size: 11.5px;
   color: var(--new-textItemBlur);
 }
 
 /* Segmented control */
-.px-seg {
+.ds-seg {
   display: flex;
-  background: var(--px-seg-track);
+  background: var(--ds-seg-track);
   border-radius: 9px;
   padding: 2px;
   gap: 2px;
 }
-.px-seg > * {
+.ds-seg > * {
   font-size: 12px;
   font-weight: 500;
   padding: 5px 11px;
@@ -955,18 +955,18 @@ select {
   white-space: nowrap;
   transition: color 0.15s ease, background 0.15s ease;
 }
-.px-seg > *:hover {
+.ds-seg > *:hover {
   color: var(--new-btn-text);
 }
-.px-seg > .px-seg-on,
-.px-seg > [data-on='true'] {
-  background: var(--px-seg-thumb);
+.ds-seg > .ds-seg-on,
+.ds-seg > [data-on='true'] {
+  background: var(--ds-seg-thumb);
   color: var(--new-btn-text);
   box-shadow: 0 1px 2px rgba(25, 23, 18, 0.08);
 }
 
 /* Header-height inline buttons (13px scale, distinct from the 44px form Button) */
-.px-btn {
+.ds-btn {
   background: var(--new-btn-primary);
   color: #fff;
   font-size: 13px;
@@ -980,10 +980,10 @@ select {
   cursor: pointer;
   transition: opacity 0.15s ease;
 }
-.px-btn:hover {
+.ds-btn:hover {
   opacity: 0.92;
 }
-.px-btn2 {
+.ds-btn2 {
   background: var(--new-bgColorInner);
   color: var(--new-btn-text);
   font-size: 13px;
@@ -998,12 +998,12 @@ select {
   cursor: pointer;
   transition: background 0.15s ease;
 }
-.px-btn2:hover {
+.ds-btn2:hover {
   background: var(--new-box-hover);
 }
 
 /* Status dot */
-.px-dot {
+.ds-dot {
   width: 7px;
   height: 7px;
   border-radius: 99px;

@@ -42,7 +42,7 @@ export const MenuItem: FC<{ label: string; icon: ReactNode; path: string; onClic
 
 /** Mono group heading in the rail (WORK / GROW / ACCOUNT). */
 export const MenuGroupLabel: FC<{ label: string }> = ({ label }) => (
-  <div className="px-mono text-[8px] leading-none text-railLabel uppercase mt-[14px] mb-[6px] custom:hidden">
+  <div className="ds-mono text-[8px] leading-none text-railLabel uppercase mt-[14px] mb-[6px] custom:hidden">
     {label}
   </div>
 );

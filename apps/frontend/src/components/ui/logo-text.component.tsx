@@ -9,11 +9,11 @@ export const LogoTextComponent = () => {
   return (
     <div className="flex items-center gap-[10px] select-none">
       <div className="w-[34px] h-[34px] rounded-[10px] bg-btnPrimary text-white flex items-center justify-center">
-        <span className="px-h1 text-[16px] leading-none tracking-[0.01em]">
+        <span className="ds-h1 text-[16px] leading-none tracking-[0.01em]">
           PX
         </span>
       </div>
-      <span className="px-h1 text-[22px] leading-none">Postaryx</span>
+      <span className="ds-h1 text-[22px] leading-none">Postaryx</span>
     </div>
   );
 };

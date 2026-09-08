@@ -12,7 +12,7 @@ export const Logo: FC<{ className?: string }> = ({ className }) => {
     <div
       aria-label="Postaryx"
       className={clsx(
-        'px-h1 select-none leading-none tracking-[0.01em]',
+        'ds-h1 select-none leading-none tracking-[0.01em]',
         !className && 'text-[19px]',
         className
       )}

@@ -165,7 +165,7 @@ export const TeamsComponent = () => {
 
   return (
     <div className="flex flex-col">
-      <h3 className="px-h2">{t('team_members', 'Team Members')}</h3>
+      <h3 className="ds-h2">{t('team_members', 'Team Members')}</h3>
       <div className="text-customColor18 mt-[4px]">
         {t(
           'invite_your_assistant_or_team_member_to_manage_your_account',

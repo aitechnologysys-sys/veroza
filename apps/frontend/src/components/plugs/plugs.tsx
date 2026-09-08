@@ -86,7 +86,7 @@ export const Plugs = () => {
 
   if (isLoading || plugLoading) {
     return (
-      <div className="px-card p-[20px] flex flex-1 flex-col gap-[15px] transition-all items-center justify-center">
+      <div className="ds-card p-[20px] flex flex-1 flex-col gap-[15px] transition-all items-center justify-center">
         <LoadingComponent />
       </div>
     );
@@ -94,7 +94,7 @@ export const Plugs = () => {
 
   if (!sortedIntegrations.length && !isLoading) {
     return (
-      <div className="px-card p-[20px] flex flex-1 flex-col gap-[15px] transition-all items-center justify-center">
+      <div className="ds-card p-[20px] flex flex-1 flex-col gap-[15px] transition-all items-center justify-center">
         <div>
           <img src="/peoplemarketplace.svg" />
         </div>
@@ -122,13 +122,13 @@ export const Plugs = () => {
     <>
       <div
         className={clsx(
-          'px-card p-[20px] flex flex-col gap-[15px] transition-all shrink-0 overflow-y-auto',
+          'ds-card p-[20px] flex flex-col gap-[15px] transition-all shrink-0 overflow-y-auto',
           collapseMenu === '1' ? 'group sidebar w-[100px]' : 'w-[260px]'
         )}
       >
         <div className="flex gap-[12px] flex-col">
           <div className="flex items-center">
-            <h2 className="group-[.sidebar]:hidden flex-1 px-h2">
+            <h2 className="group-[.sidebar]:hidden flex-1 ds-h2">
               {t('channels')}
             </h2>
             <div
@@ -220,7 +220,7 @@ export const Plugs = () => {
           ))}
         </div>
       </div>
-      <div className="px-card flex-1 min-w-0 flex-col flex p-[20px] gap-[12px] overflow-y-auto">
+      <div className="ds-card flex-1 min-w-0 flex-col flex p-[20px] gap-[12px] overflow-y-auto">
         <PlugsContext.Provider value={currentIntegrationPlug}>
           <Plug />
         </PlugsContext.Provider>

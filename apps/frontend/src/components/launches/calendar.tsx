@@ -380,7 +380,7 @@ export const WeekView = () => {
             >
               <div
                 className={clsx(
-                  'px-th',
+                  'ds-th',
                   day.day === newDayjs().format('L') && '!text-newTableTextFocused'
                 )}
               >
@@ -399,7 +399,7 @@ export const WeekView = () => {
           ))}
           {hours.map((hour) => (
             <Fragment key={hour}>
-              <div className="p-2 pe-4 text-center items-center justify-center flex px-mono text-[10px] text-pxMuted">
+              <div className="p-2 pe-4 text-center items-center justify-center flex ds-mono text-[10px] text-pxMuted">
                 {convertTimeFormatBasedOnLocality(hour)}
               </div>
               {localizedDays.map((day, indexDay) => (
@@ -478,7 +478,7 @@ export const MonthView = () => {
               key={day}
               className="z-[20] p-2 bg-newTableHeader flex justify-center items-center flex-col h-[48px] rounded-[8px] sticky top-0"
             >
-              <div className="px-th">{day}</div>
+              <div className="ds-th">{day}</div>
             </div>
           ))}
           {calendarDays.map((date, index) => (
@@ -1076,7 +1076,7 @@ const CalendarItem: FC<{
       )}
       <div
         className={clsx(
-          'px-mono text-white text-[9px] uppercase max-h-[20px] h-[20px] min-h-[20px] w-full flex items-center justify-center gap-[8px] px-[6px] bg-btnPrimary'
+          'ds-mono text-white text-[9px] uppercase max-h-[20px] h-[20px] min-h-[20px] w-full flex items-center justify-center gap-[8px] px-[6px] bg-btnPrimary'
         )}
         style={{
           backgroundColor: post?.tags?.[0]?.tag?.color,
@@ -1174,7 +1174,7 @@ const CalendarItem: FC<{
           />
         </div>
         <div className="w-full flex-1 flex flex-col min-h-[40px] min-w-0">
-          <div className="text-start px-mono text-[9px] text-pxMuted uppercase">
+          <div className="text-start ds-mono text-[9px] text-pxMuted uppercase">
             {state === 'DRAFT' ? t('draft', 'Draft') : ''}
           </div>
             <div className="w-full relative">
@@ -1185,7 +1185,7 @@ const CalendarItem: FC<{
             </div>
         </div>
         {showTime && (
-          <div className="px-mono text-pxMuted text-[9px] whitespace-nowrap flex items-center">
+          <div className="ds-mono text-pxMuted text-[9px] whitespace-nowrap flex items-center">
             {newDayjs(post.publishDate).local().format(isUSCitizen() ? 'hh:mm A' : 'HH:mm')}
           </div>
         )}

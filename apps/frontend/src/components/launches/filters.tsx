@@ -312,7 +312,7 @@ export const Filters = () => {
     <div className="text-textColor flex flex-col md:flex-row gap-[12px] items-center select-none">
       {!isListView && (
         <div className="flex flex-grow flex-row items-center gap-[12px] min-w-0">
-          <div className="px-h1 text-[19px] truncate">{getDisplayText()}</div>
+          <div className="ds-h1 text-[19px] truncate">{getDisplayText()}</div>
           <div className="flex gap-[4px] shrink-0">
             <div
               onClick={previous}
@@ -370,11 +370,11 @@ export const Filters = () => {
               {chevronRight}
             </div>
           </div>
-          <div className="px-mono text-[11px] text-pxMuted uppercase shrink-0">
+          <div className="ds-mono text-[11px] text-pxMuted uppercase shrink-0">
             {t('page', 'Page')} {calendar.listPage + 1} {t('of', 'of')}{' '}
             {Math.max(1, calendar.listTotalPages)}
           </div>
-          <div className="px-seg">
+          <div className="ds-seg">
             {listStateOptions.map((option) => (
               <div
                 key={option.value}
@@ -395,7 +395,7 @@ export const Filters = () => {
         integrations={calendar.integrations}
       />
 
-      <div className="px-seg shrink-0">
+      <div className="ds-seg shrink-0">
         {viewOptions.map((option) => (
           <div
             key={option.key}

@@ -113,7 +113,7 @@ export const StatisticsModal: FC<{
                   const color = colorVariants[index % colorVariants.length];
                   return (
                     <div key={`analytics-${index}`} className="group">
-                      <div className="px-card flex flex-col h-full overflow-hidden transition-colors duration-200 hover:border-btnPrimary/50">
+                      <div className="ds-card flex flex-col h-full overflow-hidden transition-colors duration-200 hover:border-btnPrimary/50">
                         <div className="flex items-center justify-between px-[16px] pt-[14px] pb-[8px]">
                           <div className="flex items-center gap-[10px]">
                             <div

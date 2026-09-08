@@ -2,11 +2,12 @@
   .dark {
     --new-back-drop: #191712;
     --new-settings: #24211c;
-    --new-border: #7e73db;
+    --new-border: #c2410c;
     --new-bgColor: #1b1813;
     --new-bgColorInner: #1f1c17;
-    --new-sep: #7e73db;
-    --new-bgLineColor: #7e73db;
+    --new-sep: #c2410c;
+    --new-bgLineColor: #6f3f2c;
+    --new-sidebarDivider: #c2410c;
     --new-textItemFocused: #c2410c;
     --new-textItemBlur: #5f5b52;
     --new-boxFocused: #2a2620;
@@ -17,7 +18,7 @@
     --new-btn-primary: #c2410c;
     --new-ai-btn: #4e2f1f;
     --new-box-hover: #24211c;
-    --new-table-border: #7e73db;
+    --new-table-border: #c2410c;
     --new-table-header: #24211c;
     --new-table-text: #5f5b52;
     --new-table-text-focused: #c2410c;
@@ -40,7 +41,7 @@
     --popup-color: rgba(42, 38, 32, 0.45);
     --border-preview: transparent;
     --preview-box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 24px 48px -24px rgba(0, 0, 0, 0.6);
-    --linkedin-border: #7e73db;
+    --linkedin-border: #c2410c;
     --linkedin-bg: #24211c;
     --linkedin-text: #f4f1ea;
     --facebook-bg: #24211c;
@@ -51,7 +52,7 @@
     --youtube-bg: #1b1813;
     --youtube-button: #F4F1EA;
     --youtube-action-color: #24211C;
-    --youtube-svg-border: #7E73DB;
+    --youtube-svg-border: #c2410c;
   }
   .light {
     --new-back-drop: #191712;
@@ -61,6 +62,7 @@
     --new-bgColor: #f7f6f3;
     --new-bgColorInner: #ffffff;
     --new-bgLineColor: #e7e3db;
+    --new-sidebarDivider: #e7e3db;
     --new-textItemFocused: #c2410c;
     --new-textItemBlur: #5f5b52;
     --new-boxFocused: #f4e7df;
@@ -135,7 +137,7 @@
     --color-custom8: var(--new-btn-simple);
     --color-custom9: #2a2620;
     --color-custom10: #f4e7df;
-    --color-custom11: #7e73db;
+    --color-custom11: #c2410c;
     --color-custom12: #f4f1ea;
     --color-custom13: #a9711f;
     --color-custom14: #5f5b52;
@@ -152,7 +154,7 @@
     --color-custom25: #2a2620;
     --color-custom26: #3f7d4e;
     --color-custom27: #5f5b52;
-    --color-custom28: #7e73db;
+    --color-custom28: #c2410c;
     --color-custom29: #2d2618;
     --color-custom30: #4e2f1f;
     --color-custom31: #1f1c17;
@@ -170,7 +172,7 @@
     --color-custom43: #2a2620;
     --color-custom44: #24211c;
     --color-custom45: #c2410c;
-    --color-custom46: #7e73db;
+    --color-custom46: #c2410c;
     --color-custom47: #1f1c17;
     --color-custom48: #191712;
     --color-custom49: #1b1813;

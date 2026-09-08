@@ -97,7 +97,7 @@ export const ChangeLanguageComponent = () => {
         {availableLanguages.map((language) => (
           <div
             className={clsx(
-              'flex items-center flex-col bg-newTableHeader hover:bg-newTableBorder p-[20px] cursor-pointer gap-2',
+              'flex items-center flex-col bg-newBgColorInner border border-newBorder hover:bg-boxHover p-[20px] cursor-pointer gap-2',
               language === currentLanguage ? 'border border-textColor' : ''
             )}
             key={language}

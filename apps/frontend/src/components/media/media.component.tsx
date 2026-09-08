@@ -481,7 +481,7 @@ export const MediaBox: FC<{
             {!isLoading && !data?.results?.length && (
               <>
                 <NoMediaIcon />
-                <div className="text-[20px] font-[600]">
+                <div className="px-h2 text-[19px]">
                   {debouncedSearch
                     ? t(
                         'no_media_match_search',

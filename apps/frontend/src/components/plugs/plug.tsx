@@ -198,7 +198,7 @@ export const PlugItem: FC<{
     <div
       onClick={() => addPlug(data)}
       key={plug.title}
-      className="w-full h-[300px] rounded-[8px] bg-newTableHeader hover:bg-newTableBorder"
+      className="w-full h-[300px] rounded-[8px] bg-newBgColorInner border border-newBorder hover:bg-boxHover"
     >
       <div key={plug.title} className="p-[16px] h-full flex flex-col flex-1">
         <div className="flex">

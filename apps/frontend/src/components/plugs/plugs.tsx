@@ -128,12 +128,12 @@ export const Plugs = () => {
       >
         <div className="flex gap-[12px] flex-col">
           <div className="flex items-center">
-            <h2 className="group-[.sidebar]:hidden flex-1 text-[20px] font-[500]">
+            <h2 className="group-[.sidebar]:hidden flex-1 px-h2">
               {t('channels')}
             </h2>
             <div
               onClick={() => setCollapseMenu(collapseMenu === '1' ? '0' : '1')}
-              className="group-[.sidebar]:rotate-[180deg] group-[.sidebar]:mx-auto text-btnText bg-btnSimple rounded-[6px] w-[24px] h-[24px] flex items-center justify-center cursor-pointer select-none"
+              className="group-[.sidebar]:rotate-[180deg] group-[.sidebar]:mx-auto text-textItemBlur bg-btnSimple border border-newBorder rounded-[8px] w-[26px] h-[26px] flex items-center justify-center cursor-pointer select-none transition-colors hover:text-newTextColor"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

@@ -366,33 +366,40 @@ export const WeekView = () => {
   return (
     <div className="flex flex-col text-textColor flex-1">
       <div className="flex-1 relative">
-        <div className="grid [grid-template-columns:136px_repeat(7,_minmax(0,_1fr))] gap-[4px] rounded-[10px] absolute h-full start-0 top-0 w-full overflow-auto scrollbar scrollbar-thumb-fifth scrollbar-track-newBgColor">
+        <div className="grid [grid-template-columns:96px_repeat(7,_minmax(0,_1fr))] gap-[4px] rounded-[10px] absolute h-full start-0 top-0 w-full overflow-auto scrollbar scrollbar-thumb-fifth scrollbar-track-transparent">
           <div className="z-10 bg-newTableHeader flex justify-center items-center flex-col h-[62px] rounded-[8px] sticky top-0"></div>
           {localizedDays.map((day, index) => (
             <div
               key={day.name}
-              className="p-2 text-center bg-newTableHeader flex justify-center items-center flex-col h-[62px] rounded-[8px] sticky top-0 z-[20]"
+              className={clsx(
+                'p-2 text-center flex justify-center items-center flex-col gap-[2px] h-[62px] rounded-[8px] sticky top-0 z-[20]',
+                day.day === newDayjs().format('L')
+                  ? 'bg-boxFocused'
+                  : 'bg-newTableHeader'
+              )}
             >
-              <div className="text-[14px] font-[500] text-newTableText">
+              <div
+                className={clsx(
+                  'px-th',
+                  day.day === newDayjs().format('L') && '!text-newTableTextFocused'
+                )}
+              >
                 {day.name}
               </div>
               <div
                 className={clsx(
-                  'text-[14px] font-[600] flex items-center justify-center gap-[6px]',
+                  'text-[13px] font-[600] flex items-center justify-center gap-[5px]',
                   day.day === newDayjs().format('L') &&
                     'text-newTableTextFocused'
                 )}
               >
-                {day.day === newDayjs().format('L') && (
-                  <div className="w-[6px] h-[6px] bg-newTableTextFocused rounded-full" />
-                )}
                 {day.day}
               </div>
             </div>
           ))}
           {hours.map((hour) => (
             <Fragment key={hour}>
-              <div className="p-2 pe-4 text-center items-center justify-center flex text-[14px] text-newTableText">
+              <div className="p-2 pe-4 text-center items-center justify-center flex px-mono text-[10px] text-pxMuted">
                 {convertTimeFormatBasedOnLocality(hour)}
               </div>
               {localizedDays.map((day, indexDay) => (
@@ -465,13 +472,13 @@ export const MonthView = () => {
   return (
     <div className="flex flex-col text-textColor flex-1">
       <div className="flex-1 flex relative">
-        <div className="grid grid-cols-7 grid-rows-[62px_auto] gap-[4px] rounded-[10px] absolute start-0 top-0 overflow-auto w-full h-full scrollbar scrollbar-thumb-tableBorder scrollbar-track-secondary">
+        <div className="grid grid-cols-7 grid-rows-[48px_auto] gap-[4px] rounded-[10px] absolute start-0 top-0 overflow-auto w-full h-full scrollbar scrollbar-thumb-tableBorder scrollbar-track-transparent">
           {localizedDays.map((day) => (
             <div
               key={day}
-              className="z-[20] p-2 bg-newTableHeader flex justify-center items-center flex-col h-[62px] rounded-[8px] sticky top-0"
+              className="z-[20] p-2 bg-newTableHeader flex justify-center items-center flex-col h-[48px] rounded-[8px] sticky top-0"
             >
-              <div>{day}</div>
+              <div className="px-th">{day}</div>
             </div>
           ))}
           {calendarDays.map((date, index) => (
@@ -1039,12 +1046,15 @@ const CalendarItem: FC<{
       // @ts-ignore
       ref={dragRef}
       className={clsx(
-        'w-full flex h-full flex-1 flex-col group',
-        'relative',
-        state === 'ERROR' && 'rounded-[10px] ring-2 ring-red-500'
+        'w-full flex h-full flex-1 flex-col group overflow-hidden',
+        'relative rounded-[8px] border bg-newBgColorInner',
+        state === 'ERROR' ? 'border-dangerBorder' : 'border-newBorder'
       )}
       style={{
         opacity,
+        borderLeft: `3px solid ${
+          post?.tags?.[0]?.tag?.color || 'var(--new-btn-primary)'
+        }`,
       }}
     >
       {state === 'ERROR' && (
@@ -1066,7 +1076,7 @@ const CalendarItem: FC<{
       )}
       <div
         className={clsx(
-          'text-white text-[11px] max-h-[24px] h-[24px] min-h-[24px] w-full rounded-tr-[10px] rounded-tl-[10px] flex items-center justify-center gap-[10px] px-[5px] bg-btnPrimary'
+          'px-mono text-white text-[9px] uppercase max-h-[20px] h-[20px] min-h-[20px] w-full flex items-center justify-center gap-[8px] px-[6px] bg-btnPrimary'
         )}
         style={{
           backgroundColor: post?.tags?.[0]?.tag?.color,
@@ -1147,14 +1157,15 @@ const CalendarItem: FC<{
       <div
         onClick={editPost}
         className={clsx(
-          'gap-[5px] w-full flex h-full flex-1 rounded-br-[10px] rounded-bl-[10px] p-[8px] text-[14px] bg-newColColor',
+          'gap-[6px] w-full flex h-full flex-1 p-[6px_7px] text-[11px] border-t border-hairline cursor-pointer transition-colors hover:bg-boxHover',
           'relative',
-          isBeforeNow && '!grayscale'
+          state === 'ERROR' && 'bg-dangerBg',
+          isBeforeNow && 'opacity-60'
         )}
       >
         <div className={clsx('relative min-w-[20px]')}>
           <img
-            className="w-[20px] h-[20px] rounded-[8px]"
+            className="w-[20px] h-[20px] rounded-[6px]"
             src={post.integration.picture! || '/no-picture.jpg'}
           />
           <img
@@ -1162,19 +1173,19 @@ const CalendarItem: FC<{
             src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
           />
         </div>
-        <div className="w-full flex-1 flex flex-col min-h-[40px]">
-          <div className="text-start">
-            {state === 'DRAFT' ? t('draft', 'Draft') + ': ' : ''}
+        <div className="w-full flex-1 flex flex-col min-h-[40px] min-w-0">
+          <div className="text-start px-mono text-[9px] text-pxMuted uppercase">
+            {state === 'DRAFT' ? t('draft', 'Draft') : ''}
           </div>
             <div className="w-full relative">
-              <div className="absolute top-0 start-0 w-full text-ellipsis break-words line-clamp-1 text-start">
+              <div className="absolute top-0 start-0 w-full text-ellipsis break-words line-clamp-1 text-start text-[11px] font-[600]">
                 {stripHtmlValidation('none', post.content, false, true, false) ||
                   t('no_content', 'no content')}
               </div>
             </div>
         </div>
         {showTime && (
-          <div className="text-textColor/50 text-[12px] whitespace-nowrap flex items-center">
+          <div className="px-mono text-pxMuted text-[9px] whitespace-nowrap flex items-center">
             {newDayjs(post.publishDate).local().format(isUSCitizen() ? 'hh:mm A' : 'HH:mm')}
           </div>
         )}

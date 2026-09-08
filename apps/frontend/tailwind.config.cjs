@@ -84,6 +84,8 @@ module.exports = {
         segTrack: 'var(--px-seg-track)',
         segThumb: 'var(--px-seg-thumb)',
         hairline: 'var(--px-hairline)',
+        dangerBg: 'var(--px-danger-bg)',
+        dangerBorder: 'var(--px-danger-border)',
 
         newBgColor: 'var(--new-bgColor)',
         newBackdrop: 'var(--new-back-drop)',

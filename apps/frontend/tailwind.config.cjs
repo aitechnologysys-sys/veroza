@@ -74,6 +74,17 @@ module.exports = {
         customColor55: 'var(--color-custom55)',
         modalCustom: 'var(--color-modalCustom)',
 
+        railBg: 'var(--px-rail-bg)',
+        railLabel: 'var(--px-rail-label)',
+        railItem: 'var(--px-rail-item)',
+        railItemActiveBg: 'var(--px-rail-item-active-bg)',
+        railItemActive: 'var(--px-rail-item-active)',
+        pxMuted: 'var(--px-muted)',
+        pxFaint: 'var(--px-faint)',
+        segTrack: 'var(--px-seg-track)',
+        segThumb: 'var(--px-seg-thumb)',
+        hairline: 'var(--px-hairline)',
+
         newBgColor: 'var(--new-bgColor)',
         newBackdrop: 'var(--new-back-drop)',
         newSep: 'var(--new-sep)',

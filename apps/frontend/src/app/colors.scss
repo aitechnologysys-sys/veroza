@@ -253,3 +253,32 @@
     --color-modalCustom: transparent;
   }
 }
+
+/* Redesign tokens — values taken from the postaryx-redesign artboards.
+   The rail is intentionally dark in both themes, so its tokens do not flip. */
+:root {
+  .dark {
+    --px-rail-bg: #191712;
+    --px-rail-label: #5f5b52;
+    --px-rail-item: #8c877d;
+    --px-rail-item-active-bg: #2a251d;
+    --px-rail-item-active: #f4e7df;
+    --px-muted: #8c877d;
+    --px-faint: #5f5b52;
+    --px-seg-track: #2a2620;
+    --px-seg-thumb: #1f1c17;
+    --px-hairline: #2a2620;
+  }
+  .light {
+    --px-rail-bg: #191712;
+    --px-rail-label: #5f5b52;
+    --px-rail-item: #8c877d;
+    --px-rail-item-active-bg: #2a251d;
+    --px-rail-item-active: #f4e7df;
+    --px-muted: #8c877d;
+    --px-faint: #a8a399;
+    --px-seg-track: #f1eee8;
+    --px-seg-thumb: #ffffff;
+    --px-hairline: #f1eee8;
+  }
+}

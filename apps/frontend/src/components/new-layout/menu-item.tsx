@@ -14,15 +14,15 @@ export const MenuItem: FC<{ label: string; icon: ReactNode; path: string; onClic
   const isActive = currentPath.indexOf(path) === 0;
 
   const className = clsx(
-    'w-full minCustom:h-[54px] custom:h-[30px] py-[8px] px-[6px] gap-[4px] flex flex-col custom:flex-row text-[10px] font-[600] items-center minCustom:justify-center rounded-[12px] hover:text-textItemFocused hover:bg-boxFocused',
-    isActive ? 'text-textItemFocused bg-boxFocused' : 'text-textItemBlur'
+    'w-[64px] custom:w-full py-[8px] px-[6px] gap-[4px] flex flex-col custom:flex-row text-[10px] font-[500] items-center justify-center rounded-[10px] transition-colors hover:bg-railItemActiveBg hover:text-railItemActive',
+    isActive ? 'bg-railItemActiveBg text-railItemActive' : 'text-railItem'
   );
 
   if (onClick) {
     return (
       <button onClick={onClick} className={className}>
         <div className="custom:hidden">{icon}</div>
-        <div className="text-[10px]">{label}</div>
+        <div className="text-[10px] leading-[1.2]">{label}</div>
       </button>
     );
   }
@@ -35,7 +35,14 @@ export const MenuItem: FC<{ label: string; icon: ReactNode; path: string; onClic
       className={className}
     >
       <div className="custom:hidden">{icon}</div>
-      <div className="text-[10px]">{label}</div>
+      <div className="text-[10px] leading-[1.2]">{label}</div>
     </Link>
   );
 };
+
+/** Mono group heading in the rail (WORK / GROW / ACCOUNT). */
+export const MenuGroupLabel: FC<{ label: string }> = ({ label }) => (
+  <div className="px-mono text-[8px] leading-none text-railLabel uppercase mt-[14px] mb-[6px] custom:hidden">
+    {label}
+  </div>
+);

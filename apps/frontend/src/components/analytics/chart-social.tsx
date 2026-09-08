@@ -28,21 +28,23 @@ export const ChartSocial: FC<{
   const ref = useRef<any>(null);
   const chart = useRef<null | DrawChart>(null);
 
+  // Mirrors --px-chart-1/2/3. Chart.js paints to canvas, so these have to be
+  // literals rather than CSS custom properties.
   const colorSchemes = {
     purple: {
-      start: 'rgba(97, 43, 211, 0.8)',
-      end: 'rgba(97, 43, 211, 0.1)',
-      border: 'rgb(97, 43, 211)',
+      start: 'rgba(194, 65, 12, 0.8)',
+      end: 'rgba(194, 65, 12, 0.1)',
+      border: 'rgb(194, 65, 12)',
     },
     green: {
-      start: 'rgba(50, 213, 131, 0.8)',
-      end: 'rgba(50, 213, 131, 0.1)',
-      border: 'rgb(50, 213, 131)',
+      start: 'rgba(63, 125, 78, 0.8)',
+      end: 'rgba(63, 125, 78, 0.1)',
+      border: 'rgb(63, 125, 78)',
     },
     blue: {
-      start: 'rgba(29, 155, 240, 0.8)',
-      end: 'rgba(29, 155, 240, 0.1)',
-      border: 'rgb(29, 155, 240)',
+      start: 'rgba(15, 118, 110, 0.8)',
+      end: 'rgba(15, 118, 110, 0.1)',
+      border: 'rgb(15, 118, 110)',
     },
   };
 

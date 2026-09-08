@@ -5,12 +5,18 @@ import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
-import { MenuItem } from '@gitroom/frontend/components/new-layout/menu-item';
+import {
+  MenuItem,
+  MenuGroupLabel,
+} from '@gitroom/frontend/components/new-layout/menu-item';
+
+type MenuGroup = 'work' | 'grow' | 'account';
 
 interface MenuItemInterface {
   name: string;
   icon: ReactNode;
   path: string;
+  group?: MenuGroup;
   role?: string[];
   hide?: boolean;
   requireBilling?: boolean;
@@ -55,6 +61,7 @@ export const useMenuItem = () => {
         </svg>
       ),
       path: '/launches',
+      group: 'work',
     },
     {
       name: 'Agent',
@@ -73,6 +80,7 @@ export const useMenuItem = () => {
         </svg>
       ),
       path: '/agents',
+      group: 'work',
     },
     {
       name: t('analytics', 'Analytics'),
@@ -94,9 +102,10 @@ export const useMenuItem = () => {
         </svg>
       ),
       path: '/analytics',
+      group: 'grow',
     },
     {
-      name: t('media', 'Media'),
+      name: t('library', 'Library'),
       icon: (
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -115,9 +124,10 @@ export const useMenuItem = () => {
         </svg>
       ),
       path: '/media',
+      group: 'work',
     },
     {
-      name: t('plugs', 'Plugs'),
+      name: t('automate', 'Automate'),
       icon: (
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -136,9 +146,10 @@ export const useMenuItem = () => {
         </svg>
       ),
       path: '/plugs',
+      group: 'grow',
     },
     {
-      name: t('integrations', 'Integrations'),
+      name: t('channels', 'Channels'),
       icon: (
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -157,6 +168,7 @@ export const useMenuItem = () => {
         </svg>
       ),
       path: '/third-party',
+      group: 'account',
     },
   ] satisfies MenuItemInterface[] as MenuItemInterface[];
 
@@ -190,6 +202,7 @@ export const useMenuItem = () => {
         </svg>
       ),
       path: '#',
+      group: 'work',
       role: ['ADMIN', 'SUPERADMIN', 'USER'],
       requireBilling: true,
       onClick: handleAgentMediaClick,
@@ -249,6 +262,7 @@ export const useMenuItem = () => {
         </svg>
       ),
       path: 'https://github.com/aitechnologysys-sys/veroza',
+      group: 'account',
       role: ['ADMIN', 'SUPERADMIN', 'USER'],
       requireBilling: true,
     },
@@ -272,6 +286,7 @@ export const useMenuItem = () => {
         </svg>
       ),
       path: '/billing',
+      group: 'account',
       role: ['ADMIN', 'SUPERADMIN'],
       requireBilling: true,
     },
@@ -302,12 +317,26 @@ export const useMenuItem = () => {
         </svg>
       ),
       path: '/settings',
+      group: 'account',
       role: ['ADMIN', 'USER', 'SUPERADMIN'],
     },
   ] satisfies MenuItemInterface[] as MenuItemInterface[];
 
+  const all = [...firstMenu, ...secondMenu];
+
+  // Rail order comes from the redesign: WORK, then GROW, then ACCOUNT.
+  const groups = [
+    { key: 'work', label: t('nav_work', 'Work') },
+    { key: 'grow', label: t('nav_grow', 'Grow') },
+    { key: 'account', label: t('nav_account', 'Account') },
+  ].map((group) => ({
+    ...group,
+    items: all.filter((item) => item.group === group.key),
+  }));
+
   return {
-    all: [...firstMenu, ...secondMenu],
+    all,
+    groups,
     firstMenu,
     secondMenu,
   };
@@ -315,70 +344,62 @@ export const useMenuItem = () => {
 
 export const TopMenu: FC = () => {
   const user = useUser();
-  const { firstMenu, secondMenu } = useMenuItem();
+  const { groups } = useMenuItem();
   const { isGeneral, billingEnabled } = useVariables();
+
+  // @ts-ignore
+  const locked = !user?.orgId;
+  const gated =
+    // @ts-ignore
+    user?.tier === 'FREE' && isGeneral && billingEnabled;
+
+  const visible = (f: MenuItemInterface) => {
+    if (f.hide) {
+      return false;
+    }
+    if (f.requireBilling && !billingEnabled) {
+      return false;
+    }
+    if (f.name === 'Billing' && user?.isLifetime) {
+      return false;
+    }
+    if (f.role) {
+      return f.role.includes(user?.role!);
+    }
+    return true;
+  };
+
   return (
-    <>
-      <div className="flex flex-1 flex-col minCustom:gap-[16px] blurMe">
-        {
-          // @ts-ignore
-          user?.orgId &&
-            // @ts-ignore
-            (user.tier !== 'FREE' || !isGeneral || !billingEnabled) &&
-            firstMenu
-              .filter((f) => {
-                if (f.hide) {
-                  return false;
-                }
-                if (f.requireBilling && !billingEnabled) {
-                  return false;
-                }
-                if (f.name === 'Billing' && user?.isLifetime) {
-                  return false;
-                }
-                if (f.role) {
-                  return f.role.includes(user?.role!);
-                }
-                return true;
-              })
-              .map((item, index) => (
-                <MenuItem
-                  path={item.path}
-                  label={item.name}
-                  icon={item.icon}
-                  key={item.name}
-                  onClick={item.onClick}
-                />
-              ))
+    <div className="flex flex-1 flex-col items-center w-full blurMe">
+      {groups.map((group) => {
+        const items = group.items
+          .filter(visible)
+          // WORK is the only group hidden behind org + billing, matching the
+          // gate the flat menu applied to its first block.
+          .filter((item) => !(group.key === 'work' && (locked || gated)));
+
+        if (!items.length) {
+          return null;
         }
-      </div>
-      <div className="flex flex-col minCustom:gap-[16px] blurMe">
-        {secondMenu
-          .filter((f) => {
-            if (f.hide) {
-              return false;
-            }
-            if (f.requireBilling && !billingEnabled) {
-              return false;
-            }
-            if (f.name === 'Billing' && user?.isLifetime) {
-              return false;
-            }
-            if (f.role) {
-              return f.role.includes(user?.role!);
-            }
-            return true;
-          })
-          .map((item, index) => (
-            <MenuItem
-              path={item.path}
-              label={item.name}
-              icon={item.icon}
-              key={item.name}
-              onClick={item.onClick}
-            />
-          ))}
-      </div>
-    </>
+
+        return (
+          <div
+            key={group.key}
+            className="flex flex-col items-center w-full gap-[2px] custom:gap-0"
+          >
+            <MenuGroupLabel label={group.label} />
+            {items.map((item) => (
+              <MenuItem
+                path={item.path}
+                label={item.name}
+                icon={item.icon}
+                key={item.name}
+                onClick={item.onClick}
+              />
+            ))}
+          </div>
+        );
+      })}
+    </div>
   );
 };

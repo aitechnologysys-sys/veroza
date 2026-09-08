@@ -94,41 +94,43 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
                   <AnnouncementBanner />
                   <div className="flex-1 flex gap-[8px]">
                     <Support />
-                    <div className="flex flex-col bg-newBgColorInner w-[80px] rounded-[12px]">
+                    <div className="flex flex-col bg-railBg w-[88px] rounded-[12px]">
                       <div
                         id="left-menu"
                         className={clsx(
-                          'fixed h-full w-[64px] start-[17px] flex flex-1 top-0',
-                          user?.admin && 'pt-[60px] max-h-[1000px]:w-[500px]'
+                          'fixed h-full w-[88px] start-[12px] top-0 flex flex-1 bg-railBg rounded-[12px]',
+                          user?.admin && 'pt-[60px]'
                         )}
                       >
-                        <div className="flex flex-col h-full gap-[32px] flex-1 py-[12px]">
-                          <Logo />
+                        <div className="flex flex-col h-full items-center flex-1 py-[16px] overflow-y-auto scrollbar-none">
+                          <Logo className="text-[19px] text-white" />
                           <TopMenu />
                         </div>
                       </div>
                     </div>
-                    <div className="flex-1 bg-newBgLineColor rounded-[12px] overflow-hidden flex flex-col gap-[1px] blurMe">
-                      <div className="flex bg-newBgColorInner h-[80px] px-[20px] items-center">
-                        <div className="text-[24px] font-[600] flex flex-1">
+                    <div className="flex-1 bg-newBgColor border border-newBorder rounded-[12px] overflow-hidden flex flex-col blurMe">
+                      <div className="flex bg-newSettings h-[64px] px-[24px] gap-[16px] items-center border-b border-newBorder">
+                        <div className="ds-h1 text-[19px] flex flex-1 items-center">
                           <Title />
                         </div>
-                        <div className="flex gap-[20px] text-textItemBlur">
+                        <div className="flex items-center gap-[14px] text-textItemBlur">
                           <StreakComponent />
-                          <div className="w-[1px] h-[20px] bg-blockSeparator" />
+                          <div className="w-[1px] h-[18px] bg-newBorder" />
                           <OrganizationSelector />
                           <div className="hover:text-newTextColor">
                             <ModeComponent />
                           </div>
-                          <div className="w-[1px] h-[20px] bg-blockSeparator" />
+                          <div className="w-[1px] h-[18px] bg-newBorder" />
                           <LanguageComponent />
                           <ChromeExtensionComponent />
-                          <div className="w-[1px] h-[20px] bg-blockSeparator" />
+                          <div className="w-[1px] h-[18px] bg-newBorder" />
                           <AttachToFeedbackIcon />
                           <NotificationComponent />
                         </div>
                       </div>
-                      <div className="flex flex-1 gap-[1px]">{children}</div>
+                      <div className="flex flex-1 min-h-0 gap-[20px] px-[24px] py-[20px] bg-newBgColor">
+                        {children}
+                      </div>
                     </div>
                   </div>
                 </>

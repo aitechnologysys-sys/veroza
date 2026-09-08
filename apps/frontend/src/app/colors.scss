@@ -2,11 +2,11 @@
   .dark {
     --new-back-drop: #191712;
     --new-settings: #24211c;
-    --new-border: #7e73db;
+    --new-border: #2a2620;
     --new-bgColor: #1b1813;
     --new-bgColorInner: #1f1c17;
-    --new-sep: #7e73db;
-    --new-bgLineColor: #7e73db;
+    --new-sep: #2a2620;
+    --new-bgLineColor: #2a2620;
     --new-textItemFocused: #c2410c;
     --new-textItemBlur: #5f5b52;
     --new-boxFocused: #2a2620;
@@ -17,7 +17,7 @@
     --new-btn-primary: #c2410c;
     --new-ai-btn: #4e2f1f;
     --new-box-hover: #24211c;
-    --new-table-border: #7e73db;
+    --new-table-border: #2a2620;
     --new-table-header: #24211c;
     --new-table-text: #5f5b52;
     --new-table-text-focused: #c2410c;
@@ -40,7 +40,7 @@
     --popup-color: rgba(42, 38, 32, 0.45);
     --border-preview: transparent;
     --preview-box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 24px 48px -24px rgba(0, 0, 0, 0.6);
-    --linkedin-border: #7e73db;
+    --linkedin-border: #2a2620;
     --linkedin-bg: #24211c;
     --linkedin-text: #f4f1ea;
     --facebook-bg: #24211c;
@@ -135,7 +135,7 @@
     --color-custom8: var(--new-btn-simple);
     --color-custom9: #2a2620;
     --color-custom10: #f4e7df;
-    --color-custom11: #7e73db;
+    --color-custom11: #2a2620;
     --color-custom12: #f4f1ea;
     --color-custom13: #a9711f;
     --color-custom14: #5f5b52;
@@ -152,7 +152,7 @@
     --color-custom25: #2a2620;
     --color-custom26: #3f7d4e;
     --color-custom27: #5f5b52;
-    --color-custom28: #7e73db;
+    --color-custom28: #2a2620;
     --color-custom29: #2d2618;
     --color-custom30: #4e2f1f;
     --color-custom31: #1f1c17;
@@ -170,7 +170,7 @@
     --color-custom43: #2a2620;
     --color-custom44: #24211c;
     --color-custom45: #c2410c;
-    --color-custom46: #7e73db;
+    --color-custom46: #2a2620;
     --color-custom47: #1f1c17;
     --color-custom48: #191712;
     --color-custom49: #1b1813;
@@ -251,5 +251,62 @@
     --color-custom54: #5f5b52;
     --color-custom55: #e7e3db;
     --color-modalCustom: transparent;
+  }
+}
+
+/* Redesign tokens — values taken from the postaryx-redesign artboards.
+   The rail is intentionally dark in both themes, so its tokens do not flip. */
+:root {
+  .dark {
+    --px-rail-bg: #191712;
+    --px-rail-label: #5f5b52;
+    --px-rail-item: #8c877d;
+    --px-rail-item-active-bg: #2a251d;
+    --px-rail-item-active: #f4e7df;
+    --px-muted: #8c877d;
+    --px-faint: #5f5b52;
+    --ds-seg-track: #2a2620;
+    --ds-seg-thumb: #1f1c17;
+    --px-hairline: #2a2620;
+    --px-danger-bg: #2d1e17;
+    --px-danger-border: #6b3a24;
+    /* Data-viz series, from the Analytics artboard */
+    --px-chart-1: #c2410c;
+    --px-chart-2: #3f7d4e;
+    --px-chart-3: #0f766e;
+    --px-danger: #f97066;
+    --px-success: #3f7d4e;
+    --px-warning: #a9711f;
+    /* Always-dark surfaces (auth, oauth, provider shells) */
+    --px-ink: #191712;
+    --px-ink-raised: #1f1c17;
+    --px-ink-hover: #2a251d;
+    --px-ink-hairline: #2a2620;
+  }
+  .light {
+    --px-rail-bg: #191712;
+    --px-rail-label: #5f5b52;
+    --px-rail-item: #8c877d;
+    --px-rail-item-active-bg: #2a251d;
+    --px-rail-item-active: #f4e7df;
+    --px-muted: #8c877d;
+    --px-faint: #a8a399;
+    --ds-seg-track: #f1eee8;
+    --ds-seg-thumb: #ffffff;
+    --px-hairline: #f1eee8;
+    --px-danger-bg: #fdf1ee;
+    --px-danger-border: #e7b7a4;
+    /* Data-viz series, from the Analytics artboard */
+    --px-chart-1: #c2410c;
+    --px-chart-2: #3f7d4e;
+    --px-chart-3: #0f766e;
+    --px-danger: #b42318;
+    --px-success: #3f7d4e;
+    --px-warning: #a9711f;
+    /* Always-dark surfaces (auth, oauth, provider shells) */
+    --px-ink: #191712;
+    --px-ink-raised: #1f1c17;
+    --px-ink-hover: #2a251d;
+    --px-ink-hairline: #2a2620;
   }
 }

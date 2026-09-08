@@ -83,7 +83,7 @@ export function Login() {
       <form className="flex-1 flex" onSubmit={form.handleSubmit(onSubmit)}>
         <div className="flex flex-col flex-1">
           <div>
-            <h1 className="text-[40px] font-[500] -tracking-[0.8px] text-start cursor-pointer">
+            <h1 className="ds-h1 text-[36px] text-start cursor-pointer">
               {t('sign_in', 'Sign In')}
             </h1>
           </div>
@@ -129,8 +129,8 @@ export function Login() {
                 />
               </div>
               {notActivated && (
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-[10px] p-4 mb-4">
-                  <p className="text-amber-400 text-sm mb-2">
+                <div className="bg-pxWarning/10 border border-pxWarning/30 rounded-[10px] p-4 mb-4">
+                  <p className="text-pxWarning text-sm mb-2">
                     {t(
                       'account_not_activated',
                       'Your account is not activated yet. Please check your email for the activation link.'
@@ -138,7 +138,7 @@ export function Login() {
                   </p>
                   <Link
                     href="/auth/activate"
-                    className="text-amber-400 underline hover:font-bold text-sm"
+                    className="text-pxWarning underline hover:font-bold text-sm"
                   >
                     {t('resend_activation_email', 'Resend Activation Email')}
                   </Link>

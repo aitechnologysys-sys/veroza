@@ -24,7 +24,7 @@ export const Testimonial: FC<{
       </div>
 
       {/* Content */}
-      <div className="text-[12px] font-[400] text-[#FFF] whitespace-pre-line w-full min-w-0">
+      <div className="text-[12px] font-[400] text-white whitespace-pre-line w-full min-w-0">
         {typeof content === 'string' ? content.replace(/\\n/g, '\n') : content}
       </div>
     </div>

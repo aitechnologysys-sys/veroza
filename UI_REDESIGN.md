@@ -31,6 +31,7 @@ Sign in, then walk these URLs. Column three is what actually changed on that scr
 | 10 | `/oauth/authorize` | Ink surfaces, ember accents. |
 | 11 | **Composer** — click any empty calendar slot, or *Create Post* | 20px bordered modal, serif column headers, 10px action buttons. |
 | 12 | Any page, **theme toggle** in the header | Dark mode: hairlines are warm grey now, not purple. |
+| 13 | **Browser tab**, any page | Ember PX tile instead of the purple Postiz mark. Hard-reload or open a private window — browsers cache favicons aggressively. |
 
 Rail labels were renamed to match the design — **Media → Library**, **Plugs →
 Automate**, **Integrations → Channels**. Routes are unchanged (`/media`, `/plugs`,
@@ -107,10 +108,11 @@ The palette, type ramp and radii already existed on `main` from the rebrand comm
 | `f0c1174e` | rename `px-` classes → `ds-` |
 | `815d4558` | dark mode: purple hairlines → warm grey |
 | `65e3d3e7` | ink auth shell, serif headings |
+| `cb8bc482` | PX favicon / icon set |
 
 ---
 
-## Files changed (67)
+## Files changed (79)
 
 ### Foundation
 - `apps/frontend/tailwind.config.cjs`
@@ -184,6 +186,16 @@ The palette, type ramp and radii already existed on `main` from the rebrand comm
 - `src/components/developer/developer.component.tsx`
 - `src/components/public-api/public.component.tsx`
 
+### Favicon / brand assets
+- `public/icon.svg` *(new — scalable master)*
+- `public/favicon.ico` *(rebuilt: 16/32/48)*
+- `public/favicon.png` *(rebuilt: 48)*
+- `public/apple-touch-icon.png` *(new: 180)*
+- `public/icon-512.png` *(new: 512)*
+- `public/postiz-fav.png`, `public/postiz-text.svg`, `public/postaryx.svg` *(deleted)*
+- `src/app/(app)/layout.tsx`, `src/app/(provider)/layout.tsx`, `src/app/(extension)/layout.tsx`
+- `src/app/(app)/(preview)/p/[id]/page.tsx`
+
 ### Auth / OAuth
 - `src/app/(app)/auth/layout.tsx`
 - `src/app/(app)/oauth/authorize/layout.tsx`
@@ -208,7 +220,13 @@ The palette, type ramp and radii already existed on `main` from the rebrand comm
    Facebook / YouTube previews) — those imitate the real platforms, so tokenizing
    them would make the previews less accurate. Left alone on purpose.
 
-4. **`--color-custom*` values were not otherwise touched.** They're deprecated per
+4. **The favicon is an ember tile with a serif PX**, matching `LogoTextComponent`.
+   The 16px and 32px entries in the `.ico` use a bolder, tighter cut than the 48px
+   one — at tab size the finer serif detail turns to mush. `postaryx.svg` turned out
+   to be the old purple Postiz "P" under a new filename, and was still being served
+   on the public preview page (`/p/[id]`); that now uses the PX mark too.
+
+5. **`--color-custom*` values were not otherwise touched.** They're deprecated per
    `CLAUDE.md`; three dark-mode ones held the purple border and were updated with the
    rest, nothing more.
 

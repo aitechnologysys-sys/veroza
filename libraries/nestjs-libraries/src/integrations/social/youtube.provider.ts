@@ -256,6 +256,22 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
     return undefined;
   }
 
+  /**
+   * Invalidates the authorization at Google.
+   *
+   * Revoking either token of a Google grant invalidates the whole grant, so
+   * the access token we hold is sufficient. Google answers 400 for a token
+   * that is already invalid, which is the desired end state, so only a
+   * transport failure is worth surfacing.
+   */
+  async revokeToken(token: string): Promise<void> {
+    await fetch('https://oauth2.googleapis.com/revoke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ token }).toString(),
+    });
+  }
+
   async refreshToken(refresh_token: string): Promise<AuthTokenDetails> {
     const { client, oauth2 } = clientAndYoutube();
     client.setCredentials({ refresh_token });

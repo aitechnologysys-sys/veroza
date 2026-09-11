@@ -24,7 +24,31 @@ export class MediaService {
     private _videoManager: VideoManager
   ) {}
 
+  /**
+   * Deletes a media item, removing the stored bytes before retiring the row.
+   *
+   * The database record holds the only pointer to the object, so it has to be
+   * read and the storage cleared first — retiring the row first would strand
+   * the file with nothing left to locate it. Storage failures are logged and
+   * swallowed: an orphaned object can be collected later, but a row that
+   * survives a delete the user asked for cannot.
+   */
   async deleteMedia(org: string, id: string) {
+    const media = await this._mediaRepository.getMediaById(id);
+
+    if (media && media.organizationId === org) {
+      for (const target of [media.path, media.thumbnail].filter(Boolean)) {
+        try {
+          await this.storage.removeFile(target as string);
+        } catch (err) {
+          console.error(
+            `Failed to remove stored object for media ${id} (${target}):`,
+            err
+          );
+        }
+      }
+    }
+
     return this._mediaRepository.deleteMedia(org, id);
   }
 

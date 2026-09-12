@@ -13,6 +13,13 @@ import { Integration } from '@prisma/client';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 
+// Hashnode's GraphQL endpoint. `gql.hashnode.com` started returning a 301 to
+// an announcement page in 2026; `gql-beta.hashnode.com` is the host their own
+// tooling (github.com/Hashnode/gql-skill) documents and the one that answers.
+// Since 13 May 2026 every request, reads included, needs a Pro plan on the
+// customer's publication — surface that error to the user, don't retry it.
+const HASHNODE_GQL = 'https://gql-beta.hashnode.com';
+
 export class HashnodeProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 3; // Hashnode has lenient publishing limits
   identifier = 'hashnode';
@@ -50,7 +57,7 @@ export class HashnodeProvider extends SocialAbstract implements SocialProvider {
     return [
       {
         key: 'apiKey',
-        label: 'API key',
+        label: 'Personal access token (requires a Hashnode Pro publication)',
         validation: `/^.{3,}$/`,
         type: 'password' as const,
       },
@@ -64,12 +71,18 @@ export class HashnodeProvider extends SocialAbstract implements SocialProvider {
   }) {
     const body = JSON.parse(Buffer.from(params.code, 'base64').toString());
     try {
-      const {
-        data: {
-          me: { name, id, profilePicture, username },
-        },
+      const response: {
+        data?: {
+          me?: {
+            name: string;
+            id: string;
+            profilePicture?: string;
+            username: string;
+          };
+        };
+        errors?: { message: string; extensions?: { code?: string } }[];
       } = await (
-        await fetch('https://gql.hashnode.com', {
+        await fetch(HASHNODE_GQL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -89,6 +102,23 @@ export class HashnodeProvider extends SocialAbstract implements SocialProvider {
           }),
         })
       ).json();
+
+      // Since May 2026 Hashnode answers every request on a publication without
+      // a Pro plan with a FORBIDDEN error. Show the user Hashnode's own words
+      // instead of "Invalid credentials", which would send them to check a
+      // token that is perfectly valid.
+      const forbidden = response.errors?.find(
+        (e) => e.extensions?.code === 'FORBIDDEN'
+      );
+      if (forbidden) {
+        return forbidden.message;
+      }
+
+      if (!response.data?.me) {
+        return response.errors?.[0]?.message || 'Invalid credentials';
+      }
+
+      const { name, id, profilePicture, username } = response.data.me;
 
       return {
         refreshToken: '',
@@ -122,7 +152,7 @@ export class HashnodeProvider extends SocialAbstract implements SocialProvider {
         },
       },
     } = await (
-      await fetch('https://gql.hashnode.com', {
+      await fetch(HASHNODE_GQL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -206,7 +236,7 @@ export class HashnodeProvider extends SocialAbstract implements SocialProvider {
         },
       },
     } = await (
-      await this.fetch('https://gql.hashnode.com', {
+      await this.fetch(HASHNODE_GQL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -50,7 +50,12 @@ export async function proxy(request: NextRequest) {
     nextUrl.pathname.startsWith('/uploads/') ||
     nextUrl.pathname.startsWith('/p/') ||
     nextUrl.pathname.startsWith('/provider/') ||
-    nextUrl.pathname.startsWith('/icons/')
+    nextUrl.pathname.startsWith('/icons/') ||
+    // Brand assets. The matcher below only exempts files at the root of
+    // /public, so anything in a subdirectory reaches this point and, with no
+    // auth cookie, gets redirected to /auth — which is why the logo broke on
+    // sign in and sign up once it moved from /postaryx.svg into /logos/.
+    nextUrl.pathname.startsWith('/logos/')
   ) {
     return topResponse;
   }

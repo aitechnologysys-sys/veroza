@@ -170,7 +170,7 @@ export const Plugs = () => {
                 setCurrent(index);
               }}
               className={clsx(
-                'flex gap-[8px] items-center justify-center group/profile hover:bg-boxHover rounded-e-[8px]',
+                'flex gap-[8px] items-center justify-center group/profile hover:bg-cardHover rounded-e-[8px]',
                 currentIntegration.id !== integration.id &&
                   'opacity-20 hover:opacity-100 cursor-pointer'
               )}

@@ -90,6 +90,7 @@ module.exports = {
         btnPrimary: 'var(--new-btn-primary)',
         ai: 'var(--new-ai-btn)',
         boxHover: 'var(--new-box-hover)',
+        cardHover: 'var(--new-card-hover)',
         newTableBorder: 'var(--new-table-border)',
         newTableHeader: 'var(--new-table-header)',
         newTableText: 'var(--new-table-text)',

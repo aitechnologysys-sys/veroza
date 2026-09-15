@@ -191,6 +191,21 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     return undefined;
   }
 
+  /**
+   * Revokes the permissions granted to this app at Meta.
+   *
+   * `DELETE /me/permissions` removes the whole grant for the user the token
+   * belongs to, which is what disconnecting should mean. Meta rejects a token
+   * that has already been invalidated, so failures are left to the caller to
+   * log rather than treated as fatal.
+   */
+  async revokeToken(token: string): Promise<void> {
+    await fetch(
+      `https://graph.facebook.com/v20.0/me/permissions?access_token=${token}`,
+      { method: 'DELETE' }
+    );
+  }
+
   async refreshToken(refresh_token: string): Promise<AuthTokenDetails> {
     return {
       refreshToken: '',

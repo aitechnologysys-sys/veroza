@@ -270,8 +270,45 @@ export class IntegrationService {
     return this._integrationRepository.getPostsForChannel(org, id);
   }
 
+  /**
+   * Disconnects a channel.
+   *
+   * Asks the platform to invalidate the authorization first, while the token
+   * is still readable, then retires the row and erases the credentials in a
+   * single write. Revocation is best-effort — a platform that refuses, or an
+   * authorization the user already revoked upstream, must not stop the local
+   * erase.
+   */
   async deleteChannel(org: string, id: string) {
+    const integration = await this._integrationRepository.getIntegrationById(
+      org,
+      id
+    );
+
+    if (integration) {
+      await this.revokeUpstreamAuthorization(integration);
+    }
+
     return this._integrationRepository.deleteChannel(org, id);
+  }
+
+  private async revokeUpstreamAuthorization(integration: Integration) {
+    try {
+      const provider = this._integrationManager.getSocialIntegration(
+        integration.providerIdentifier
+      ) as { revokeToken?: (token: string) => Promise<unknown> } | undefined;
+
+      if (!provider?.revokeToken || !integration.token) {
+        return;
+      }
+
+      await provider.revokeToken(integration.token);
+    } catch (err) {
+      console.error(
+        `Upstream revocation failed for integration ${integration.id}:`,
+        err
+      );
+    }
   }
 
   async disableIntegrations(org: string, totalChannels: number) {

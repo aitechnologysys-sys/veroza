@@ -341,7 +341,7 @@ body * {
 }
 //
 //:root {
-//  --copilot-kit-primary-color: #612ad5 !important;
+//  --copilot-kit-primary-color: #c2410c !important;
 //  --copilot-kit-background-color: #0b0f1c !important;
 //  --copilot-kit-separator-color: #1f2941 !important;
 //  --copilot-kit-contrast-color: #ffffff !important;
@@ -613,7 +613,7 @@ html[dir='rtl'] [dir='ltr'] {
 
 .ProseMirror .mention {
   font-weight: bold;
-  color: #ae8afc;
+  color: #c2410c;
 }
 
 .ProseMirror ul,
@@ -714,10 +714,10 @@ html[dir='rtl'] [dir='ltr'] {
   }
 
   .mention {
-    background-color: var(--purple-light);
+    background-color: rgba(194, 65, 12, 0.12);
     border-radius: 0.4rem;
     box-decoration-break: clone;
-    color: #ae8afc;
+    color: #c2410c;
     &::after {
       content: '\200B';
     }
@@ -828,6 +828,12 @@ select {
 
 .rounded-\[16px\] {
   border-radius: var(--app-radius-panel);
+}
+
+/* Ambient brand halo behind the auth card. The gradient itself lives in
+   colors.scss so the brand orange stays with the palette. */
+.auth-ambient {
+  background-image: var(--auth-ambient);
 }
 
 .uppyChange .uppy-Dashboard-inner {

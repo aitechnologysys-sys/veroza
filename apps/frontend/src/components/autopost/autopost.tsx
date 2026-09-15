@@ -71,13 +71,13 @@ export const Autopost: FC = () => {
   return (
     <div className="flex flex-col">
       <h3 className="text-[20px]">{t('autopost', 'Autopost')}</h3>
-      <div className="text-customColor18 mt-[4px]">
+      <div className="text-textItemBlur mt-[4px]">
         {t(
           'autopost_can_automatically_posts_your_rss_new_items_to_social_media',
           'Autopost can automatically posts your RSS new items to social media'
         )}
       </div>
-      <div className="my-[16px] mt-[16px] bg-sixth border-fifth items-center border rounded-[4px] p-[24px] flex gap-[24px]">
+      <div className="my-[16px] bg-newBgColorInner border-newBorder items-center border rounded-[12px] p-[20px] flex gap-[24px]">
         <div className="flex flex-col w-full">
           {!!data?.length && (
             <div className="grid grid-cols-[1fr,1fr,1fr,1fr,1fr] w-full gap-y-[10px]">
@@ -296,7 +296,7 @@ export const AddOrEditWebhook: FC<{
   return (
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit(callBack)}>
-        <div className="relative flex gap-[20px] flex-col flex-1 rounded-[4px] border border-customColor6 pt-0">
+        <div className="relative flex gap-[20px] flex-col flex-1 rounded-[12px] border border-newBorder pt-0">
           <div>
             <Input
               label="Title"
@@ -357,7 +357,7 @@ export const AddOrEditWebhook: FC<{
                 <CopilotTextarea
                   disableBranding={true}
                   className={clsx(
-                    '!min-h-40 !max-h-80 p-2 overflow-x-hidden scrollbar scrollbar-thumb-[#612AD5] bg-customColor2 outline-none mb-[16px] border-fifth border rounded-[4px]'
+                    '!min-h-40 !max-h-80 p-2 overflow-x-hidden scrollbar scrollbar-thumb-[#c2410c] bg-customColor2 outline-none mb-[16px] border border-newBorder rounded-[8px]'
                   )}
                   value={content}
                   onChange={(e) => {

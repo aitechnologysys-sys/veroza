@@ -168,10 +168,10 @@ export const Sets: FC = () => {
   return (
     <div className="flex flex-col">
       <h3 className="text-[20px]">Sets ({data?.length || 0})</h3>
-      <div className="text-customColor18 mt-[4px]">
+      <div className="text-textItemBlur mt-[4px]">
         Manage your content sets for easy reuse across posts.
       </div>
-      <div className="my-[16px] mt-[16px] bg-sixth border-fifth items-center border rounded-[4px] p-[24px] flex gap-[24px]">
+      <div className="my-[16px] bg-newBgColorInner border-newBorder items-center border rounded-[12px] p-[20px] flex gap-[24px]">
         <div className="flex flex-col w-full">
           {!!data?.length && (
             <div className="grid grid-cols-[2fr,1fr,1fr] w-full gap-y-[10px]">

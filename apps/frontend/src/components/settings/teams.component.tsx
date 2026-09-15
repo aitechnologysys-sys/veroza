@@ -166,13 +166,13 @@ export const TeamsComponent = () => {
   return (
     <div className="flex flex-col">
       <h3 className="text-[20px]">{t('team_members', 'Team Members')}</h3>
-      <div className="text-customColor18 mt-[4px]">
+      <div className="text-textItemBlur mt-[4px]">
         {t(
           'invite_your_assistant_or_team_member_to_manage_your_account',
           'Invite your assistant or team member to manage your account'
         )}
       </div>
-      <div className="my-[16px] mt-[16px] bg-sixth border-fifth border rounded-[4px] p-[24px] flex flex-col gap-[24px]">
+      <div className="my-[16px] bg-newBgColorInner border-newBorder border rounded-[12px] p-[20px] flex flex-col gap-[24px]">
         <div className="flex flex-col gap-[16px]">
           {(data || []).map((p) => (
             <div key={p.user.id} className="flex items-center">

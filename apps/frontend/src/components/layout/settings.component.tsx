@@ -117,14 +117,19 @@ export const SettingsPopup: FC<{
 
   return (
     <>
-      <div className="bg-newBgColorInner p-[20px] flex flex-col transition-all w-[260px]">
+      <div className="bg-newBgColorInner p-[20px] flex flex-col gap-[15px] transition-all w-[260px]">
+        <div className="flex items-center">
+          <h2 className="flex-1 text-[20px] font-[500]">
+            {t('settings', 'Settings')}
+          </h2>
+        </div>
         <div className="flex flex-1 flex-col gap-[15px]">
           {list.map(({ tab: tabKey, label }) => (
             <div
               key={tabKey}
               className={clsx(
-                'cursor-pointer flex items-center gap-[12px] group/profile hover:bg-boxHover rounded-e-[8px]',
-                tabKey === tab && 'bg-boxHover'
+                'cursor-pointer flex items-center gap-[12px] group/profile hover:bg-cardHover rounded-e-[8px]',
+                tabKey === tab && 'bg-cardHover'
               )}
               onClick={() => setTab(tabKey)}
             >
@@ -225,7 +230,7 @@ export const SettingsComponent = () => {
     }
     settings.openModal({
       children: (
-        <div className="relative flex gap-[20px] flex-col flex-1 rounded-[4px] border border-customColor6 bg-sixth p-[16px] w-[500px] mx-auto">
+        <div className="relative flex gap-[20px] flex-col flex-1 rounded-[12px] border border-newBorder bg-newBgColorInner p-[16px] w-[500px] mx-auto">
           <SettingsPopup />
         </div>
       ),

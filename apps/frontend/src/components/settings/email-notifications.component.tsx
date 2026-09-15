@@ -98,7 +98,7 @@ const EmailNotificationsComponent = () => {
 
   if (isLoading) {
     return (
-      <div className="my-[16px] mt-[16px] bg-sixth border-fifth border rounded-[4px] p-[24px]">
+      <div className="my-[16px] bg-newBgColorInner border-newBorder border rounded-[12px] p-[20px]">
         <div className="animate-pulse">
           {t('loading', 'Loading...')}
         </div>
@@ -107,7 +107,7 @@ const EmailNotificationsComponent = () => {
   }
 
   return (
-    <div className="my-[16px] mt-[16px] bg-sixth border-fifth border rounded-[4px] p-[24px] flex flex-col gap-[24px]">
+    <div className="my-[16px] bg-newBgColorInner border-newBorder border rounded-[12px] p-[20px] flex flex-col gap-[24px]">
       <div className="mt-[4px]">
         {t('email_notifications', 'Email Notifications')}
       </div>
@@ -116,7 +116,7 @@ const EmailNotificationsComponent = () => {
           <div className="text-[14px]">
             {t('success_emails', 'Success Emails')}
           </div>
-          <div className="text-[12px] text-customColor18">
+          <div className="text-[12px] text-textItemBlur">
             {t(
               'success_emails_description',
               'Receive email notifications when posts are published successfully'
@@ -134,7 +134,7 @@ const EmailNotificationsComponent = () => {
           <div className="text-[14px]">
             {t('failure_emails', 'Failure Emails')}
           </div>
-          <div className="text-[12px] text-customColor18">
+          <div className="text-[12px] text-textItemBlur">
             {t(
               'failure_emails_description',
               'Receive email notifications when posts fail to publish'
@@ -152,7 +152,7 @@ const EmailNotificationsComponent = () => {
           <div className="text-[14px]">
             {t('streak_emails', 'Streak Reminder Emails')}
           </div>
-          <div className="text-[12px] text-customColor18">
+          <div className="text-[12px] text-textItemBlur">
             {t(
               'streak_emails_description',
               'Receive email reminders when your posting streak is about to end'

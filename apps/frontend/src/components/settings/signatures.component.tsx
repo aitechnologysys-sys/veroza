@@ -178,7 +178,7 @@ const AddOrRemoveSignature: FC<{
   return (
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit(callBack)}>
-        <div className="relative flex gap-[20px] flex-col flex-1 rounded-[4px] pt-0">
+        <div className="relative flex gap-[20px] flex-col flex-1 rounded-[12px] pt-0">
           <button
             className="outline-none absolute end-[20px] top-[15px] mantine-UnstyledButton-root mantine-ActionIcon-root hover:bg-tableBorder cursor-pointer mantine-Modal-close mantine-1dcetaa"
             type="button"
@@ -204,7 +204,7 @@ const AddOrRemoveSignature: FC<{
             <CopilotTextarea
               disableBranding={true}
               className={clsx(
-                '!min-h-40 !max-h-80 p-2 overflow-x-hidden scrollbar scrollbar-thumb-[#c2410c] bg-bigStrip outline-none'
+                '!min-h-40 !max-h-80 p-2 overflow-x-hidden scrollbar scrollbar-thumb-[#c2410c] bg-bigStrip outline-none border border-newBorder rounded-[8px]'
               )}
               value={text}
               onChange={(e) => {

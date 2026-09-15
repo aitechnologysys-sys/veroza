@@ -1,8 +1,18 @@
 :root {
+  /* Radius scale. Theme-independent, so it lives on :root itself:
+     global.scss reads these at :root to build --app-radius-*, which the
+     .rounded-[8px]/[12px]/[16px] utilities resolve against. Declared only
+     inside .dark/.light they are invisible from :root and the utilities
+     collapse to border-radius: 0. */
+  --radius-control: 8px;
+  --radius-button: 10px;
+  --radius-card: 12px;
+  --radius-panel: 16px;
+
   .dark {
     --new-back-drop: #191712;
     --new-settings: #24211c;
-    --new-border: #c2410c;
+    --new-border: #4e2f1f;
     --new-bgColor: #1b1813;
     --new-bgColorInner: #1f1c17;
     --new-sep: #c2410c;

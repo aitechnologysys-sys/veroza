@@ -296,7 +296,7 @@ export const AddOrEditWebhook: FC<{
   return (
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit(callBack)}>
-        <div className="relative flex gap-[20px] flex-col flex-1 rounded-[4px] border border-customColor6 pt-0">
+        <div className="relative flex gap-[20px] flex-col flex-1 rounded-[12px] border border-newBorder pt-0">
           <div>
             <Input
               label="Title"
@@ -357,7 +357,7 @@ export const AddOrEditWebhook: FC<{
                 <CopilotTextarea
                   disableBranding={true}
                   className={clsx(
-                    '!min-h-40 !max-h-80 p-2 overflow-x-hidden scrollbar scrollbar-thumb-[#c2410c] bg-customColor2 outline-none mb-[16px] border-fifth border rounded-[4px]'
+                    '!min-h-40 !max-h-80 p-2 overflow-x-hidden scrollbar scrollbar-thumb-[#c2410c] bg-customColor2 outline-none mb-[16px] border border-newBorder rounded-[8px]'
                   )}
                   value={content}
                   onChange={(e) => {

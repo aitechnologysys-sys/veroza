@@ -248,7 +248,7 @@ export const AddOrEditWebhook: FC<{
   return (
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit(callBack)}>
-        <div className="relative flex gap-[20px] flex-col flex-1 rounded-[4px] pt-0">
+        <div className="relative flex gap-[20px] flex-col flex-1 rounded-[12px] pt-0">
           <div>
             <Input
               label="Name"

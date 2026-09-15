@@ -29,6 +29,23 @@
     --new-ai-btn: #4e2f1f;
     --new-box-hover: #24211c;
     --new-card-hover: #2e2a24;
+    /* Brand-orange accents composited over the surface behind them, so the
+       hue stays exactly --new-btn-primary (#c2410c) and only the strength
+       varies. Used by the auth page for the card outline and the ambient
+       halo behind it. The halo is sized in px rather than left to
+       farthest-corner: at that default the 100% stop lands on the viewport
+       corner, so the falloff stretched across the whole page and read as a
+       background tint. Explicit radii put the card edge at ~68% and leave
+       the outer 200px of the page on the flat backdrop. */
+    --new-card-accent-border: rgba(194, 65, 12, 0.3);
+    --auth-ambient: radial-gradient(
+      ellipse 750px 570px at 50% 50%,
+      rgba(194, 65, 12, 0.24) 0%,
+      rgba(194, 65, 12, 0.2) 42%,
+      rgba(194, 65, 12, 0.13) 62%,
+      rgba(194, 65, 12, 0.035) 78%,
+      transparent 100%
+    );
     --new-table-border: #c2410c;
     --new-table-header: #24211c;
     --new-table-text: #5f5b52;
@@ -85,6 +102,15 @@
     --new-ai-btn: #f4e7df;
     --new-box-hover: #f4f1ea;
     --new-card-hover: #f4f1ea;
+    --new-card-accent-border: rgba(194, 65, 12, 0.18);
+    --auth-ambient: radial-gradient(
+      ellipse 750px 570px at 50% 50%,
+      rgba(194, 65, 12, 0.12) 0%,
+      rgba(194, 65, 12, 0.1) 42%,
+      rgba(194, 65, 12, 0.065) 62%,
+      rgba(194, 65, 12, 0.018) 78%,
+      transparent 100%
+    );
     --new-table-border: #e7e3db;
     --new-table-header: #fbfaf8;
     --new-table-text: #5f5b52;

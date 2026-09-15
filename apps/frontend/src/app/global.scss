@@ -830,6 +830,12 @@ select {
   border-radius: var(--app-radius-panel);
 }
 
+/* Ambient brand halo behind the auth card. The gradient itself lives in
+   colors.scss so the brand orange stays with the palette. */
+.auth-ambient {
+  background-image: var(--auth-ambient);
+}
+
 .uppyChange .uppy-Dashboard-inner {
   width: 100% !important;
 }

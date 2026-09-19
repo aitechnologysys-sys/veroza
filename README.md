@@ -199,7 +199,7 @@ from `main`:
 
 ```bash
 docker compose -p postaryx-prod pull postaryx
-docker compose -p postaryx-prod up -d
+docker compose -p postaryx-prod up -d postraryx
 # → http://localhost:4007       (webhook testing: ngrok http 4007)
 
 docker compose -p postaryx-prod down

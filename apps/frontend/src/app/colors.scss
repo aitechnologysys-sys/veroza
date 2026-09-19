@@ -52,6 +52,11 @@
     --new-table-text-focused: #c2410c;
     --new-small-strips: #1b1813;
     --new-big-strips: #1f1c17;
+    /* Alternating band of the past-slot hatch on the calendar. Separate from
+       --new-big-strips, which the signature editor uses as a surface: in dark
+       that token equals --new-bgColorInner, so the gradient alternated between
+       two identical colours and rendered as a flat fill with no stripes. */
+    --new-past-strip: #2a2620;
     --new-col-color: #2a2620;
     --new-menu-dots: #5f5b52;
     --new-menu-hover: #fff;
@@ -117,6 +122,7 @@
     --new-table-text-focused: #c2410c;
     --new-small-strips: #1b1813;
     --new-big-strips: #f4f1ea;
+    --new-past-strip: #f4f1ea;
     --new-col-color: #f4f1ea;
     --new-menu-dots: #5f5b52;
     --new-menu-hover: #000;

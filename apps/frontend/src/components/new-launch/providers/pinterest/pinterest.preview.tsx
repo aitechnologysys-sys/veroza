@@ -33,11 +33,11 @@ export const PinterestPreview: FC<{
       newContent
         .slice(start, end)
         .replace(/\[\[\[([.\s\S]*?)]]]/, (match, match1) => {
-          return `<span class="font-bold font-[arial]" style="color: #ae8afc">${match1}</span>`;
+          return `<span class="font-bold font-[arial]" style="color: #c2410c">${match1}</span>`;
         }) +
       `<mark class="bg-red-500" data-tooltip-id="tooltip" data-tooltip-content="This text will be cropped">` +
       newContent.slice(end).replace(/\[\[\[([.\s\S]*?)]]]/, (match, match1) => {
-        return `<span class="font-bold font-[arial]" style="color: #ae8afc">${match1}</span>`;
+        return `<span class="font-bold font-[arial]" style="color: #c2410c">${match1}</span>`;
       }) +
       `</mark>`;
 
@@ -140,7 +140,7 @@ export const PinterestPreview: FC<{
       </div>
       <div
         style={{ background: 'url(/no-video-youtube.png)' }}
-        className="!bg-cover w-full aspect-[calc(16/9)] rounded-[20px] overflow-hidden"
+        className="!bg-cover w-full aspect-[calc(16/9)] rounded-[16px] overflow-hidden"
       >
         {!!renderContent?.[0]?.images?.[0]?.path && (
           <VideoOrImage

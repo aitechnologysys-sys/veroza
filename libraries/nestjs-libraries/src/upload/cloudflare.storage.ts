@@ -1,4 +1,8 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} from '@aws-sdk/client-s3';
 import 'multer';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import mime from 'mime-types';
@@ -156,12 +160,21 @@ class CloudflareStorage implements IUploadProvider {
 
   // Implement the removeFile method from IUploadProvider
   async removeFile(filePath: string): Promise<void> {
-    // const fileName = filePath.split('/').pop(); // Extract the filename from the path
-    // const command = new DeleteObjectCommand({
-    //   Bucket: this._bucketName,
-    //   Key: fileName,
-    // });
-    // await this._client.send(command);
+    // Objects are written as `${this._uploadUrl}/${id}.${extension}`, so the
+    // bucket key is the final segment of the stored path. Query strings and
+    // fragments are dropped in case a signed or cache-busted URL was saved.
+    const key = filePath?.split(/[?#]/)[0].split('/').filter(Boolean).pop();
+
+    if (!key) {
+      return;
+    }
+
+    await this._client.send(
+      new DeleteObjectCommand({
+        Bucket: this._bucketName,
+        Key: decodeURIComponent(key),
+      })
+    );
   }
 }
 

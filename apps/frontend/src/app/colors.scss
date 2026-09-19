@@ -1,12 +1,23 @@
 :root {
+  /* Radius scale. Theme-independent, so it lives on :root itself:
+     global.scss reads these at :root to build --app-radius-*, which the
+     .rounded-[8px]/[12px]/[16px] utilities resolve against. Declared only
+     inside .dark/.light they are invisible from :root and the utilities
+     collapse to border-radius: 0. */
+  --radius-control: 8px;
+  --radius-button: 10px;
+  --radius-card: 12px;
+  --radius-panel: 16px;
+
   .dark {
     --new-back-drop: #191712;
     --new-settings: #24211c;
-    --new-border: #7e73db;
+    --new-border: #4e2f1f;
     --new-bgColor: #1b1813;
     --new-bgColorInner: #1f1c17;
-    --new-sep: #7e73db;
-    --new-bgLineColor: #7e73db;
+    --new-sep: #c2410c;
+    --new-bgLineColor: #6f3f2c;
+    --new-sidebarDivider: #c2410c;
     --new-textItemFocused: #c2410c;
     --new-textItemBlur: #5f5b52;
     --new-boxFocused: #2a2620;
@@ -17,12 +28,35 @@
     --new-btn-primary: #c2410c;
     --new-ai-btn: #4e2f1f;
     --new-box-hover: #24211c;
-    --new-table-border: #7e73db;
+    --new-card-hover: #2e2a24;
+    /* Brand-orange accents composited over the surface behind them, so the
+       hue stays exactly --new-btn-primary (#c2410c) and only the strength
+       varies. Used by the auth page for the card outline and the ambient
+       halo behind it. The halo is sized in px rather than left to
+       farthest-corner: at that default the 100% stop lands on the viewport
+       corner, so the falloff stretched across the whole page and read as a
+       background tint. Explicit radii put the card edge at ~68% and leave
+       the outer 200px of the page on the flat backdrop. */
+    --new-card-accent-border: rgba(194, 65, 12, 0.3);
+    --auth-ambient: radial-gradient(
+      ellipse 750px 570px at 50% 50%,
+      rgba(194, 65, 12, 0.24) 0%,
+      rgba(194, 65, 12, 0.2) 42%,
+      rgba(194, 65, 12, 0.13) 62%,
+      rgba(194, 65, 12, 0.035) 78%,
+      transparent 100%
+    );
+    --new-table-border: #c2410c;
     --new-table-header: #24211c;
     --new-table-text: #5f5b52;
     --new-table-text-focused: #c2410c;
     --new-small-strips: #1b1813;
     --new-big-strips: #1f1c17;
+    /* Alternating band of the past-slot hatch on the calendar. Separate from
+       --new-big-strips, which the signature editor uses as a surface: in dark
+       that token equals --new-bgColorInner, so the gradient alternated between
+       two identical colours and rendered as a flat fill with no stripes. */
+    --new-past-strip: #2a2620;
     --new-col-color: #2a2620;
     --new-menu-dots: #5f5b52;
     --new-menu-hover: #fff;
@@ -40,7 +74,7 @@
     --popup-color: rgba(42, 38, 32, 0.45);
     --border-preview: transparent;
     --preview-box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 24px 48px -24px rgba(0, 0, 0, 0.6);
-    --linkedin-border: #7e73db;
+    --linkedin-border: #c2410c;
     --linkedin-bg: #24211c;
     --linkedin-text: #f4f1ea;
     --facebook-bg: #24211c;
@@ -51,7 +85,7 @@
     --youtube-bg: #1b1813;
     --youtube-button: #F4F1EA;
     --youtube-action-color: #24211C;
-    --youtube-svg-border: #7E73DB;
+    --youtube-svg-border: #c2410c;
   }
   .light {
     --new-back-drop: #191712;
@@ -61,6 +95,7 @@
     --new-bgColor: #f7f6f3;
     --new-bgColorInner: #ffffff;
     --new-bgLineColor: #e7e3db;
+    --new-sidebarDivider: #e7e3db;
     --new-textItemFocused: #c2410c;
     --new-textItemBlur: #5f5b52;
     --new-boxFocused: #f4e7df;
@@ -71,12 +106,23 @@
     --new-btn-primary: #c2410c;
     --new-ai-btn: #f4e7df;
     --new-box-hover: #f4f1ea;
+    --new-card-hover: #f4f1ea;
+    --new-card-accent-border: rgba(194, 65, 12, 0.18);
+    --auth-ambient: radial-gradient(
+      ellipse 750px 570px at 50% 50%,
+      rgba(194, 65, 12, 0.12) 0%,
+      rgba(194, 65, 12, 0.1) 42%,
+      rgba(194, 65, 12, 0.065) 62%,
+      rgba(194, 65, 12, 0.018) 78%,
+      transparent 100%
+    );
     --new-table-border: #e7e3db;
     --new-table-header: #fbfaf8;
     --new-table-text: #5f5b52;
     --new-table-text-focused: #c2410c;
     --new-small-strips: #1b1813;
     --new-big-strips: #f4f1ea;
+    --new-past-strip: #f4f1ea;
     --new-col-color: #f4f1ea;
     --new-menu-dots: #5f5b52;
     --new-menu-hover: #000;
@@ -135,7 +181,7 @@
     --color-custom8: var(--new-btn-simple);
     --color-custom9: #2a2620;
     --color-custom10: #f4e7df;
-    --color-custom11: #7e73db;
+    --color-custom11: #c2410c;
     --color-custom12: #f4f1ea;
     --color-custom13: #a9711f;
     --color-custom14: #5f5b52;
@@ -152,7 +198,7 @@
     --color-custom25: #2a2620;
     --color-custom26: #3f7d4e;
     --color-custom27: #5f5b52;
-    --color-custom28: #7e73db;
+    --color-custom28: #c2410c;
     --color-custom29: #2d2618;
     --color-custom30: #4e2f1f;
     --color-custom31: #1f1c17;
@@ -170,7 +216,7 @@
     --color-custom43: #2a2620;
     --color-custom44: #24211c;
     --color-custom45: #c2410c;
-    --color-custom46: #7e73db;
+    --color-custom46: #c2410c;
     --color-custom47: #1f1c17;
     --color-custom48: #191712;
     --color-custom49: #1b1813;

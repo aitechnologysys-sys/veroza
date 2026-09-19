@@ -1,5 +1,6 @@
 import { IUploadProvider } from './upload.interface';
 import { mkdirSync, unlink, writeFileSync } from 'fs';
+import { resolve, sep } from 'path';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { parseDataUrl } from '@gitroom/nestjs-libraries/upload/data.url';
@@ -113,15 +114,53 @@ export class LocalStorage implements IUploadProvider {
     }
   }
 
+  /**
+   * Maps a stored public path back to its file on disk.
+   *
+   * `uploadFile` records `FRONTEND_URL + '/uploads' + innerPath`, so the
+   * value held in the database is a URL, not a filesystem path — passing it
+   * straight to `unlink` never matched anything. Everything up to and
+   * including the `/uploads` segment is stripped and the remainder is
+   * re-rooted at the upload directory.
+   *
+   * Returns null when the value does not resolve inside the upload
+   * directory, so a crafted `path` cannot reach unrelated files.
+   */
+  private resolveLocalPath(filePath: string): string | null {
+    if (!filePath) {
+      return null;
+    }
+
+    const withoutOrigin = filePath.replace(/^[a-z]+:\/\/[^/]+/i, '');
+    const marker = '/uploads/';
+    const index = withoutOrigin.indexOf(marker);
+    const relative =
+      index === -1 ? withoutOrigin : withoutOrigin.slice(index + marker.length);
+
+    if (!relative) {
+      return null;
+    }
+
+    const root = resolve(this.uploadDirectory);
+    const target = resolve(root, decodeURIComponent(relative).replace(/^\/+/, ''));
+
+    return target === root || target.startsWith(root + sep) ? target : null;
+  }
+
   async removeFile(filePath: string): Promise<void> {
-    // Logic to remove the file from the filesystem goes here
-    return new Promise((resolve, reject) => {
-      unlink(filePath, (err) => {
-        if (err) {
+    const target = this.resolveLocalPath(filePath);
+    if (!target) {
+      return;
+    }
+
+    return new Promise((resolvePromise, reject) => {
+      unlink(target, (err) => {
+        // A file that is already gone is the desired end state, not an error.
+        if (err && (err as NodeJS.ErrnoException).code !== 'ENOENT') {
           reject(err);
-        } else {
-          resolve();
+          return;
         }
+        resolvePromise();
       });
     });
   }

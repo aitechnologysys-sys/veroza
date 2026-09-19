@@ -198,7 +198,7 @@ export const PlugItem: FC<{
     <div
       onClick={() => addPlug(data)}
       key={plug.title}
-      className="w-full h-[300px] rounded-[8px] bg-newTableHeader hover:bg-newTableBorder"
+      className="w-full h-[300px] rounded-[8px] cursor-pointer bg-newTableHeader hover:bg-cardHover transition-colors"
     >
       <div key={plug.title} className="p-[16px] h-full flex flex-col flex-1">
         <div className="flex">
@@ -209,6 +209,7 @@ export const PlugItem: FC<{
                 value={activated ? 'on' : 'off'}
                 onChange={changeActivated}
                 fill={true}
+                variant="primary"
               />
             </div>
           )}

@@ -530,6 +530,38 @@ export class IntegrationRepository {
     });
   }
 
+  /**
+   * Erases the stored authorization for an integration.
+   *
+   * `token` is non-nullable in the schema, so it is blanked rather than
+   * unset; `refreshToken` and `tokenExpiration` are nulled outright. After
+   * this the row retains only non-credential metadata — enough to show a
+   * disconnected channel in the interface, nothing that can reach the
+   * platform.
+   */
+  clearIntegrationCredentials(org: string, id: string) {
+    return this._integration.model.integration.update({
+      where: {
+        id,
+        organizationId: org,
+      },
+      data: {
+        token: '',
+        refreshToken: null,
+        tokenExpiration: null,
+        refreshNeeded: false,
+        inBetweenSteps: false,
+      },
+    });
+  }
+
+  /**
+   * Retires a channel and erases its credentials in one write.
+   *
+   * The credential erase is part of the same update as `deletedAt` so a
+   * disconnect can never half-apply and leave a live token behind on a
+   * channel the user believes is gone.
+   */
   deleteChannel(org: string, id: string) {
     return this._integration.model.integration.update({
       where: {
@@ -538,6 +570,11 @@ export class IntegrationRepository {
       },
       data: {
         deletedAt: new Date(),
+        token: '',
+        refreshToken: null,
+        tokenExpiration: null,
+        refreshNeeded: false,
+        inBetweenSteps: false,
       },
     });
   }

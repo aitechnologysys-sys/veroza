@@ -199,7 +199,7 @@ from `main`:
 
 ```bash
 docker compose -p postaryx-prod pull postaryx
-docker compose -p postaryx-prod up -d postraryx
+docker compose -p postaryx-prod up -d postaryx
 # → http://localhost:4007       (webhook testing: ngrok http 4007)
 
 docker compose -p postaryx-prod down
@@ -239,15 +239,15 @@ push to main  →  GitHub Actions (arm64 runner)  →  ghcr.io/aitechnologysys-s
 
 ```bash
 cd /opt/postaryx/postaryx-app
-docker compose -p postaryx pull postaryx
-docker compose -p postaryx up -d postaryx
+docker compose -p postaryx-prod pull postaryx
+docker compose -p postaryx-prod up -d postaryx
 ```
 
 **Roll back** — no rebuild, the old image is already in GHCR:
 
 ```bash
-POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx pull postaryx
-POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx up -d postaryx
+POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx-prod pull postaryx
+POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx-prod up -d postaryx
 ```
 
 Set the variable on **both** commands — `pull` and `up` read it independently.
@@ -255,12 +255,12 @@ The `image:` line in `docker-compose.yaml` is
 `${POSTARYX_IMAGE:-ghcr.io/aitechnologysys-sys/veroza}:${POSTARYX_IMAGE_TAG:-latest}`
 precisely so rollback never requires editing a tracked file on the server.
 
-> **Note the project name changes between machines.** The **server** stack is
-> `-p postaryx` (per [docs/ORACLE-VM-DEPLOYMENT.md](docs/ORACLE-VM-DEPLOYMENT.md),
-> which is what it was created with); your **laptop's** prod-rehearsal stack is
-> `-p postaryx-prod` (§2) so it stays isolated from `postaryx-dev`. If unsure which
-> a box is using, run `docker compose ls` — a wrong `-p` silently targets a
-> different, empty project instead of erroring.
+> **The project name is `-p postaryx-prod` on every machine** — the server and
+> your laptop's prod rehearsal (§2) alike, which keeps it isolated from
+> `postaryx-dev`. The server ran under a bare `-p postaryx` until its volumes were
+> migrated to `postaryx-prod`; anything still saying `-p postaryx` is stale. If
+> unsure what a box is using, run `docker compose ls` — a wrong `-p` silently
+> targets a different, empty project instead of erroring.
 
 **Running the workflow by hand:** the *Run workflow* button only appears once a
 workflow containing `workflow_dispatch` exists on the **default branch**. Until
@@ -288,7 +288,7 @@ Three consequences:
    `STORAGE_PROVIDER` in `.env.prod` does nothing — change those in
    `docker-compose.yaml` instead.
 3. **Config changes need no rebuild and no re-pull.** Edit `.env.prod`, then
-   `docker compose -p postaryx up -d postaryx` to recreate the container. Seconds.
+   `docker compose -p postaryx-prod up -d postaryx` to recreate the container. Seconds.
 
 This runtime-config design is what makes a CI-built image safe: `NEXT_PUBLIC_*`
 values are read in *server* components and passed to the client through
@@ -362,15 +362,15 @@ either fail to free any space or delete a database they wanted.
 `restart` does nothing for a changed `.env.prod` — you need a recreate:
 
 ```bash
-docker compose -p postaryx up -d postaryx        # recreates just this service
-docker compose -p postaryx up -d --force-recreate postaryx   # if it reports "up-to-date"
+docker compose -p postaryx-prod up -d postaryx        # recreates just this service
+docker compose -p postaryx-prod up -d --force-recreate postaryx   # if it reports "up-to-date"
 ```
 
 Confirm the container actually took the value — a quoted or truncated paste is
 invisible by eye:
 
 ```bash
-docker compose -p postaryx exec postaryx sh -c 'printf "[%s]\n" "$STRIPE_SIGNING_KEY"'
+docker compose -p postaryx-prod exec postaryx sh -c 'printf "[%s]\n" "$STRIPE_SIGNING_KEY"'
 ```
 
 ### Full reset — destroys all data
@@ -384,20 +384,20 @@ no undo. Only do this on a stack with nothing you need.
 cd /opt/postaryx/postaryx-app
 
 # 1. Look at what you're about to delete
-docker compose -p postaryx ps -a
+docker compose -p postaryx-prod ps -a
 docker volume ls | grep -Ei 'postaryx|temporal'
 
 # 2. Destroy
-docker compose -p postaryx down -v --remove-orphans
+docker compose -p postaryx-prod down -v --remove-orphans
 
 # 3. Verify — both should print nothing
 docker volume ls | grep -Ei 'postaryx|temporal'
 docker ps -a     | grep -Ei 'postaryx|temporal'
 
 # 4. Rebuild from scratch
-docker compose -p postaryx pull postaryx
-docker compose -p postaryx up -d
-docker compose -p postaryx logs -f postaryx
+docker compose -p postaryx-prod pull postaryx
+docker compose -p postaryx-prod up -d
+docker compose -p postaryx-prod logs -f postaryx
 ```
 
 Cold start is slower than a recreate: Temporal's `auto-setup` rebuilds its schema
@@ -405,7 +405,7 @@ and recreates the `default` namespace, and `prisma-db-push` builds the app schem
 from nothing. Budget 2–3 minutes, and ignore Temporal connection errors in the
 first 90s — that is what `start_period: 120s` on the healthcheck is for.
 
-Step 3 is not ceremony. If the stack was ever started without `-p postaryx`,
+Step 3 is not ceremony. If the stack was ever started without `-p postaryx-prod`,
 Compose owns a *second* project whose volumes `down -v` never touched.
 `docker compose ls -a` reveals it; remove strays with `docker volume rm <name>`.
 

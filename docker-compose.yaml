@@ -6,14 +6,15 @@ services:
     # Actions instead (.github/workflows/build-containers.yml, arm64) and this
     # host only pulls. See docs/CONTAINMENT-DEPLOYMENT-PLAN.md §6.
     #
-    # Project name differs by machine: the server stack is `-p postaryx`, a local
-    # prod rehearsal is `-p postaryx-prod` (keeps it isolated from `postaryx-dev`).
-    # `docker compose ls` tells you which a box is using. Examples below use the
-    # server's name; see README.md §2-3 for the full runbook.
+    # Project name is `-p postaryx-prod` everywhere — the server and a local prod
+    # rehearsal alike (keeps it isolated from `postaryx-dev`). The server ran under
+    # a bare `-p postaryx` until its volumes were migrated to `postaryx-prod`, so
+    # treat any note still saying `-p postaryx` as stale. `docker compose ls`
+    # confirms what a box is using; see README.md §2-3 for the full runbook.
     #
-    # Deploy:   docker compose -p postaryx pull postaryx && docker compose -p postaryx up -d postaryx
-    # Rollback: POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx pull postaryx
-    #           POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx up -d postaryx
+    # Deploy:   docker compose -p postaryx-prod pull postaryx && docker compose -p postaryx-prod up -d postaryx
+    # Rollback: POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx-prod pull postaryx
+    #           POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx-prod up -d postaryx
     #           (set it on BOTH — pull and up read it independently. Every build
     #            pushes a :<sha> tag, so old images stay pullable in GHCR.)
     #
@@ -48,7 +49,7 @@ services:
       # compose (Compose auto-reads `.env`), e.g.:
       #   POSTARYX_PUBLIC_URL=https://postaryx.example.com
       # These are runtime-read, so changing them needs no rebuild — just
-      # `docker compose -p postaryx up -d postaryx`. See docs/ORACLE-VM-DEPLOYMENT.md.
+      # `docker compose -p postaryx-prod up -d postaryx`. See docs/ORACLE-VM-DEPLOYMENT.md.
       MAIN_URL: ${POSTARYX_PUBLIC_URL:-http://localhost:4007}
       FRONTEND_URL: ${POSTARYX_PUBLIC_URL:-http://localhost:4007}
       NEXT_PUBLIC_BACKEND_URL: ${POSTARYX_PUBLIC_URL:-http://localhost:4007}/api

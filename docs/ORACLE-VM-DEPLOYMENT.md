@@ -112,15 +112,15 @@ unprefixed) and future apps can never collide:
 
 ```bash
 cd /opt/postaryx/postaryx-app
-docker compose -p postaryx pull postaryx
-docker compose -p postaryx up -d
+docker compose -p postaryx-prod pull postaryx
+docker compose -p postaryx-prod up -d
 ```
 
 **Naming convention — apply to every app you add:**
 
 | Resource | Pattern | Postiz example |
 |---|---|---|
-| Compose project | `<project>` | `postaryx` (via `-p postaryx`) |
+| Compose project | `<project>` | `postaryx` (via `-p postaryx-prod`) |
 | Container | `<project>-<role>` | `postaryx`, `postaryx-postgres`, `postaryx-redis` |
 | Network | `<project>-<purpose>` | `postaryx-network`, `temporal-network` |
 | Volume | `<project>-<purpose>` | `postgres-volume`, `postaryx-uploads` |
@@ -213,10 +213,10 @@ P1-2 for the full DBeaver-over-SSH-tunnel walkthrough.
 
 ```bash
 cd /opt/postaryx/postaryx-app
-docker compose -p postaryx pull postaryx        # fetch the newest CI-built image
-docker compose -p postaryx up -d
-docker compose -p postaryx logs -f postaryx     # watch nginx + pm2 + prisma-db-push
-docker compose -p postaryx ps                 # all required containers healthy/running
+docker compose -p postaryx-prod pull postaryx        # fetch the newest CI-built image
+docker compose -p postaryx-prod up -d
+docker compose -p postaryx-prod logs -f postaryx     # watch nginx + pm2 + prisma-db-push
+docker compose -p postaryx-prod ps                 # all required containers healthy/running
 curl -I http://127.0.0.1:4007               # expect 200 once warmed up (~90s healthcheck)
 ```
 
@@ -271,7 +271,7 @@ echo 'POSTARYX_PUBLIC_URL=https://postaryx.example.com' >> /opt/postaryx/postary
 ```
 This sets `MAIN_URL`, `FRONTEND_URL`, and `NEXT_PUBLIC_BACKEND_URL` (= URL + `/api`)
 consistently. They're runtime values, so **no rebuild** is needed — just
-`docker compose -p postaryx up -d postaryx`. A mismatch between this and the real
+`docker compose -p postaryx-prod up -d postaryx`. A mismatch between this and the real
 domain is the #1 cause of broken login and OAuth callbacks.
 
 > Don't put `POSTARYX_PUBLIC_URL` in `.env.prod` — that file is injected into the
@@ -360,7 +360,7 @@ daemon-wide in `/etc/docker/daemon.json`:
 ```bash
 sudo systemctl restart docker      # restarts all containers — use a maintenance window
 ```
-- App logs (all three Node processes via pm2): `docker compose -p postaryx logs -f postaryx`
+- App logs (all three Node processes via pm2): `docker compose -p postaryx-prod logs -f postaryx`
 - Host Nginx: `/var/log/nginx/access.log`, `/var/log/nginx/error.log`
 
 ---
@@ -378,7 +378,7 @@ TS=$(date +%F)
 DIR=/opt/backups/postaryx
 mkdir -p "$DIR"
 docker exec postaryx-postgres pg_dump -U postaryx-user postaryx-db-prod | gzip > "$DIR/db-$TS.sql.gz"
-docker run --rm -v postaryx_postaryx-uploads:/u -v "$DIR":/b alpine \
+docker run --rm -v postaryx-prod_postaryx-uploads:/u -v "$DIR":/b alpine \
   tar czf "/b/uploads-$TS.tar.gz" -C /u .
 find "$DIR" -name '*.gz' -mtime +14 -delete    # keep 14 days
 ```
@@ -386,8 +386,8 @@ find "$DIR" -name '*.gz' -mtime +14 -delete    # keep 14 days
 sudo crontab -e
 # 0 3 * * * /opt/backups/postaryx/backup.sh >> /var/log/postaryx-backup.log 2>&1
 ```
-> The uploads volume is named `postaryx_postaryx-uploads` (compose prepends the
-> `-p postaryx` project name). Confirm with `docker volume ls`.
+> The uploads volume is named `postaryx-prod_postaryx-uploads` (compose prepends
+> the `-p postaryx-prod` project name). Confirm with `docker volume ls`.
 
 Copy `/opt/backups/` **off the VM** (OCI Object Storage via `oci os object put`,
 or `rsync` elsewhere). **Test a restore at least once** — a backup you've never
@@ -420,9 +420,9 @@ Merging to `main` triggers the CI build (see §2a of
 ```bash
 cd /opt/postaryx/postaryx-app
 git pull                                      # picks up any tracked-file changes (compose, configs)
-docker compose -p postaryx pull postaryx      # fetch the newest CI-built image
-docker compose -p postaryx up -d postaryx     # recreate the app container; runs prisma-db-push
-docker compose -p postaryx logs -f postaryx   # watch boot + migration
+docker compose -p postaryx-prod pull postaryx      # fetch the newest CI-built image
+docker compose -p postaryx-prod up -d postaryx     # recreate the app container; runs prisma-db-push
+docker compose -p postaryx-prod logs -f postaryx   # watch boot + migration
 docker image prune -f                         # reclaim old image layers
 ```
 Bump `version.txt` to show the new version in the UI — CI stamps it as
@@ -452,8 +452,8 @@ touches `schema.prisma`**.
 1. **Image (the normal path):** no rebuild needed — every `main` build also
    pushes a `:<full-git-sha>` tag to GHCR, so pin and re-pull:
    ```bash
-   POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx pull postaryx
-   POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx up -d postaryx
+   POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx-prod pull postaryx
+   POSTARYX_IMAGE_TAG=<full-git-sha> docker compose -p postaryx-prod up -d postaryx
    ```
    Set the variable on **both** commands — `pull` and `up` read it independently.
 2. **Code (tracked files only — compose, configs):** `git log --oneline` →
@@ -502,7 +502,7 @@ touches `schema.prisma`**.
 
 ## 19. Monitoring
 
-- **Built-in:** `docker compose -p postaryx ps` (health), `docker stats --no-stream`
+- **Built-in:** `docker compose -p postaryx-prod ps` (health), `docker stats --no-stream`
   (live RAM/CPU — watch Elasticsearch and the three Node processes), `df -h` +
   `docker system df` (disk).
 - **Uptime:** an external HTTP check (UptimeRobot / Healthchecks.io) on
@@ -520,7 +520,7 @@ touches `schema.prisma`**.
 
 1. **After teardown (if any):** `docker ps -a` shows no leftover containers from
    the old app; `docker volume ls` is clean.
-2. `docker compose -p postaryx ps` → all required containers `healthy`/`running`.
+2. `docker compose -p postaryx-prod ps` → all required containers `healthy`/`running`.
 3. On the VM: `curl -I http://127.0.0.1:4007` → `200`.
 4. On the VM: `curl -I https://postaryx.example.com` → `200` with a valid cert.
 5. From outside the VM: `curl --max-time 5 http://<VM_PUBLIC_IP>:4007` and `:8080`,
@@ -530,6 +530,6 @@ touches `schema.prisma`**.
 6. In a browser: load the site, register/login, and **schedule a test post a few
    minutes out** → confirms the Temporal orchestrator works end-to-end (the real
    integration test for this app).
-7. `docker compose -p postaryx logs postaryx | grep -i prisma` → migration ran clean.
+7. `docker compose -p postaryx-prod logs postaryx | grep -i prisma` → migration ran clean.
 8. Run `backup.sh` once manually; verify `db-*.sql.gz` and `uploads-*.tar.gz` are
    non-empty.

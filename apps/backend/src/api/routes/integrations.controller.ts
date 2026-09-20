@@ -85,6 +85,11 @@ export class IntegrationsController {
     return this._integrationService.updateOnCustomerName(org.id, id, body.name);
   }
 
+  @Get('/approval-status')
+  getApprovalStatus() {
+    return this._integrationManager.getApprovalStatus();
+  }
+
   @Get('/list')
   async getIntegrationList(@GetOrgFromRequest() org: Organization) {
     return {

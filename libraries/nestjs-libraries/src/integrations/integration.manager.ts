@@ -36,6 +36,10 @@ import { MoltbookProvider } from '@gitroom/nestjs-libraries/integrations/social/
 import { SkoolProvider } from '@gitroom/nestjs-libraries/integrations/social/skool.provider';
 import { WhopProvider } from '@gitroom/nestjs-libraries/integrations/social/whop.provider';
 import { MeweProvider } from '@gitroom/nestjs-libraries/integrations/social/mewe.provider';
+import {
+  getProviderApproval,
+  ProviderApproval,
+} from '@gitroom/nestjs-libraries/integrations/provider.approval.status';
 
 export const socialIntegrationList: Array<SocialAbstract & SocialProvider> = [
   new XProvider(),
@@ -76,20 +80,42 @@ export const socialIntegrationList: Array<SocialAbstract & SocialProvider> = [
 
 @Injectable()
 export class IntegrationManager {
+  /**
+   * Our own app-review status with each platform (Meta, Google, TikTok,
+   * LinkedIn, ...). Static per deploy — see provider.approval.status.ts.
+   */
+  getApprovalStatus(): Array<
+    { identifier: string; name: string } & ProviderApproval
+  > {
+    return socialIntegrationList.map((p) => ({
+      identifier: p.identifier,
+      name: p.name,
+      ...getProviderApproval(p.identifier),
+    }));
+  }
+
   async getAllIntegrations() {
     return {
       social: await Promise.all(
-        socialIntegrationList.map(async (p) => ({
-          name: p.name,
-          identifier: p.identifier,
-          toolTip: p.toolTip,
-          editor: p.editor,
-          isExternal: !!p.externalUrl,
-          isWeb3: !!p.isWeb3,
-          isChromeExtension: !!p.isChromeExtension,
-          ...(p.extensionCookies ? { extensionCookies: p.extensionCookies } : {}),
-          ...(p.customFields ? { customFields: await p.customFields() } : {}),
-        }))
+        socialIntegrationList.map(async (p) => {
+          // Only carried for providers still waiting on platform review, so
+          // the "Add channel" tiles can badge them without a second request.
+          const approval = getProviderApproval(p.identifier);
+          return {
+            name: p.name,
+            identifier: p.identifier,
+            toolTip: p.toolTip,
+            editor: p.editor,
+            isExternal: !!p.externalUrl,
+            isWeb3: !!p.isWeb3,
+            isChromeExtension: !!p.isChromeExtension,
+            ...(approval.status === 'not_required' ? {} : { approval }),
+            ...(p.extensionCookies
+              ? { extensionCookies: p.extensionCookies }
+              : {}),
+            ...(p.customFields ? { customFields: await p.customFields() } : {}),
+          };
+        })
       ),
       article: [] as any[],
     };

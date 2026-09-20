@@ -14,7 +14,9 @@ import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 export class MediumProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 3; // Medium has lenient publishing limits
   identifier = 'medium';
-  name = 'Medium';
+  name = 'Medium (Legacy)';
+  toolTip =
+    'Legacy: Medium no longer issues integration tokens to new accounts. You can only connect if you already have an API key from before it was discontinued.';
   isBetweenSteps = false;
   scopes = [] as string[];
   editor = 'markdown' as const;

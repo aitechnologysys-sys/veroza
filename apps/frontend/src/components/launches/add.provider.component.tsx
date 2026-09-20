@@ -280,10 +280,8 @@ const ExtensionNotFound: FC = () => {
         ) : null}
         <Button
           type="button"
-          className={clsx(
-            extensionStoreUrl ? 'flex-1' : 'w-full',
-            '!bg-transparent border border-tableBorder text-textColor'
-          )}
+          secondary
+          className={extensionStoreUrl ? 'flex-1' : 'w-full'}
           onClick={() => modals.closeCurrent()}
         >
           {t('cancel', 'Cancel')}
@@ -347,7 +345,8 @@ const ChromeExtensionWarning: FC<{
         </Button>
         <Button
           type="button"
-          className="flex-1 !bg-transparent border border-tableBorder text-textColor"
+          secondary
+          className="flex-1"
           onClick={() => {
             modals.closeCurrent();
             onCancel();
@@ -360,6 +359,70 @@ const ChromeExtensionWarning: FC<{
   );
 };
 
+type ProviderApproval = {
+  status: 'not_required' | 'not_applied' | 'pending' | 'approved' | 'rejected';
+  platform?: string;
+  appliedAt?: string;
+  decidedAt?: string;
+  note?: string;
+};
+
+/**
+ * Badge shown on an "Add channel" tile while Postaryx itself is still waiting
+ * on the platform to approve our app (Meta, Google, TikTok, LinkedIn, ...).
+ * The channel stays connectable — the platform usually allows whitelisted test
+ * accounts through — so this warns rather than blocks.
+ *
+ * `not_applied` and `pending` look identical to the user on purpose: the
+ * distinction is our internal process, and either way the outcome is the same.
+ */
+const ApprovalBadge: FC<{ approval: ProviderApproval; isMobile?: boolean }> = ({
+  approval,
+  isMobile,
+}) => {
+  const t = useT();
+  const platform = approval.platform || 'the platform';
+  const details = [
+    approval.status === 'pending'
+      ? t(
+          'approval_pending',
+          `Approval with ${platform} is under review. Connecting may fail, or only work for test accounts, until it completes.`
+        )
+      : approval.status === 'rejected'
+      ? t(
+          'approval_rejected',
+          `${platform} declined our approval request for this channel, so connecting may not work.`
+        )
+      : t(
+          'approval_not_applied',
+          `Postaryx is not approved by ${platform} for this channel yet. Connecting may fail, or only work for test accounts.`
+        ),
+    approval.note,
+  ].filter(Boolean);
+  return (
+    <div
+      className={clsx(
+        !isMobile && 'mx-auto',
+        'mt-[6px] w-fit flex items-center gap-[4px] px-[6px] py-[2px] rounded-[4px] bg-boxFocused border border-newSep text-textColor text-[10px] leading-[14px] font-[500]'
+      )}
+      data-tooltip-id="tooltip"
+      data-tooltip-content={details.join(' ')}
+    >
+      <span
+        className={clsx(
+          'w-[5px] h-[5px] rounded-full shrink-0',
+          approval.status === 'rejected' ? 'bg-menuDots' : 'bg-textItemFocused'
+        )}
+      />
+      {approval.status === 'pending'
+        ? t('approval_badge_pending', 'In review')
+        : approval.status === 'rejected'
+        ? t('approval_badge_rejected', 'Unavailable')
+        : t('approval_badge_limited', 'Limited')}
+    </div>
+  );
+};
+
 export const AddProviderComponent: FC<{
   social: Array<{
     identifier: string;
@@ -368,6 +431,7 @@ export const AddProviderComponent: FC<{
     isExternal: boolean;
     isWeb3: boolean;
     isChromeExtension?: boolean;
+    approval?: ProviderApproval;
     extensionCookies?: Array<{
       name: string;
       domain: string;
@@ -694,8 +758,8 @@ export const AddProviderComponent: FC<{
                   : {})}
                 className={clsx(
                   isMobile
-                    ? 'flex-row h-[72px] p-[16px]'
-                    : 'flex-col p-[10px] h-[100px] justify-center',
+                    ? 'flex-row min-h-[72px] p-[16px]'
+                    : 'flex-col p-[10px] min-h-[100px] justify-center',
                   'w-full text-[14px] rounded-[8px] bg-newTableHeader text-textColor relative items-center flex gap-[10px] cursor-pointer'
                 )}
               >
@@ -720,6 +784,12 @@ export const AddProviderComponent: FC<{
                   )}
                 >
                   {item.name}
+                  {!!item.approval && item.approval.status !== 'approved' && (
+                    <ApprovalBadge
+                      approval={item.approval}
+                      isMobile={isMobile}
+                    />
+                  )}
                   {!!item.toolTip && !isMobile && (
                     <svg
                       width="15"

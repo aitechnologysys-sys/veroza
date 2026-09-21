@@ -169,7 +169,7 @@ export function RegisterAfter({
                     <GoogleProvider />
                   )}
                   {!!neynarClientId && <FarcasterProvider />}
-                  {billingEnabled && <WalletProvider />}
+                  {/* {billingEnabled && <WalletProvider />} */}
                 </div>
               ))}
             {!isAfterProvider && (

@@ -2,11 +2,9 @@
 
 import { FC, useCallback, useState } from 'react';
 import clsx from 'clsx';
-import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 const useFaqList = () => {
-  const { isGeneral } = useVariables();
   const user = useUser();
   const t = useT();
   return [
@@ -14,46 +12,42 @@ const useFaqList = () => {
       ? [
           {
             title: t(
-              'faq_am_i_going_to_be_charged_by_postaryx',
-              'Am I going to be charged by Postaryx?'
+              'faq_trial_charge_title',
+              'Will I be charged during the free trial?'
             ),
             description: t(
-              'faq_to_confirm_credit_card_information_postiz_will_hold',
-              'To confirm credit card information Postaryx will hold $2 and release it immediately, you can cancel your subscription anytime from settings without talking to a person'
+              'faq_trial_charge_description',
+              'A payment method is required to start the 7-day free trial, but you are not charged during it. If you do not cancel before the trial ends, your subscription starts automatically and the plan you selected is charged.'
             ),
           },
         ]
       : []),
     {
-      title: t(
-        'faq_can_i_trust_postiz_gitroom',
-        `Can I trust ${isGeneral ? 'Postaryx' : 'Postaryx'}?`
-      ),
+      title: t('faq_cancel_anytime_title', 'Can I cancel anytime?'),
       description: t(
-        'faq_postiz_gitroom_is_proudly_open_source',
-        `${
-          isGeneral ? 'Postaryx' : 'Postaryx'
-        } is proudly open-source! We believe in an ethical and transparent culture, meaning that ${
-          isGeneral ? 'Postaryx' : 'Postaryx'
-        } will live forever. You can check out the entire code or use it for personal projects. To view the open-source repository, <a href="https://github.com/aitechnologysys-sys/veroza" target="_blank" style="text-decoration: underline;">click here</a>.`
+        'faq_cancel_anytime_description',
+        'Yes. Cancelling from settings stops the next renewal, so you are not charged again. Your paid access stays active until the end of the billing period you have already paid for.'
+      ),
+    },
+    {
+      title: t('faq_trust_title', 'Can I trust Postaryx?'),
+      description: t(
+        'faq_trust_description',
+        'Payments are processed by Stripe, so your card details are never handled or stored by Postaryx. The full price and the date of your first charge are shown before you confirm, and you can change your plan or cancel yourself from settings at any time.'
       ),
     },
     {
       title: t('faq_what_are_channels', 'What are channels?'),
       description: t(
-        'faq_postiz_gitroom_allows_you_to_schedule_posts',
-        `${
-          isGeneral ? 'Postaryx' : 'Postaryx'
-        } allows you to schedule your posts between different channels.
-A channel is a publishing platform where you can schedule your posts.
-For example, you can schedule your posts on X, Facebook, Instagram, TikTok, YouTube, Reddit, Linkedin, Dribbble, Threads and Pinterest.`
+        'faq_channels_description',
+        'A channel is a publishing platform connected to your workspace. Postaryx supports X, LinkedIn, Instagram, Facebook, Threads, TikTok, YouTube, Pinterest, Reddit, Bluesky, Mastodon, Discord, Slack, Telegram and more. Once a channel is connected you can schedule posts to it from a single calendar.'
       ),
     },
     {
       title: t('faq_what_are_team_members', 'What are team members?'),
       description: t(
         'faq_if_you_have_a_team_with_multiple_members',
-        'If you have a team with multiple members, you can invite them to your workspace to collaborate on your posts and add their personal channels'
+        'If you have a team with multiple members, you can invite them to your workspace to collaborate on your posts and add their private channels.'
       ),
     },
   ];

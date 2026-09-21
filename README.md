@@ -1,8 +1,8 @@
 <p align="center">
   <a href="https://postaryx.com/" target="_blank">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/765e9d72-3ee7-4a56-9d59-a2c9befe2311">
-    <img alt="Postaryx Logo" src="https://github.com/user-attachments/assets/f0d30d70-dddb-4142-8876-e9aa6ed1cb99" width="280"/>
+    <source media="(prefers-color-scheme: dark)" srcset="apps/frontend/public/logos/01_Postaryx_Main_Logo_Dark.svg">
+    <img alt="Postaryx Logo" src="apps/frontend/public/logos/02_Postaryx_Main_Logo_Light.svg" width="280"/>
   </picture>
   </a>
 </p>
@@ -16,7 +16,6 @@
 <div align="center">
   <strong>
   <h2>Your ultimate AI social media scheduling tool</h2><br />
-  <a href="https://postaryx.com">Postaryx</a>: An alternative to: Buffer.com, Hypefury, Twitter Hunter, etc...<br /><br />
   </strong>
   Postaryx offers everything you need to manage your social media posts,<br />build an audience, capture leads, and grow your business.
 </div>
@@ -39,36 +38,14 @@
   <img alt="Bluesky" src="apps/frontend/public/icons/platforms/bluesky.png" width="32">
 </div>
 
-<p align="center">
-  <br />
-  <a href="./docs/LOCAL-DEVELOPMENT.md" rel="dofollow"><strong>Explore the docs »</strong></a>
-  <br />
-
-</p>
-
-<p align="center">
-  <a href="https://app.postaryx.com">Register</a>
-  ·
-  <a href="https://api.postaryx.com">Public API</a><br />
-</p>
-<p align="center">
-  <a href="./apps/sdk/README.md">NodeJS SDK</a>
-  ·
-  <a href="./apps/sdk/README.md">N8N custom node</a>
-  ·
-  <a href="./apps/sdk/README.md">Make.com integration</a>
-</p>
-
 <br /><br />
 
 # Intro
 
 - Schedule all your social media posts (many AI features)
 - Measure your work with analytics.
-- Collaborate with other team members to exchange or buy posts.
 - Invite your team members to collaborate, comment, and schedule posts.
-- At the moment there is no difference between the hosted version to the self-hosted version
-- Perfect for automation (API) with platforms like N8N, Make.com, Zapier, etc.
+- Automate posting through the public API and the NodeJS SDK.
 
 ## Tech Stack
 

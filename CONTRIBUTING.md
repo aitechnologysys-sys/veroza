@@ -1,63 +1,91 @@
 # Contributing
 
-Contributions are welcome - code, docs, whatever it might be! If this is your first contribution to an Open Source project or you're a core maintainer of multiple projects, your time and interest in contributing to this project is most welcome.
+Thanks for your interest in Postaryx.
 
-## Read the developers guide
+**Formal contribution guidelines are currently being prepared.** We do not yet
+have a public contributor programme, a documentation site, or a community chat.
+Until those exist, this page describes what is actually available today rather
+than pointing you at things that are not ready.
 
-The main documentation site has a [developer guide](https://docs.postiz.com/developer-guide) . That guide provides you a good understanding of the project structure, and how to setup your development environment. Read this document after you have read that guide. This document is intended to provide you a good understanding of how to submit your first contribution.
+If you want to contribute in the meantime, the best first step is to open a
+GitHub issue describing what you have in mind, before writing any code.
 
-## Apply via the contribution form
+## What you can do today
 
-To submit your contribution, please fill out the [contribution form](https://contribute.postiz.com/p/postiz). This helps us evaluate whether your contribution is a good fit for the project. We will review your submission and get back to you as soon as possible.
+- **Open an issue** on the repository to report a bug, request a feature, or
+  propose a change. This is the only discussion channel we currently run.
+- **Report a security vulnerability** privately. Do not open an issue for
+  this — follow [SECURITY.md](SECURITY.md) instead.
 
-## Write code with others
+Please wait for a response on an issue before starting substantial work. We may
+already be working on it, or have a reason to take a different approach, and we
+would rather tell you that before you spend your time.
 
-This is an open source project, with an open and welcoming community that is always keen to welcome new contributors. We recommend the two best ways to interact with the community are:
+## Getting the project running
 
-- **GitHub issues**: To discuss more slowly, or longer-written messages.
-- **[Discord chat](https://discord.postiz.com)**: To chat with people [Discord chat](https://discord.postiz.com/) and a quicker feedback.
+These are the working documents for this repository:
 
-As a general rule;
+| Document | What it covers |
+| --- | --- |
+| [docs/LOCAL-DEVELOPMENT.md](docs/LOCAL-DEVELOPMENT.md) | Getting a local environment up |
+| [docs/RUNNING-DEV-AND-PROD.md](docs/RUNNING-DEV-AND-PROD.md) | Differences between the dev and prod stacks |
+| [CLAUDE.md](CLAUDE.md) | Repository layout, conventions, and constraints |
 
-- **If a change is less than 3 lines**: You're probably safe just to submit the change without a discussion. This includes typos, dependency changes, and quick fixes, etc.
-- **If a change is more than 3 lines**: It's probably best to discuss the change in an issue or on discord first. This is simply because you might not be aware of the roadmap for the project, or understand the impact this change might have. We're just trying to save you time here, and importantly, avoid you being disappointed if your change isn't accepted.
+`CLAUDE.md` is the most useful one to read before changing anything. It explains
+the monorepo structure, the backend layering, the styling system, and the parts
+of the codebase that are deliberately kept close to their original upstream
+shape.
 
-## Types of Contributions
+## If you open a pull request
 
-Contributions can include:
+This project uses a fork, branch, pull request model:
 
-- **Code improvements:** Fixing bugs or adding new features.
-- **Documentation updates:** Enhancing clarity or adding missing information.
-- **Feature requests:** Suggesting new capabilities or integrations.
-- **Bug reports:** Identifying and reporting issues.
-
-## AI
-
-To ensure the quality and maintainability of the codebase, **we do not accept Pull Requests generated primarily by AI tools** (e.g., ChatGPT, GitHub Copilot, Claude Code, etc.). 
-All contributions must be the original work of the author. We reserve the right to close any PR that appears to be AI-generated without further review.
-
-## How to contribute
-
-This project follows a Fork/Feature Branch/Pull Request model. If you're not familiar with this, here's how it works:
-
-1. **Fork the project:** Create a personal copy of the repository on your GitHub account.
-2. **Clone your fork:** Bring a copy of your fork to your local machine.
+1. **Fork the repository** to your own GitHub account.
+2. **Clone your fork:**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/postiz.git
+   git clone https://github.com/YOUR_USERNAME/veroza.git
    ```
-3. **Create a new branch**: Start a new branch for your changes
+3. **Create a branch:**
    ```bash
    git checkout -b feature/your-feature-name
    ```
-4. **Make your changes**: Implement the changes you wish to contribute.
-5. **Push your changes**: Upload your changes to your fork.
+4. **Make your changes**, keeping them focused on one thing.
+5. **Push to your fork:**
    ```bash
    git push -u origin feature/your-feature-name
    ```
-6. **Create a pull request**: Propose your changes **to the main branch**.
+6. **Open a pull request** against `main`, describing what changed and why.
 
-# Need Help?
+Small, self-contained changes are much easier to review than large ones. If a
+change is more than a few lines, raise an issue first.
 
-Again, do check the [developer guide](https://docs.postiz.com/developer-guide). Much of what you probably need to know is in there.
+## Types of contribution
 
-If you encounter any issues, please visit our [support page](https://docs.postiz.com/support) or check the community forums. Your contributions help make Postiz better!
+- **Bug reports** — what you expected, what happened, and how to reproduce it
+- **Bug fixes**
+- **Documentation** — corrections and gaps in the documents above
+- **Feature requests** — the problem you are trying to solve, not only the
+  solution you have in mind
+
+## AI-generated contributions
+
+We do not accept pull requests generated primarily by AI tools. Contributions
+must be your own work, and you must understand and be able to explain every
+change you submit. Pull requests that appear to be unreviewed model output may
+be closed without further review.
+
+Using AI as an assistant is fine. Submitting its output unverified is not.
+
+## Conduct
+
+Participation is covered by our [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Licensing
+
+This repository is licensed under [AGPL-3.0](LICENSE). By contributing, you
+agree that your contribution is licensed under the same terms.
+
+## Need help?
+
+Open a GitHub issue. Once the documentation site and contributor programme are
+ready, this page will be updated with those details.

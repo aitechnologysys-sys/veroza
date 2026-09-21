@@ -457,7 +457,14 @@ export const MainBillingComponent: FC<{
           .map(([name, values]) => (
             <div
               key={name}
-              className="flex-1 bg-sixth border border-customColor6 rounded-[4px] p-[24px] gap-[16px] flex flex-col [@media(max-width:1024px)]:items-center"
+              className={clsx(
+                'flex-1 bg-sixth border rounded-[12px] p-[24px] gap-[16px] flex flex-col [@media(max-width:1024px)]:items-center',
+                // The plan you are on gets the subtle brand accent; the rest
+                // take the same neutral border as every other dark-mode card.
+                currentPackage === name.toUpperCase()
+                  ? 'border-cardAccentBorder'
+                  : 'border-newBorder'
+              )}
             >
               <div className="text-[18px]">{name}</div>
               <div className="text-[38px] flex gap-[2px] items-center">

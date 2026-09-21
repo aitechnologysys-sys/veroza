@@ -1,8 +1,8 @@
 <p align="center">
   <a href="https://postaryx.com/" target="_blank">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/765e9d72-3ee7-4a56-9d59-a2c9befe2311">
-    <img alt="Postaryx Logo" src="https://github.com/user-attachments/assets/f0d30d70-dddb-4142-8876-e9aa6ed1cb99" width="280"/>
+    <source media="(prefers-color-scheme: dark)" srcset="apps/frontend/public/logos/01_Postaryx_Main_Logo_Dark.svg">
+    <img alt="Postaryx Logo" src="apps/frontend/public/logos/02_Postaryx_Main_Logo_Light.svg" width="280"/>
   </picture>
   </a>
 </p>
@@ -13,89 +13,39 @@
 </a>
 </p>
 
-<h3 align="center"><strong><a href="https://postaryx.com">NEW: check out Postaryx agent CLI! perfect for OpenClaw and other agents</a></strong></h3>
 <div align="center">
   <strong>
   <h2>Your ultimate AI social media scheduling tool</h2><br />
-  <a href="https://postaryx.com">Postaryx</a>: An alternative to: Buffer.com, Hypefury, Twitter Hunter, etc...<br /><br />
   </strong>
   Postaryx offers everything you need to manage your social media posts,<br />build an audience, capture leads, and grow your business.
 </div>
 
 <div class="flex" align="center">
   <br />
-  <img alt="Instagram" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Instagram.svg" width="32">
-  <img alt="Youtube" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Youtube.svg" width="32">
-  <img alt="Dribbble" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Dribbble.svg" width="32">
-  <img alt="Linkedin" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Linkedin.svg" width="32">
-  <img alt="Reddit" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Reddit.svg" width="32">
-  <img alt="TikTok" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/TikTok.svg" width="32">
-  <img alt="Facebook" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Facebook.svg" width="32">
-  <img alt="Pinterest" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Pinterest.svg" width="32">
-  <img alt="Threads" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Threads.svg" width="32">
-  <img alt="X" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/X.svg" width="32">
-  <img alt="Slack" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Slack.svg" width="32">
-  <img alt="Discord" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Discord.svg" width="32">
-  <img alt="Mastodon" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Mastodon.svg" width="32">
-  <img alt="Bluesky" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Bluesky.svg" width="32">
+  <img alt="Instagram" src="apps/frontend/public/icons/platforms/instagram.png" width="32">
+  <img alt="Youtube" src="apps/frontend/public/icons/platforms/youtube.png" width="32">
+  <img alt="Dribbble" src="apps/frontend/public/icons/platforms/dribbble.png" width="32">
+  <img alt="Linkedin" src="apps/frontend/public/icons/platforms/linkedin.png" width="32">
+  <img alt="Reddit" src="apps/frontend/public/icons/platforms/reddit.png" width="32">
+  <img alt="TikTok" src="apps/frontend/public/icons/platforms/tiktok.png" width="32">
+  <img alt="Facebook" src="apps/frontend/public/icons/platforms/facebook.png" width="32">
+  <img alt="Pinterest" src="apps/frontend/public/icons/platforms/pinterest.png" width="32">
+  <img alt="Threads" src="apps/frontend/public/icons/platforms/threads.png" width="32">
+  <img alt="X" src="apps/frontend/public/icons/platforms/x.png" width="32">
+  <img alt="Slack" src="apps/frontend/public/icons/platforms/slack.png" width="32">
+  <img alt="Discord" src="apps/frontend/public/icons/platforms/discord.png" width="32">
+  <img alt="Mastodon" src="apps/frontend/public/icons/platforms/mastodon.png" width="32">
+  <img alt="Bluesky" src="apps/frontend/public/icons/platforms/bluesky.png" width="32">
 </div>
 
-<p align="center">
-  <br />
-  <a href="./docs/LOCAL-DEVELOPMENT.md" rel="dofollow"><strong>Explore the docs »</strong></a>
-  <br />
-
-  <br />
-  <a href="https://www.youtube.com/watch?v=BdsCVvEYgHU" rel="dofollow"><strong>Watch the YouTube Tutorials»</strong></a>
-  <br />
-</p>
-
-<p align="center">
-  <a href="https://app.postaryx.com">Register</a>
-  ·
-  <a href="https://postaryx.com">Join Our Discord (devs only)</a>
-  ·
-  <a href="https://api.postaryx.com">Public API</a><br />
-</p>
-<p align="center">
-  <a href="./apps/sdk/README.md">NodeJS SDK</a>
-  ·
-  <a href="./apps/sdk/README.md">N8N custom node</a>
-  ·
-  <a href="./apps/sdk/README.md">Make.com integration</a>
-</p>
-
 <br /><br />
-
-## 🔌 See the leading Postaryx features
-
-<p align="center">
-  <a href="https://www.youtube.com/watch?v=BdsCVvEYgHU" target="_blank">
-    <img alt="Postaryx" src="https://github.com/user-attachments/assets/8b9b7939-da1a-4be5-95be-42c6fce772de" />
-  </a>
-</p>
-
-## ✨ Features
-
-| ![Image 1](https://github.com/user-attachments/assets/a27ee220-beb7-4c7e-8c1b-2c44301f82ef) | ![Image 2](https://github.com/user-attachments/assets/eb5f5f15-ed90-47fc-811c-03ccba6fa8a2) |
-| ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| ![Image 3](https://github.com/user-attachments/assets/d51786ee-ddd8-4ef8-8138-5192e9cfe7c3) | ![Image 4](https://github.com/user-attachments/assets/91f83c89-22f6-43d6-b7aa-d2d3378289fb) |
-
-### Our Sponsors
-
-| Sponsor                                                               |                                                         Logo                                                         | Description                                                                                                                     |
-| --------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------: | ------------------------------------------------------------------------------------------------------------------------------- |
-| [Hostinger](https://www.hostinger.com/vps/docker/postiz?ref=postaryx) |                       <img src=".github/sponsors/hostinger.png" alt="Hostinger" width="500"/>                        | Hostinger is on a mission to make online success possible for anyone – from developers to aspiring bloggers and business owners |
-| [Virlo](https://dev.virlo.ai/?ref=postaryx)                           | <img src="https://github.com/user-attachments/assets/25182598-5344-45fc-b9cd-e4cfa16aabfd" alt="Virlo" width="500"/> | Virlo is the #1 social media trend spotting and all-in-one GTM tool for teams leveraging short-form video                       |
 
 # Intro
 
 - Schedule all your social media posts (many AI features)
 - Measure your work with analytics.
-- Collaborate with other team members to exchange or buy posts.
 - Invite your team members to collaborate, comment, and schedule posts.
-- At the moment there is no difference between the hosted version to the self-hosted version
-- Perfect for automation (API) with platforms like N8N, Make.com, Zapier, etc.
+- Automate posting through the public API and the NodeJS SDK.
 
 ## Tech Stack
 
@@ -110,16 +60,6 @@
 
 To have the project up and running, please follow the [Quick Start Guide](./docs/LOCAL-DEVELOPMENT.md)
 
-## Sponsor Postaryx
-
-We now give a few options to Sponsor Postaryx:
-
-- Just a donation: You like what we are building, and want to buy us some coffees so we can build faster.
-- Main Repository: Get your logo with a backlink from the main Postaryx repository. Postaryx has almost 3m downloads and 20k views per month.
-- Main Repository + Website: Get your logo on the central repository and the main website. Here are some metrics: - Website has 20k hits per month + 65 DR (strong backlink) - Repository has 20k hits per month + Almost 3m docker downloads.
-
-Link: https://opencollective.com/postiz
-
 ## Postaryx Compliance
 
 - Postaryx is an open-source, self-hosted social media scheduling tool that supports platforms like X (formerly Twitter), Bluesky, Mastodon, Discord, and others.
@@ -131,20 +71,12 @@ Link: https://opencollective.com/postiz
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=postaryx/postiz-app&type=date&legend=top-left)](https://www.star-history.com/#postaryx/postiz-app&type=date&legend=top-left)
+[![Star History Chart](https://api.star-history.com/svg?repos=aitechnologysys-sys/veroza&type=date&legend=top-left)](https://www.star-history.com/#aitechnologysys-sys/veroza&type=date&legend=top-left)
 
 ## License
 
 This repository's source code is available under the [AGPL-3.0 license](LICENSE).
 
-<br /><br /><br />
-
-<p align="center">
-  <a href="https://www.g2.com/products/postiz/take_survey" target="blank"><img alt="g2" src="https://github.com/user-attachments/assets/892cb74c-0b49-4589-b2f5-fbdbf7a98f66" /></a>
-</p>
-<p align="center">
-  <img src="https://github.com/snyk-labs/secure-developer-sample-repo/raw/main/badge_full.svg" alt="Secure Developer Badge Full" width="150">
-</p>
 
 ---
 

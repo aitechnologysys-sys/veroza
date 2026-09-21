@@ -45,9 +45,6 @@
   <a href="./docs/LOCAL-DEVELOPMENT.md" rel="dofollow"><strong>Explore the docs »</strong></a>
   <br />
 
-  <br />
-  <a href="https://www.youtube.com/watch?v=BdsCVvEYgHU" rel="dofollow"><strong>Watch the YouTube Tutorials»</strong></a>
-  <br />
 </p>
 
 <p align="center">
@@ -66,14 +63,6 @@
 </p>
 
 <br /><br />
-
-## 🔌 See the leading Postaryx features
-
-<p align="center">
-  <a href="https://www.youtube.com/watch?v=BdsCVvEYgHU" target="_blank">
-    <img alt="Postaryx" src="https://github.com/user-attachments/assets/8b9b7939-da1a-4be5-95be-42c6fce772de" />
-  </a>
-</p>
 
 ## ✨ Features
 

@@ -9,8 +9,9 @@ const defaultRedirect = () =>
 
 const makeClient = (redirectUri: string) =>
   new google.auth.OAuth2({
-    clientId: process.env.YOUTUBE_CLIENT_ID,
-    clientSecret: process.env.YOUTUBE_CLIENT_SECRET,
+    clientId: process.env.GOOGLE_SSO_CLIENT_ID || process.env.YOUTUBE_CLIENT_ID,
+    clientSecret:
+      process.env.GOOGLE_SSO_CLIENT_SECRET || process.env.YOUTUBE_CLIENT_SECRET,
     redirectUri,
   });
 

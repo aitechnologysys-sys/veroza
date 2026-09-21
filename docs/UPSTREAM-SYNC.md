@@ -165,6 +165,7 @@ silently. Background: [billing-current-state.md](./billing-current-state.md).
 | `.github/workflows/build.yml` | **Keep our `push: branches: [main]`.** Upstream's bare `push:` matches every branch and double-builds each commit once a PR is open |
 | `.github/workflows/eslint.yml` | Ours only. Upstream's copy is the extensionless `eslint` file that never ran — if a merge resurrects it, delete it |
 | `.env.example` | Take theirs for new variables, keep our clarified comments |
+| `.gitmodules` | **We deleted it, they still ship it.** It declared a `gitroomhq/public-api` submodule at `libraries/plugins/src/list/public-api` — a path that does not exist in this repo and that nothing imports. A merge that restores the file is a delete/modify conflict: `git rm .gitmodules` again |
 
 Why: [CONTAINMENT-DEPLOYMENT-PLAN.md](./CONTAINMENT-DEPLOYMENT-PLAN.md) §6.
 

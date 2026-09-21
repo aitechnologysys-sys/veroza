@@ -251,6 +251,11 @@ export const useMenuItem = () => {
       path: 'https://github.com/aitechnologysys-sys/veroza',
       role: ['ADMIN', 'SUPERADMIN', 'USER'],
       requireBilling: true,
+      // Postaryx is not running an affiliate programme yet, so this entry is
+      // hidden rather than deleted. Remove the flag to bring it back. Note the
+      // path still points at the repo, inherited from upstream, so it will
+      // need a real destination before it is shown again.
+      hide: true,
     },
     {
       name: t('billing', 'Billing'),

@@ -44,7 +44,7 @@ self-hosted deployments should stay current.
 
 ## Reporting a vulnerability
 
-Email **security@postaryx.com** with the details.
+Email **admin@postaryx.com** with the details.
 
 If you have access to the repository, you may instead open a private report
 through GitHub Security Advisories, which keeps the discussion attached to the
@@ -94,4 +94,4 @@ named, or say if you would rather stay anonymous.
 
 ## Contact
 
-**security@postaryx.com** — Lunark Dynamics LLC
+**admin@postaryx.com** — Lunark Dynamics LLC

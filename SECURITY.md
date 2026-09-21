@@ -2,68 +2,96 @@
 
 ## Introduction
 
-The Postiz app is committed to ensuring the security and integrity of our users' data. This security policy outlines our procedures for handling security vulnerabilities and our disclosure policy.
+Postaryx is operated by Lunark Dynamics LLC. We take the security of our
+service and our users' data seriously, and we welcome reports from security
+researchers.
+
+This policy explains what is in scope, how to report a vulnerability to us,
+and what to expect after you do.
 
 ## Scope
 
-We, at Postiz (gitroomhq), cover the following scopes for vulnerability disclosures:
+We accept vulnerability reports affecting:
 
-- The core repository for `postiz-app` (github.com/gitroomhq/postiz-app)
-- All `gitroomhq` repositories that are official components, tooling, or integrations of Postiz
-- Official Postiz container images published under `gitroomhq` on GHCR
-- Official Postiz CLI tools and NPM packages (NPM org: @postiz)
-- Postiz-Cloud related infrastructure & services. (API, Frontend, Configurations etc.)
-- Plugins for Postiz maintained within the `gitroomhq` organization
+- The Postaryx web application (`app.postaryx.com`)
+- The Postaryx API (`api.postaryx.com`)
+- The Postaryx source repository
+  (`github.com/aitechnologysys-sys/veroza`)
+- Official Postaryx container images published under
+  `ghcr.io/aitechnologysys-sys`
 
-Vulnerabilities in third-party dependencies or user-hosted infrastructure are outside of this scope.
+The following are out of scope:
 
-## Supported Versions
+- Vulnerabilities in third-party dependencies, unless the issue is caused by
+  how Postaryx uses them. Please report those upstream.
+- Infrastructure you host and operate yourself. Self-hosted deployments are
+  your responsibility to secure and update.
+- Third-party platforms Postaryx integrates with, such as the social networks
+  and payment providers. Report those to the platform concerned.
+- Findings that require physical access, a compromised device, or social
+  engineering of our staff or users.
+- Volumetric denial of service, and automated scanner output submitted without
+  analysis.
 
-This project currently only supports the latest release. We recommend that users always use the latest version of the Postiz app to ensure they have the latest security patches.
-*CVE IDs will only be assigned to vulnerabilities affecting currently supported versions.*
+Please do not test against other people's accounts or data. If you need an
+account to demonstrate an issue, create your own.
 
-## Reporting Security Vulnerabilities
+## Supported versions
 
-If you discover a security vulnerability in the Postiz app, please report it through the [GitHub Security Advisory system](https://github.com/gitroomhq/postiz-app/security/advisories/new).
+Security fixes are applied to the hosted service and to the latest published
+version of the source. Older versions do not receive backported fixes, so
+self-hosted deployments should stay current.
 
-When reporting a security vulnerability, please provide as much detail as possible, including:
+## Reporting a vulnerability
 
-- A clear description of the vulnerability
-- Proof of concept (PoC), where possible
-- Steps to reproduce the vulnerability
-- Any relevant code or configuration files
+Email **security@postaryx.com** with the details.
 
-If the report has immediate urgency, please contact one (or more) of the maintainers via email:
+If you have access to the repository, you may instead open a private report
+through GitHub Security Advisories, which keeps the discussion attached to the
+code.
 
-- @egelhaus ([E-Mail](mailto:egelhaus@ennogelhaus.de))
+Please do not open a public issue, pull request, or discussion for a security
+problem, and please give us a reasonable opportunity to fix it before
+disclosing it publicly.
 
-### AI Reports
+### What to include
 
-Reports that appear to be LLM-generated without meaningful human analysis — typically lacking a working proof of concept, reproducible steps, or accurate impact assessment — will be closed without detailed response.
+The more of this you can provide, the faster we can act:
 
-Reports that include AI-assisted analysis are welcome provided they have been validated by the reporter and include a proof of concept, reproduction steps, and impact assessment.
+- A clear description of the vulnerability and its impact
+- Steps to reproduce it
+- A proof of concept, where one is possible
+- Affected URLs, endpoints, versions, or configuration
+- Any relevant logs, requests, or code references
 
-## Disclosure Guidelines
+If you believe the issue is being actively exploited, or that it exposes user
+data, say so in the subject line.
 
-We follow a private disclosure policy. If you discover a security vulnerability, please report it to us privately via GitHub Security Advisories, and if immediate urgency, via email as listed above. We will respond promptly to reports of vulnerabilities and work to resolve them as quickly as possible.
+### Reports containing AI-assisted analysis
 
-We will not publicly disclose security vulnerabilities until a patch or fix is available to prevent malicious actors from exploiting the vulnerability before a fix is released.
+Reports that include AI-assisted analysis are welcome, provided you have
+validated the finding yourself and can supply reproduction steps and a proof
+of concept. Unverified model output submitted without that validation is not
+actionable and will be closed.
 
-## Security Vulnerability Response Process
+## What happens next
 
-We take security vulnerabilities seriously and will respond promptly to reports of vulnerabilities. Our response process includes:
+When we receive a report we will:
 
-- Investigating the report and verifying the vulnerability.
-- Developing a patch or fix for the vulnerability.
-- Releasing the patch or fix as soon as possible.
-- Notifying users of the vulnerability and the patch or fix.
+1. Acknowledge that we have it.
+2. Investigate and confirm whether it is reproducible.
+3. Tell you what we found, and whether we intend to fix it.
+4. Develop and release a fix, prioritised by severity.
+5. Keep you informed while that work is underway.
 
-## Response Timelines
+We handle reports under coordinated disclosure: we will not publish details of
+a vulnerability until a fix is available, so that users are not left exposed.
+If you intend to publish your own write-up, please coordinate the timing with
+us first.
 
-We aim to follow these timelines:
+We are happy to credit reporters who want it. Tell us how you would like to be
+named, or say if you would rather stay anonymous.
 
-- **Initial Acknowledgment:** Within 72 hours of initial report.
-- **Completed Triage / Verification:** Within 7 days of initial acknowledgment.
-- **Critical Issue Remediation:** Within 90 days of completed triage.
-- **Non-Critical Issue Remediation:** Within 180 days of completed triage.
-- **CVE Publication:** Within 24 hours of remediation release.
+## Contact
+
+**security@postaryx.com** — Lunark Dynamics LLC

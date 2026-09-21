@@ -32,6 +32,15 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { SVGLine } from '@gitroom/frontend/components/launches/launches.component';
 import { GlobalSettings } from '@gitroom/frontend/components/settings/global.settings';
 import { ApprovedAppsComponent } from '@gitroom/frontend/components/approved-apps/approved-apps.component';
+
+// The developer portal is not exposed publicly yet, so the Developers tab is
+// not offered. Flip to true to bring it back. This is the Settings-side pair
+// of the same flag in developer/developer.icon.component.tsx, which hides the
+// header entry point; both cover the same surface, so re-enable them together.
+// Nothing is deleted: PublicComponent, the tab body below, the public API
+// routes and the API key flows are all untouched.
+const SHOW_DEVELOPER_PORTAL = false;
+
 export const SettingsPopup: FC<{
   getRef?: Ref<any>;
 }> = (props) => {
@@ -103,7 +112,12 @@ export const SettingsPopup: FC<{
     if (user?.tier.current !== 'FREE') {
       arr.push({ tab: 'signatures', label: t('signatures', 'Signatures') });
     }
-    if (user?.tier?.public_api && isGeneral && showLogout) {
+    if (
+      SHOW_DEVELOPER_PORTAL &&
+      user?.tier?.public_api &&
+      isGeneral &&
+      showLogout
+    ) {
       arr.push({ tab: 'api', label: t('developers', 'Developers') });
     }
     arr.push({ tab: 'approved_apps', label: t('approved_apps', 'Approved Apps') });

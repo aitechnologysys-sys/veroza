@@ -24,20 +24,20 @@
 
 <div class="flex" align="center">
   <br />
-  <img alt="Instagram" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Instagram.svg" width="32">
-  <img alt="Youtube" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Youtube.svg" width="32">
-  <img alt="Dribbble" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Dribbble.svg" width="32">
-  <img alt="Linkedin" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Linkedin.svg" width="32">
-  <img alt="Reddit" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Reddit.svg" width="32">
-  <img alt="TikTok" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/TikTok.svg" width="32">
-  <img alt="Facebook" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Facebook.svg" width="32">
-  <img alt="Pinterest" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Pinterest.svg" width="32">
-  <img alt="Threads" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Threads.svg" width="32">
-  <img alt="X" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/X.svg" width="32">
-  <img alt="Slack" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Slack.svg" width="32">
-  <img alt="Discord" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Discord.svg" width="32">
-  <img alt="Mastodon" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Mastodon.svg" width="32">
-  <img alt="Bluesky" src="https://github.com/aitechnologysys-sys/veroza/svgs/socials/Bluesky.svg" width="32">
+  <img alt="Instagram" src="apps/frontend/public/icons/platforms/instagram.png" width="32">
+  <img alt="Youtube" src="apps/frontend/public/icons/platforms/youtube.png" width="32">
+  <img alt="Dribbble" src="apps/frontend/public/icons/platforms/dribbble.png" width="32">
+  <img alt="Linkedin" src="apps/frontend/public/icons/platforms/linkedin.png" width="32">
+  <img alt="Reddit" src="apps/frontend/public/icons/platforms/reddit.png" width="32">
+  <img alt="TikTok" src="apps/frontend/public/icons/platforms/tiktok.png" width="32">
+  <img alt="Facebook" src="apps/frontend/public/icons/platforms/facebook.png" width="32">
+  <img alt="Pinterest" src="apps/frontend/public/icons/platforms/pinterest.png" width="32">
+  <img alt="Threads" src="apps/frontend/public/icons/platforms/threads.png" width="32">
+  <img alt="X" src="apps/frontend/public/icons/platforms/x.png" width="32">
+  <img alt="Slack" src="apps/frontend/public/icons/platforms/slack.png" width="32">
+  <img alt="Discord" src="apps/frontend/public/icons/platforms/discord.png" width="32">
+  <img alt="Mastodon" src="apps/frontend/public/icons/platforms/mastodon.png" width="32">
+  <img alt="Bluesky" src="apps/frontend/public/icons/platforms/bluesky.png" width="32">
 </div>
 
 <p align="center">
@@ -49,8 +49,6 @@
 
 <p align="center">
   <a href="https://app.postaryx.com">Register</a>
-  ·
-  <a href="https://postaryx.com">Join Our Discord (devs only)</a>
   ·
   <a href="https://api.postaryx.com">Public API</a><br />
 </p>
@@ -74,7 +72,7 @@
 
 | Sponsor                                                             |                                                         Logo                                                         | Description                                                                                                                     |
 | ------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------: | ------------------------------------------------------------------------------------------------------------------------------- |
-| [Hostinger](https://www.hostinger.com/vps/docker/postiz?ref=postaryx) |                       <img src=".github/sponsors/hostinger.png" alt="Hostinger" width="500"/>                        | Hostinger is on a mission to make online success possible for anyone – from developers to aspiring bloggers and business owners |
+| [Hostinger](https://www.hostinger.com/?ref=postaryx) |                       <img src=".github/sponsors/hostinger.png" alt="Hostinger" width="500"/>                        | Hostinger is on a mission to make online success possible for anyone – from developers to aspiring bloggers and business owners |
 | [Virlo](https://dev.virlo.ai/?ref=postaryx)                           | <img src="https://github.com/user-attachments/assets/25182598-5344-45fc-b9cd-e4cfa16aabfd" alt="Virlo" width="500"/> | Virlo is the #1 social media trend spotting and all-in-one GTM tool for teams leveraging short-form video                       |
 
 # Intro
@@ -99,16 +97,6 @@
 
 To have the project up and running, please follow the [Quick Start Guide](./docs/LOCAL-DEVELOPMENT.md)
 
-## Sponsor Postaryx
-
-We now give a few options to Sponsor Postaryx:
-
-- Just a donation: You like what we are building, and want to buy us some coffees so we can build faster.
-- Main Repository: Get your logo with a backlink from the main Postaryx repository. Postaryx has almost 3m downloads and 20k views per month.
-- Main Repository + Website: Get your logo on the central repository and the main website. Here are some metrics: - Website has 20k hits per month + 65 DR (strong backlink) - Repository has 20k hits per month + Almost 3m docker downloads.
-
-Link: https://opencollective.com/postiz
-
 ## Postaryx Compliance
 
 - Postaryx is an open-source, self-hosted social media scheduling tool that supports platforms like X (formerly Twitter), Bluesky, Mastodon, Discord, and others.
@@ -120,20 +108,12 @@ Link: https://opencollective.com/postiz
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=postaryx/postiz-app&type=date&legend=top-left)](https://www.star-history.com/#postaryx/postiz-app&type=date&legend=top-left)
+[![Star History Chart](https://api.star-history.com/svg?repos=aitechnologysys-sys/veroza&type=date&legend=top-left)](https://www.star-history.com/#aitechnologysys-sys/veroza&type=date&legend=top-left)
 
 ## License
 
 This repository's source code is available under the [AGPL-3.0 license](LICENSE).
 
-<br /><br /><br />
-
-<p align="center">
-  <a href="https://www.g2.com/products/postiz/take_survey" target="blank"><img alt="g2" src="https://github.com/user-attachments/assets/892cb74c-0b49-4589-b2f5-fbdbf7a98f66" /></a>
-</p>
-<p align="center">
-  <img src="https://github.com/snyk-labs/secure-developer-sample-repo/raw/main/badge_full.svg" alt="Secure Developer Badge Full" width="150">
-</p>
 
 ---
 

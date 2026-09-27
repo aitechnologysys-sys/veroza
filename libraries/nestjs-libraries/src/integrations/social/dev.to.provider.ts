@@ -151,17 +151,44 @@ export class DevToProvider extends SocialAbstract implements SocialProvider {
     integration: Integration
   ): Promise<PostResponse[]> {
     const { settings } = postDetails?.[0] || { settings: {} };
+
+    // dev.to has no media upload: the cover is a URL and anything else must be
+    // linked from the markdown. Images attached to the post used to be dropped
+    // silently — use the first as the cover when none was picked, and embed
+    // the rest at the end of the article.
+    // updateMedia() keeps the public URL in `url` and may turn `path` into a
+    // file on disk, so prefer `url` — dev.to fetches these itself.
+    const images = (postDetails?.[0]?.media || [])
+      .map((m) => ({
+        src: (m as typeof m & { url?: string }).url || m.path,
+        alt: m.alt || '',
+      }))
+      .filter(
+        ({ src }) =>
+          src?.indexOf('http') === 0 &&
+          !/\.(mp4|mov|webm|m4v|avi)(\?|$)/i.test(src)
+      );
+    const cover = settings?.main_image?.path
+      ? `${
+          settings.main_image.path.indexOf('http') === -1
+            ? `${process.env.FRONTEND_URL}/${process.env.NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY}`
+            : ''
+        }${settings.main_image.path}`
+      : images.shift()?.src;
+    const body = [
+      postDetails?.[0].message,
+      ...images.map(({ src, alt }) => `![${alt}](${src})`),
+    ].join('\n\n');
+
     const { id: postId, url } = await (
       await this.fetch(`https://dev.to/api/articles`, {
         method: 'POST',
         body: JSON.stringify({
           article: {
             title: settings.title,
-            body_markdown: postDetails?.[0].message,
+            body_markdown: body,
             published: true,
-            ...(settings?.main_image?.path
-              ? { main_image: settings?.main_image?.path }
-              : {}),
+            ...(cover ? { main_image: cover } : {}),
             tags: settings?.tags?.map((t: any) => t.label),
             organization_id: settings.organization,
             ...(settings.canonical

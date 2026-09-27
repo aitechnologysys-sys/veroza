@@ -5,15 +5,26 @@ import {
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
-import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import {
+  BadBody,
+  SocialAbstract,
+} from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import dayjs from 'dayjs';
 import { Integration } from '@prisma/client';
 import axios from 'axios';
+import { timer } from '@gitroom/helpers/utils/timer';
 
 const MOLTBOOK_API_BASE = 'https://www.moltbook.com/api/v1';
 
+// Moltbook write limits: 1 post per 30 min (1 per 2 h in an agent's first
+// 24 h), 1 comment per 20 s (60 s for new agents). A cooldown that short is
+// worth waiting out inside the activity; anything longer won't clear before
+// Temporal's retries (3 × 2 min) run out, so fail once with a clear message.
+const MAX_INLINE_WAIT_SECONDS = 90;
+const MAX_INLINE_RETRIES = 3;
+
 export class MoltbookProvider extends SocialAbstract implements SocialProvider {
-  override maxConcurrentJob = 100; // Moltbook: 100 requests/minute
+  override maxConcurrentJob = 1; // Moltbook: 1 post / 30 min, 1 comment / 20 s
   identifier = 'moltbook';
   name = 'Moltbook';
   isBetweenSteps = false;
@@ -44,6 +55,61 @@ export class MoltbookProvider extends SocialAbstract implements SocialProvider {
       codeVerifier: makeId(10),
       state,
     };
+  }
+
+  // POSTs to Moltbook, turning its errors into non-retryable BadBody failures
+  // carrying Moltbook's own message. Plain axios errors would be retried by
+  // Temporal, which only re-hits the cooldown.
+  private async write(path: string, data: object, accessToken: string) {
+    const body = JSON.stringify(data);
+    for (let attempt = 0; ; attempt++) {
+      const response = await axios.post(`${MOLTBOOK_API_BASE}${path}`, data, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        validateStatus: () => true,
+      });
+
+      if (response.status === 429) {
+        const waitSeconds = Number(
+          response.data?.retry_after_seconds ??
+            (response.data?.retry_after_minutes != null
+              ? response.data.retry_after_minutes * 60
+              : response.headers?.['retry-after'] ?? 0)
+        );
+
+        if (
+          waitSeconds > 0 &&
+          waitSeconds <= MAX_INLINE_WAIT_SECONDS &&
+          attempt < MAX_INLINE_RETRIES
+        ) {
+          await timer((waitSeconds + 1) * 1000);
+          continue;
+        }
+
+        const minutes = Math.max(1, Math.ceil(waitSeconds / 60));
+        throw new BadBody(
+          this.identifier,
+          JSON.stringify(response.data),
+          body,
+          `Moltbook rate limit: it allows 1 post every 30 minutes (every 2 hours for agents in their first day). Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`
+        );
+      }
+
+      if (response.status >= 400 || !response.data?.success) {
+        throw new BadBody(
+          this.identifier,
+          JSON.stringify(response.data),
+          body,
+          response.data?.error ||
+            response.data?.message ||
+            `Moltbook request failed (HTTP ${response.status})`
+        );
+      }
+
+      return response.data;
+    }
   }
 
   async registerAgent(name: string, description: string) {
@@ -109,38 +175,29 @@ export class MoltbookProvider extends SocialAbstract implements SocialProvider {
     const results: PostResponse[] = [];
 
     for (const post of postDetails) {
-      const postData: {
-        submolt: string;
-        title: string;
-        content?: string;
-        url?: string;
-      } = {
-        submolt: post.settings?.submolt || 'general',
+      // The API field is `submolt_name` now; the saved setting keeps its
+      // old `submolt` key so existing posts don't need migrating.
+      const postData = {
+        submolt_name: post.settings?.submolt || 'general',
         title: post.message.slice(0, 100),
         content: post.message,
       };
 
-      const response = await axios.post(
-        `${MOLTBOOK_API_BASE}/posts`,
-        postData,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      const data = await this.write('/posts', postData, accessToken);
 
-      if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to create post');
-      }
-
-      const postId = response.data.post.id;
+      const postId = data.post.id;
       results.push({
         id: post.id,
         postId: String(postId),
         releaseURL: `https://www.moltbook.com/post/${postId}`,
-        status: 'completed',
+        // Unless the agent is trusted, Moltbook creates the post but hides it
+        // from feeds until a maths challenge is answered through the API
+        // within 5 minutes. We don't answer it, so report it honestly — the
+        // workflow tells the user instead of saying "published".
+        status:
+          data.post.verification_status === 'pending'
+            ? 'pending_verification'
+            : 'completed',
       });
     }
 
@@ -166,22 +223,13 @@ export class MoltbookProvider extends SocialAbstract implements SocialProvider {
         commentData.parent_id = lastCommentId;
       }
 
-      const response = await axios.post(
-        `${MOLTBOOK_API_BASE}/posts/${postId}/comments`,
+      const data = await this.write(
+        `/posts/${postId}/comments`,
         commentData,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        }
+        accessToken
       );
 
-      if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to create comment');
-      }
-
-      const commentId = response.data.comment.id;
+      const commentId = data.comment.id;
       results.push({
         id: post.id,
         postId: String(commentId),

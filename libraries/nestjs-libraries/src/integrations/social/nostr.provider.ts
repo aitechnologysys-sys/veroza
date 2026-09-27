@@ -71,6 +71,14 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
     };
   }
 
+  // nostr-tools signs with the raw 32-byte key, but we store it as a hex
+  // string, so it has to be decoded before every getPublicKey/finalizeEvent.
+  private hexToBytes(hex: string): Uint8Array {
+    return Uint8Array.from(
+      hex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
+    );
+  }
+
   private async findRelayInformation(pubkey: string) {
     // This queries ALL relays in parallel and resolves with
     // the first matching event from ANY relay.
@@ -137,11 +145,7 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
     try {
       const body = JSON.parse(Buffer.from(params.code, 'base64').toString());
 
-      const pubkey = getPublicKey(
-        Uint8Array.from(
-          body.password.match(/.{1,2}/g).map((byte: any) => parseInt(byte, 16))
-        )
-      );
+      const pubkey = getPublicKey(this.hexToBytes(body.password));
 
       const user = await this.findRelayInformation(pubkey);
 
@@ -182,7 +186,7 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
         tags: [],
         created_at: Math.floor(Date.now() / 1000),
       },
-      password
+      this.hexToBytes(password)
     );
 
     const eventId = await this.publish(id, textEvent);
@@ -219,7 +223,7 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
         ],
         created_at: Math.floor(Date.now() / 1000),
       },
-      password
+      this.hexToBytes(password)
     );
 
     const eventId = await this.publish(id, textEvent);

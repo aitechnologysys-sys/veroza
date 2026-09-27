@@ -200,17 +200,22 @@ export async function postWorkflowV105({
         );
 
         if (i === 0) {
-          // send notification on a sucessful post
+          const provider = capitalize(post.integration.providerIdentifier);
+          // send notification on a sucessful post. Same activity call either
+          // way (only the text differs), so running workflows replay fine.
+          const pendingVerification =
+            postsResults[0].status === 'pending_verification';
           await inAppNotification(
             post.integration.organizationId,
-            `Your post has been published on ${capitalize(
-              post.integration.providerIdentifier
-            )}`,
-            `Your post has been published on ${capitalize(
-              post.integration.providerIdentifier
-            )} at ${postsResults[0].releaseURL}`,
+            pendingVerification
+              ? `Your post on ${provider} is waiting for verification`
+              : `Your post has been published on ${provider}`,
+            pendingVerification
+              ? `${provider} created your post at ${postsResults[0].releaseURL} but keeps it hidden from feeds until its verification challenge is solved. ${provider} only sends that challenge to the posting app, so the post will stay hidden for now.`
+              : `Your post has been published on ${provider} at ${postsResults[0].releaseURL}`,
             true,
-            true
+            true,
+            pendingVerification ? 'info' : 'success'
           );
         }
 

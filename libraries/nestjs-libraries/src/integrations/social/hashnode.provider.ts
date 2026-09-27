@@ -4,7 +4,10 @@ import {
   PostResponse,
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
-import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import {
+  BadBody,
+  SocialAbstract,
+} from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { tags } from '@gitroom/nestjs-libraries/integrations/social/hashnode.tags';
 import { jsonToGraphQLQuery } from 'json-to-graphql-query';
 import { HashnodeSettingsDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/hashnode.settings.dto';
@@ -19,6 +22,18 @@ import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 // Since 13 May 2026 every request, reads included, needs a Pro plan on the
 // customer's publication — surface that error to the user, don't retry it.
 const HASHNODE_GQL = 'https://gql-beta.hashnode.com';
+
+// Hashnode's PublishPostTagInput is now `{ slug!, name }` — the old `{ id }`
+// form was dropped and fails schema validation. Saved posts still carry the
+// tag's objectID as `value`, so resolve it back to the slug here; anything
+// not in the list is treated as a slug already.
+const tagsById = new Map(tags.map((tag) => [tag.objectID, tag]));
+const toTagInput = (tag: { value: string; label: string }) => {
+  const known = tagsById.get(tag.value);
+  return known
+    ? { slug: known.slug, name: known.name }
+    : { slug: tag.value, name: tag.label };
+};
 
 export class HashnodeProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 3; // Hashnode has lenient publishing limits
@@ -204,17 +219,17 @@ export class HashnodeProvider extends SocialAbstract implements SocialProvider {
                   ? { originalArticleURL: settings.canonical }
                   : {}),
                 contentMarkdown: postDetails?.[0].message,
-                tags: settings.tags.map((tag: any) => ({ id: tag.value })),
+                tags: (settings.tags || []).map(toTagInput),
                 ...(settings.subtitle ? { subtitle: settings.subtitle } : {}),
+                // `coverImageOptions { coverImageURL }` was replaced by a
+                // plain `coverImage` URL.
                 ...(settings.main_image
                   ? {
-                      coverImageOptions: {
-                        coverImageURL: `${
-                          settings?.main_image?.path?.indexOf('http') === -1
-                            ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY}`
-                            : ``
-                        }${settings?.main_image?.path}`,
-                      },
+                      coverImage: `${
+                        settings?.main_image?.path?.indexOf('http') === -1
+                          ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY}`
+                          : ``
+                      }${settings?.main_image?.path}`,
                     }
                   : {}),
               },
@@ -229,12 +244,10 @@ export class HashnodeProvider extends SocialAbstract implements SocialProvider {
       { pretty: true }
     );
 
-    const {
-      data: {
-        publishPost: {
-          post: { id: postId, url },
-        },
-      },
+    const body = JSON.stringify({ query });
+    const response: {
+      data?: { publishPost?: { post?: { id: string; url: string } } };
+      errors?: { message: string }[];
     } = await (
       await this.fetch(HASHNODE_GQL, {
         method: 'POST',
@@ -242,11 +255,24 @@ export class HashnodeProvider extends SocialAbstract implements SocialProvider {
           'Content-Type': 'application/json',
           Authorization: `${accessToken}`,
         },
-        body: JSON.stringify({
-          query,
-        }),
+        body,
       })
     ).json();
+
+    // GraphQL errors (schema changes, missing Pro plan, bad publication) come
+    // back as HTTP 200, so fetch() lets them through. Fail with Hashnode's own
+    // message instead of crashing on `data.publishPost` and retrying.
+    const post = response.data?.publishPost?.post;
+    if (!post) {
+      throw new BadBody(
+        this.identifier,
+        JSON.stringify(response),
+        body,
+        response.errors?.map((e) => e.message).join('; ') ||
+          'Hashnode did not return the published post'
+      );
+    }
+    const { id: postId, url } = post;
 
     return [
       {

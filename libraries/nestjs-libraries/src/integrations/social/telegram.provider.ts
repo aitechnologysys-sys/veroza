@@ -12,6 +12,9 @@ import mime from 'mime';
 import TelegramBot from 'node-telegram-bot-api';
 import { Integration } from '@prisma/client';
 import striptags from 'striptags';
+import { resolveUploadDirectory } from '@gitroom/helpers/utils/resolve.upload.directory';
+import { join } from 'path';
+import { existsSync } from 'fs';
 
 const telegramBot = new TelegramBot(process.env.TELEGRAM_TOKEN!);
 // Added to support local storage posting
@@ -142,7 +145,21 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
     return (mediaFiles || []).map((media) => {
       let mediaUrl = media.path;
       if (mediaStorage === 'local' && mediaUrl.startsWith(frontendURL)) {
-        mediaUrl = mediaUrl.replace(frontendURL, '');
+        // Telegram fetches remote media itself, so it can never reach a
+        // local/private FRONTEND_URL. Hand it the file on disk instead and
+        // let node-telegram-bot-api upload the bytes. Stripping the origin
+        // alone leaves "/uploads/..", which Telegram rejects with
+        // "invalid file HTTP URL specified: URL host is empty".
+        const onDisk = join(
+          resolveUploadDirectory(process.env.UPLOAD_DIRECTORY!),
+          new URL(media.path).pathname.replace(/^\/+uploads\/*/, '')
+        );
+        // Only swap in the local file when it is really there. If this process
+        // cannot see the upload volume, keep the URL: in production it is
+        // publicly reachable and Telegram can fetch it itself.
+        if (existsSync(onDisk)) {
+          mediaUrl = onDisk;
+        }
       }
       //get mime type to pass contentType to telegram api.
       //some photos and videos might not pass telegram api restrictions, so they are sent as documents instead of returning errors

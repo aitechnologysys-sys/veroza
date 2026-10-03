@@ -77,6 +77,9 @@ export class WhopProvider extends SocialAbstract implements SocialProvider {
           grant_type: 'refresh_token',
           refresh_token: refreshToken,
           client_id: process.env.WHOP_CLIENT_ID,
+          ...(process.env.WHOP_CLIENT_SECRET
+            ? { client_secret: process.env.WHOP_CLIENT_SECRET }
+            : {}),
         }),
       })
     ).json();
@@ -140,6 +143,11 @@ export class WhopProvider extends SocialAbstract implements SocialProvider {
           code: params.code,
           redirect_uri: redirectUri,
           client_id: process.env.WHOP_CLIENT_ID,
+          // Confidential Whop apps reject PKCE-only exchanges; public apps
+          // don't need the secret, so only send it when configured.
+          ...(process.env.WHOP_CLIENT_SECRET
+            ? { client_secret: process.env.WHOP_CLIENT_SECRET }
+            : {}),
           code_verifier: params.codeVerifier,
         }),
       })

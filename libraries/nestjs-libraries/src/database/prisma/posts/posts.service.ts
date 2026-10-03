@@ -49,7 +49,7 @@ import { RefreshToken } from '@gitroom/nestjs-libraries/integrations/social.abst
 import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { stripLinks } from '@gitroom/helpers/utils/strip.links';
-import { validate } from 'class-validator';
+import { getMetadataStorage, validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import { weightedLength } from '@gitroom/helpers/utils/count.length';
@@ -803,7 +803,18 @@ export class PostsService {
         // Settings DTO validation — mirrors the client `form.trigger()`.
         let valid = true;
         let settingsError = '';
-        if (provider?.dto) {
+        // A DTO with no decorators (e.g. KickDto) means "no settings". class-validator
+        // rejects such classes with "an unknown value was passed to the validate
+        // function" (forbidUnknownValues), so skip validation for them.
+        const hasValidationRules =
+          !!provider?.dto &&
+          getMetadataStorage().getTargetValidationMetadatas(
+            provider.dto,
+            '',
+            false,
+            false
+          ).length > 0;
+        if (hasValidationRules) {
           const instance = plainToInstance(provider.dto, settings, {
             enableImplicitConversion: true,
           });

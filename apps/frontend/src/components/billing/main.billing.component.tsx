@@ -36,7 +36,7 @@ export const Prorate: FC<{
   const { period, pack } = props;
   const t = useT();
   const fetch = useFetch();
-  const [price, setPrice] = useState<number | false>(0);
+  const [price, setPrice] = useState<number | false | null>(0);
   const [loading, setLoading] = useState(false);
   const calculatePrice = useDebouncedCallback(async () => {
     setLoading(true);
@@ -66,7 +66,7 @@ export const Prorate: FC<{
       </div>
     );
   }
-  if (price === false) {
+  if (price === false || price === null) {
     return null;
   }
   return (

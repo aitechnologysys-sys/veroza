@@ -46,7 +46,7 @@ export interface IBillingProvider {
   prorate(
     organizationId: string,
     body: BillingSubscribeDto
-  ): Promise<{ price: number }>;
+  ): Promise<{ price: number | null }>;
   lifetimeDeal(
     organizationId: string,
     code: string

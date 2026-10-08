@@ -77,7 +77,6 @@ To have the project up and running, please follow the [Quick Start Guide](./docs
 
 This repository's source code is available under the [AGPL-3.0 license](LICENSE).
 
-
 ---
 
 # Postaryx — development & deployment runbook
@@ -136,6 +135,13 @@ docker compose -p postaryx-prod up -d postaryx
 # → http://localhost:4007       (webhook testing: ngrok http 4007)
 
 docker compose -p postaryx-prod down
+```
+
+# important
+
+```
+# If backend responds 502
+docker exec postaryx pm2 restart backend
 ```
 
 To run **local, uncommitted** code in the prod stack, build it yourself and

@@ -485,16 +485,29 @@ export class StripeService implements IBillingProvider {
       ).data.filter((f) => f.status === 'active' || f.status === 'trialing'),
     };
 
+    const existingSubscription = currentUserSubscription.data[0];
+    const currentAmount =
+      existingSubscription?.items?.data?.[0]?.price?.unit_amount ?? 0;
+    const isUpgrade = (findPrice!.unit_amount ?? 0) > currentAmount;
+
+    // Mirror subscribe(): a downgrade uses 'create_prorations', which credits the
+    // next renewal invoice and charges nothing today.
+    if (!isUpgrade) {
+      return { price: 0 };
+    }
+
+    // An upgrade uses 'always_invoice' on the existing billing cycle, so preview
+    // exactly that — the immediate proration invoice. No billing_cycle_anchor:
+    // subscribe() keeps the cycle, and Stripe rejects 'now' with proration_date.
     try {
       const price = await stripe.invoices.createPreview({
         customer,
-        subscription: currentUserSubscription?.data?.[0]?.id,
+        subscription: existingSubscription?.id,
         subscription_details: {
-          proration_behavior: 'create_prorations',
-          billing_cycle_anchor: 'now',
+          proration_behavior: 'always_invoice',
           items: [
             {
-              id: currentUserSubscription?.data?.[0]?.items?.data?.[0]?.id,
+              id: existingSubscription?.items?.data?.[0]?.id,
               price: findPrice?.id!,
               quantity: 1,
             },
@@ -507,7 +520,9 @@ export class StripeService implements IBillingProvider {
         price: price?.amount_remaining ? price?.amount_remaining / 100 : 0,
       };
     } catch (err) {
-      return { price: 0 };
+      // null, not 0: the UI hides the line rather than quoting a free upgrade.
+      console.error('Failed to preview proration', organizationId, err);
+      return { price: null };
     }
   }
 

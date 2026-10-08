@@ -389,7 +389,7 @@ export class StripeService implements IBillingProvider {
       email:
         users.users[0].user.email.indexOf('@') > -1
           ? users.users[0].user.email
-          : `${users.users[0].user.email}@postiz.com`,
+          : `${users.users[0].user.email}@postaryx.com`,
       name: organization.name,
     });
     await this._subscriptionService.updateCustomerId(
@@ -805,7 +805,7 @@ export class StripeService implements IBillingProvider {
         email:
           user.email.indexOf('@') > -1
             ? user.email
-            : `${user.email}@postiz.com`,
+            : `${user.email}@postaryx.com`,
         ...(body.dub
           ? {
               metadata: {

@@ -12,7 +12,6 @@ import { GithubProvider } from '@gitroom/frontend/components/auth/providers/gith
 import { OauthProvider } from '@gitroom/frontend/components/auth/providers/oauth.provider';
 import { GoogleProvider } from '@gitroom/frontend/components/auth/providers/google.provider';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
-import { FarcasterProvider } from '@gitroom/frontend/components/auth/providers/farcaster.provider';
 import WalletProvider from '@gitroom/frontend/components/auth/providers/wallet.provider';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 type Inputs = {
@@ -25,7 +24,7 @@ export function Login() {
   const t = useT();
   const [loading, setLoading] = useState(false);
   const [notActivated, setNotActivated] = useState(false);
-  const { isGeneral, neynarClientId, billingEnabled, genericOauth } =
+  const { isGeneral, billingEnabled, genericOauth } =
     useVariables();
   const resolver = useMemo(() => {
     return classValidatorResolver(LoginUserDto);
@@ -98,7 +97,6 @@ export function Login() {
             ) : (
               <div className="gap-[8px] flex">
                 <GoogleProvider />
-                {!!neynarClientId && <FarcasterProvider />}
                 {/* {billingEnabled && <WalletProvider />} */}
               </div>
             )}

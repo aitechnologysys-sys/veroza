@@ -591,14 +591,6 @@ const PublicApiContent = () => {
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
             {t('read_the_docs', 'Docs')}
             </a>
-            <a
-              className="cursor-pointer px-[16px] h-[36px] bg-btnPrimary hover:opacity-95 text-white transition-colors rounded-[10px] text-[14px] font-[600] flex items-center gap-[6px]"
-              href="https://www.npmjs.com/package/n8n-nodes-postiz"
-              target="_blank"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
-              {t('n8n_node', 'N8N Node (Postaryx-compatible)')}
-            </a>
           </div>
         </div>
         <div className="p-[20px] flex flex-col gap-[16px]">
@@ -700,7 +692,10 @@ const PublicApiContent = () => {
         </div>
       </div>
 
-      <CliSection apiKey={user.publicApi} />
+      {/* Hidden: the `postaryx` npm CLI and postaryx/postiz-agent skill it tells
+          users to install are not published yet, so the commands would fail
+          (or install whatever someone else publishes under that name). */}
+      {false && <CliSection apiKey={user.publicApi} />}
 
       <McpSection user={user} mcpBase={mcpBase} />
     </div>

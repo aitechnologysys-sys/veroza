@@ -190,7 +190,7 @@ export class PolarService implements IBillingProvider {
     const users = await this._organizationService.getTeam(organization.id);
     const email = users.users[0].user.email.includes('@')
       ? users.users[0].user.email
-      : `${users.users[0].user.email}@postiz.com`;
+      : `${users.users[0].user.email}@postaryx.com`;
 
     // Check if customer already exists in Polar by external_id.
     // Use the dedicated external-id endpoint (returns the single customer or

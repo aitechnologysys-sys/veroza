@@ -17,6 +17,21 @@ import utc from 'dayjs/plugin/utc';
 import { v4 as uuidv4 } from 'uuid';
 import { CreateTagDto } from '@gitroom/nestjs-libraries/dtos/posts/create.tag.dto';
 
+// Failed posts are stored with their integration attached, so the error log
+// would otherwise keep live OAuth tokens. Matches the key at any level of
+// JSON-in-JSON escaping, which is how provider responses end up nested here.
+const SECRET_KEYS =
+  'token|refreshToken|accessToken|access_token|refresh_token|customInstanceDetails';
+const SECRET_PATTERN = new RegExp(
+  `((?:\\\\)*"(?:${SECRET_KEYS})(?:\\\\)*"\\s*:\\s*(?:\\\\)*")[^"\\\\]*`,
+  'g'
+);
+const redactSecrets = (value: any): string =>
+  (typeof value === 'string' ? value : JSON.stringify(value)).replace(
+    SECRET_PATTERN,
+    '$1[redacted]'
+  );
+
 dayjs.extend(isoWeek);
 dayjs.extend(weekOfYear);
 dayjs.extend(isSameOrAfter);
@@ -418,9 +433,7 @@ export class PostsRepository {
       },
       data: {
         state,
-        ...(err
-          ? { error: typeof err === 'string' ? err : JSON.stringify(err) }
-          : {}),
+        ...(err ? { error: redactSecrets(err) } : {}),
       },
       include: {
         integration: {
@@ -435,11 +448,11 @@ export class PostsRepository {
       try {
         await this._errors.model.errors.create({
           data: {
-            message: typeof err === 'string' ? err : JSON.stringify(err),
+            message: redactSecrets(err),
             organizationId: update.organizationId,
             platform: update.integration.providerIdentifier,
             postId: update.id,
-            body: typeof body === 'string' ? body : JSON.stringify(body),
+            body: redactSecrets(body),
           },
         });
       } catch (err) {}

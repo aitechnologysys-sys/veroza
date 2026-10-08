@@ -85,7 +85,10 @@ export class PinterestProvider
 
   editor = 'normal' as const;
 
-  public override handleErrors(body: string):
+  public override handleErrors(
+    body: string,
+    status?: number
+  ):
     | {
         type: 'refresh-token' | 'bad-body';
         value: string;
@@ -103,6 +106,26 @@ export class PinterestProvider
         value:
           'When uploading a video, you must add also an image to be used as a cover image.',
       };
+    }
+
+    // Surface Pinterest's own reason instead of "Unknown Error". Leave 401
+    // (token refresh), 429 and 5xx (retries) to the default handling.
+    if (
+      status &&
+      status >= 400 &&
+      status < 500 &&
+      status !== 401 &&
+      status !== 429
+    ) {
+      try {
+        const { message } = JSON.parse(body);
+        if (message) {
+          return {
+            type: 'bad-body' as const,
+            value: `Pinterest: ${message}`,
+          };
+        }
+      } catch {}
     }
 
     return undefined;

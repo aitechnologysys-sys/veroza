@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { createHmac } from 'crypto';
 import axios from 'axios';
-import { Organization } from '@prisma/client';
+import { Organization, SubscriptionStatus } from '@prisma/client';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
@@ -16,6 +16,30 @@ import {
   CheckoutResult,
   SubscribeResult,
 } from '@gitroom/nestjs-libraries/services/billing.provider.interface';
+
+// Polar mirrors Stripe's rule: nothing here refunds on its own. refundCharges()
+// is the only path that returns money and it is superadmin-only.
+// Mirrors toSubscriptionStatus() in stripe.service.ts: status describes what the
+// gateway is doing with the money, never whether the customer has cancelled.
+// That fact lives in Subscription.cancelAt.
+const polarStatus = (status: string | undefined): SubscriptionStatus => {
+  switch (status) {
+    case 'trialing':
+      return 'TRIALING';
+    case 'active':
+      return 'ACTIVE';
+    case 'past_due':
+    case 'unpaid':
+      return 'PAST_DUE';
+    case 'canceled':
+      return 'EXPIRED';
+    case 'incomplete':
+    case 'incomplete_expired':
+      return 'FAILED';
+    default:
+      return 'ACTIVE';
+  }
+};
 
 // Polar REST API base URL — set POLAR_SERVER=sandbox in .env for sandbox mode
 const POLAR_BASE =
@@ -151,7 +175,8 @@ export class PolarService implements IBillingProvider {
       pricing[billing].channel!,
       billing,
       period,
-      cancelAtTimestamp
+      cancelAtTimestamp,
+      polarStatus(sub?.status)
     );
   }
 
@@ -369,7 +394,8 @@ export class PolarService implements IBillingProvider {
   }
 
   async cancelSubscription(
-    organizationId: string
+    organizationId: string,
+    _actorUserId?: string
   ): Promise<{ cancelled: boolean }> {
     const org = (await this._organizationService.getOrgById(organizationId))!;
     if (!org.paymentId) throw new Error('No payment customer found');
@@ -446,7 +472,8 @@ export class PolarService implements IBillingProvider {
 
   async refundCharges(
     organizationId: string,
-    chargeIds: string[]
+    chargeIds: string[],
+    _actorUserId?: string
   ): Promise<{ refunded: string[]; failed: string[] }> {
     const org = await this._organizationService.getOrgById(organizationId);
     if (!org?.paymentId) throw new Error('No payment customer found');
@@ -533,6 +560,7 @@ export class PolarService implements IBillingProvider {
         nextPackage,
         'MONTHLY',
         null,
+        'ACTIVE',
         testCode,
         organizationId
       );

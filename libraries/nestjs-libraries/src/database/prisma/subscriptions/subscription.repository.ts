@@ -4,7 +4,7 @@ import {
   PrismaTransaction,
 } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import dayjs from 'dayjs';
-import { Organization } from '@prisma/client';
+import { Organization, SubscriptionStatus } from '@prisma/client';
 
 @Injectable()
 export class SubscriptionRepository {
@@ -88,12 +88,38 @@ export class SubscriptionRepository {
     });
   }
 
-  deleteSubscriptionByCustomerId(customerId: string) {
-    return this._subscription.model.subscription.deleteMany({
+  // Retired rather than removed: the row is the only place the org's last known
+  // tier / period / identifier lives, and support needs it after the fact. Every
+  // read path filters on deletedAt, and createOrUpdateSubscription revives the
+  // row (deletedAt: null) if the org subscribes again.
+  deleteSubscriptionByCustomerId(
+    customerId: string,
+    status: SubscriptionStatus = 'EXPIRED'
+  ) {
+    return this._subscription.model.subscription.updateMany({
       where: {
         organization: {
           paymentId: customerId,
         },
+        deletedAt: null,
+      },
+      data: {
+        status,
+        deletedAt: new Date(),
+      },
+    });
+  }
+
+  setStatusByCustomerId(customerId: string, status: SubscriptionStatus) {
+    return this._subscription.model.subscription.updateMany({
+      where: {
+        organization: {
+          paymentId: customerId,
+        },
+        deletedAt: null,
+      },
+      data: {
+        status,
       },
     });
   }
@@ -113,6 +139,7 @@ export class SubscriptionRepository {
     return this._subscription.model.subscription.findFirst({
       where: {
         organizationId: orgId,
+        deletedAt: null,
       },
     });
   }
@@ -123,6 +150,7 @@ export class SubscriptionRepository {
         organization: {
           paymentId: customerId,
         },
+        deletedAt: null,
       },
     });
   }
@@ -143,6 +171,7 @@ export class SubscriptionRepository {
     billing: 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE',
     period: 'MONTHLY' | 'YEARLY',
     cancelAt: number | null,
+    status: SubscriptionStatus,
     code?: string,
     org?: { id: string }
   ) {
@@ -171,6 +200,7 @@ export class SubscriptionRepository {
         identifier,
         isLifetime: !!code,
         cancelAt: cancelAt ? new Date(cancelAt * 1000) : null,
+        status,
         deletedAt: null,
       },
       create: {
@@ -181,6 +211,7 @@ export class SubscriptionRepository {
         period,
         cancelAt: cancelAt ? new Date(cancelAt * 1000) : null,
         identifier,
+        status,
         deletedAt: null,
       },
     });

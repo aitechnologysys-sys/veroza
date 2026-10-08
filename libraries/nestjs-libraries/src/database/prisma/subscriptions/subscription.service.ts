@@ -3,7 +3,7 @@ import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions
 import { SubscriptionRepository } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.repository';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
-import { Organization } from '@prisma/client';
+import { Organization, SubscriptionStatus } from '@prisma/client';
 import dayjs from 'dayjs';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 
@@ -33,14 +33,25 @@ export class SubscriptionService {
     return this._subscriptionRepository.getCode(code);
   }
 
-  async deleteSubscription(customerId: string) {
+  async deleteSubscription(
+    customerId: string,
+    status: SubscriptionStatus = 'EXPIRED'
+  ) {
     await this.modifySubscription(
       customerId,
       pricing.FREE.channel || 0,
       'FREE'
     );
     return this._subscriptionRepository.deleteSubscriptionByCustomerId(
-      customerId
+      customerId,
+      status
+    );
+  }
+
+  setSubscriptionStatus(customerId: string, status: SubscriptionStatus) {
+    return this._subscriptionRepository.setStatusByCustomerId(
+      customerId,
+      status
     );
   }
 
@@ -178,6 +189,7 @@ export class SubscriptionService {
     billing: 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE',
     period: 'MONTHLY' | 'YEARLY',
     cancelAt: number | null,
+    status: SubscriptionStatus,
     code?: string,
     org?: string
   ) {
@@ -203,6 +215,7 @@ export class SubscriptionService {
       billing,
       period,
       cancelAt,
+      status,
       code,
       org ? { id: org } : undefined
     );
@@ -257,6 +270,7 @@ export class SubscriptionService {
       subscription,
       'MONTHLY',
       null,
+      'ACTIVE',
       undefined,
       orgId
     );

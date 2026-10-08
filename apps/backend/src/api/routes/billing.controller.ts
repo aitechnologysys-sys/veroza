@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpException, Inject, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpException, Inject, Param, Post, Query, Req } from '@nestjs/common';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { IBillingProvider } from '@gitroom/nestjs-libraries/services/billing.provider.interface';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
@@ -9,6 +9,8 @@ import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.req
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { Request } from 'express';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
+import { BillingEventsService } from '@gitroom/nestjs-libraries/database/prisma/billing-events/billing.events.service';
+import { BillingEventType } from '@prisma/client';
 
 @ApiTags('Billing')
 @Controller('/billing')
@@ -16,7 +18,8 @@ export class BillingController {
   constructor(
     private _subscriptionService: SubscriptionService,
     @Inject('BILLING_PROVIDER') private _billingService: IBillingProvider,
-    private _notificationService: NotificationService
+    private _notificationService: NotificationService,
+    private _billingEventsService: BillingEventsService
   ) {}
 
   @Get('/check/:id')
@@ -164,7 +167,34 @@ export class BillingController {
       throw new HttpException('Unauthorized', 400);
     }
 
-    return this._billingService.refundCharges(org.id, body.chargeIds);
+    return this._billingService.refundCharges(
+      org.id,
+      body.chargeIds,
+      user.id
+    );
+  }
+
+  /**
+   * The billing audit trail for one organization. Superadmin-only, like the
+   * charges and refund endpoints it exists to explain.
+   */
+  @Get('/events')
+  async billingEvents(
+    @GetUserFromRequest() user: User,
+    @GetOrgFromRequest() org: Organization,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('type') type?: BillingEventType
+  ) {
+    if (!user.isSuperAdmin) {
+      throw new HttpException('Unauthorized', 400);
+    }
+
+    return this._billingEventsService.list(org.id, {
+      page: page ? +page : 0,
+      limit: limit ? +limit : 50,
+      type,
+    });
   }
 
   @Post('/cancel-subscription')
@@ -176,7 +206,7 @@ export class BillingController {
       throw new HttpException('Unauthorized', 400);
     }
 
-    return this._billingService.cancelSubscription(org.id);
+    return this._billingService.cancelSubscription(org.id, user.id);
   }
 
   @Post('/add-subscription')

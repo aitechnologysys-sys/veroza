@@ -19,7 +19,8 @@ Companion docs:
    - `BILLING_PROVIDER` — *which gateway* handles checkout when it is.
 
    Previously these were conflated: the presence of `STRIPE_PUBLISHABLE_KEY` / `STRIPE_SECRET_KEY` acted as the enforcement gate in 15 scattered places. That is fixed — see [The billing gate](#the-billing-gate-billing_enabled).
-4. For Stripe test mode you do **not** need to create any products by hand — upstream Postiz creates Stripe Products and Prices on the fly, name-matched. If you want to pre-create them, the exact required shape is in [What to create in Stripe test mode](#what-to-create-in-stripe-test-mode).
+4. **Refunds, cancellation behaviour and subscription state have their own document** — [billing-refund-policy.md](./billing-refund-policy.md). Read it before changing anything in `setToCancel()`, `subscribe()`'s proration, `createBillingPortalLink()`, or the webhook switch. Short version: the only code path that returns money is the superadmin-gated `refundCharges()`, everything else merely stops future charges, and every money or lifecycle event is written to the append-only `BillingEvent` table.
+5. For Stripe test mode you do **not** need to create any products by hand — upstream Postiz creates Stripe Products and Prices on the fly, name-matched. If you want to pre-create them, the exact required shape is in [What to create in Stripe test mode](#what-to-create-in-stripe-test-mode).
 
 ---
 
@@ -158,6 +159,9 @@ This is a deliberate divergence from upstream. Keep it in its own commit so `git
 | `prorate()` | Returns `{ price: 0 }`. Polar has no proration-preview API. | Upgrade flow shows no prorated amount. |
 | Plan upgrade (`subscribe()` with an existing sub) | **Cancels the old subscription, then creates a brand-new checkout.** Stripe upgraded in place with `proration_behavior: 'always_invoice'`. | User re-enters payment; there's a window where they have no active subscription. Worth revisiting — Polar does support subscription product updates. |
 | `getCharges()` | `refunded` hardcoded `false`, `amount_refunded` `0`, no `receiptUrl` / `invoicePdfUrl`. | Admin charges view loses invoice PDF links and refund state. |
+| `BillingEvent` audit trail | Not written at all. Polar maps gateway status onto `SubscriptionStatus` and nothing more; `refundCharges()` takes `actorUserId` to satisfy the interface and ignores it. | A Polar-backed deployment has no billing audit trail — no record of who approved a refund. Blocks switching back. See [billing-refund-policy.md](./billing-refund-policy.md). |
+| Payment-failure / dispute webhooks | Not handled. Stripe handles `invoice.payment_failed`, `charge.dispute.created` and `charge.dispute.closed`. | No `PAST_DUE` transition and no dunning notice to the customer under Polar. |
+| Portal configuration | `POST /v1/customer-sessions` with no configuration pinning. Stripe pins an explicit portal configuration so cancellation cannot be switched to "immediately, with refund" from the dashboard. | Polar's portal behaviour is whatever the Polar dashboard says. |
 | Card pre-authorisation | Not done. Stripe ran a $1 authorise-and-cancel before honouring a trial (`stripe.service.ts:30-98`). | Polar validates the card itself before firing the webhook, so this is acceptable, but trial abuse characteristics differ. |
 | `checkSubscription()` fallback | Only returns `1` (cancelled) or `0`; never returns `2` from the Polar-side lookup. | Post-checkout polling relies on the webhook landing. Usually fine; slow webhooks make the success page spin longer. |
 
@@ -390,4 +394,5 @@ Not blocking, but worth tracking:
 2. **`POLAR_PRICE_*` naming** — `getConfiguredProductId()` (`polar.service.ts:198-207`) prefers `POLAR_PRODUCT_{TIER}_{PERIOD}` and falls back to `POLAR_PRICE_{TIER}_{PERIOD}`, then does a `/v1/products` scan to resolve a price id to its product id. `.env.prod` uses the `POLAR_PRICE_*` form. Setting `POLAR_PRODUCT_*` instead skips the extra API call and the in-memory cache entirely — simpler and one fewer failure mode.
 3. **`getPackages()` is dead code** — `stripe.service.ts:175-199` early-returns `{}` before touching Stripe. Still exposed via `users.controller.ts:181`. Upstream quirk; harmless.
 4. **Webhook handling isn't on the interface** — adding a third provider means adding a third controller. Fine for two providers; revisit if a third appears.
-5. **Polar feature gaps** — `finishTrial`, `checkDiscount`/`applyDiscount`, `prorate` and in-place upgrades are all stubs or degraded (section 3). Only matters when Polar comes back.
+5. **Polar feature gaps** — `finishTrial`, `checkDiscount`/`applyDiscount`, `prorate` and in-place upgrades are all stubs or degraded, and there is no `BillingEvent` audit trail, payment-failure handling or dispute handling (section 3). Only matters when Polar comes back, but the audit-trail gap is a compliance one, not a feature one.
+6. **`prorate()` preview vs. what `subscribe()` actually does** — the preview quotes with `create_prorations` + `billing_cycle_anchor: 'now'`, while `subscribe()` uses `always_invoice` for upgrades and `create_prorations` (no anchor reset) for downgrades. The quoted figure is therefore approximate, particularly on a downgrade. It is display-only and moves no money, but the two should be reconciled.

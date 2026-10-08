@@ -22,12 +22,22 @@ export class StripeController {
       process.env.STRIPE_SIGNING_KEY
     );
 
+    // Invoice and dispute objects do not carry our subscription metadata, so the
+    // "is this ours?" guard below cannot apply to them — they are resolved to an
+    // organization by customer id inside the service instead.
+    const bypassesMetadataCheck = [
+      'invoice.payment_succeeded',
+      'invoice.payment_failed',
+      'charge.dispute.created',
+      'charge.dispute.closed',
+    ];
+
     // Maybe it comes from another stripe webhook
     if (
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       event?.data?.object?.metadata?.service !== 'postaryx' &&
-      event.type !== 'invoice.payment_succeeded'
+      !bypassesMetadataCheck.includes(event.type)
     ) {
       return { ok: true };
     }
@@ -35,6 +45,12 @@ export class StripeController {
       switch (event.type) {
         case 'invoice.payment_succeeded':
           return this._stripeService.paymentSucceeded(event);
+        case 'invoice.payment_failed':
+          return this._stripeService.paymentFailed(event);
+        case 'charge.dispute.created':
+          return this._stripeService.disputeCreated(event);
+        case 'charge.dispute.closed':
+          return this._stripeService.disputeClosed(event);
         case 'customer.subscription.created':
           return this._stripeService.createSubscription(event);
         case 'customer.subscription.updated':

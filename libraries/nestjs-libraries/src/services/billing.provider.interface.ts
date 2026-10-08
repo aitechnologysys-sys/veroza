@@ -52,9 +52,16 @@ export interface IBillingProvider {
     code: string
   ): Promise<{ success: boolean }>;
   getCharges(organizationId: string): Promise<any[]>;
+  // actorUserId identifies the admin who approved the refund / cancellation; it
+  // is recorded on the BillingEvent so every manual money decision has a name
+  // attached to it.
   refundCharges(
     organizationId: string,
-    chargeIds: string[]
+    chargeIds: string[],
+    actorUserId?: string
   ): Promise<{ refunded: string[]; failed: string[] }>;
-  cancelSubscription(organizationId: string): Promise<{ cancelled: boolean }>;
+  cancelSubscription(
+    organizationId: string,
+    actorUserId?: string
+  ): Promise<{ cancelled: boolean }>;
 }

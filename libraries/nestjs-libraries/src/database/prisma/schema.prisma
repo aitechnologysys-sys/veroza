@@ -43,6 +43,7 @@ model Organization {
   webhooks            Webhooks[]
   oauthApp            OAuthApp[]
   oauthAuthorizations OAuthAuthorization[]
+  billingEvents       BillingEvent[]
 
   @@index([apiKey])
   @@index([streakSince])
@@ -281,21 +282,48 @@ model Credits {
 }
 
 model Subscription {
-  id               String           @id @default(cuid())
-  organizationId   String           @unique
+  id               String             @id @default(cuid())
+  organizationId   String             @unique
   subscriptionTier SubscriptionTier
   identifier       String?
   cancelAt         DateTime?
   period           Period
   totalChannels    Int
-  isLifetime       Boolean          @default(false)
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  isLifetime       Boolean            @default(false)
+  status           SubscriptionStatus @default(ACTIVE)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
   deletedAt        DateTime?
-  organization     Organization     @relation(fields: [organizationId], references: [id])
+  organization     Organization       @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
   @@index([deletedAt])
+  @@index([status])
+}
+
+// Append-only audit trail for every subscription / payment / refund / dispute
+// event, so billing history survives the Subscription row being retired and is
+// queryable without going to the gateway dashboard. Never mutated or deleted.
+model BillingEvent {
+  id             String           @id @default(uuid())
+  organizationId String
+  provider       String           @default("stripe")
+  type           BillingEventType
+  // Gateway object id the event is about (sub_, in_, ch_, re_, dp_, cs_).
+  reference      String?
+  // Set only when a human triggered the event (admin refund / cancellation).
+  actorUserId    String?
+  // Minor units (cents), as the gateway reports them.
+  amount         Int?
+  currency       String?
+  description    String?
+  payload        String           @default("{}")
+  createdAt      DateTime         @default(now())
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([type])
+  @@index([reference])
 }
 
 model Customer {
@@ -917,6 +945,39 @@ enum SubscriptionTier {
 enum Period {
   MONTHLY
   YEARLY
+}
+
+enum SubscriptionStatus {
+  // Inside the 7-day trial. No money has been taken yet.
+  TRIALING
+  // Paid and current.
+  ACTIVE
+  // A renewal charge failed; the gateway is still retrying (dunning).
+  PAST_DUE
+  // Cancellation requested. Access continues until cancelAt.
+  CANCELED
+  // Reached the end of the paid period and was not renewed.
+  EXPIRED
+  // Dunning ran out or the card was rejected outright. Terminal.
+  FAILED
+}
+
+enum BillingEventType {
+  SUBSCRIPTION_CREATED
+  SUBSCRIPTION_UPDATED
+  SUBSCRIPTION_CANCEL_SCHEDULED
+  SUBSCRIPTION_CANCEL_REVERTED
+  SUBSCRIPTION_CANCELED_IMMEDIATELY
+  SUBSCRIPTION_DELETED
+  PLAN_CHANGED
+  TRIAL_FINISHED
+  PAYMENT_SUCCEEDED
+  PAYMENT_FAILED
+  REFUND_ISSUED
+  REFUND_FAILED
+  DISPUTE_CREATED
+  DISPUTE_CLOSED
+  LIFETIME_REDEEMED
 }
 
 enum Provider {

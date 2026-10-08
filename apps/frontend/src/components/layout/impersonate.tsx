@@ -37,6 +37,98 @@ const useCharges = () => {
   });
 };
 
+interface BillingEvent {
+  id: string;
+  type: string;
+  provider: string;
+  reference: string | null;
+  actorUserId: string | null;
+  amount: number | null;
+  currency: string | null;
+  description: string | null;
+  createdAt: string;
+}
+
+const useBillingEvents = () => {
+  const fetch = useFetch();
+  return useSWR<{ items: BillingEvent[] }>(
+    '/billing/events',
+    async () => {
+      return (await fetch('/billing/events?limit=50')).json();
+    },
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      revalidateIfStale: false,
+    }
+  );
+};
+
+// Events that moved money, so they read differently from lifecycle noise.
+const MONEY_EVENTS = [
+  'REFUND_ISSUED',
+  'REFUND_FAILED',
+  'PAYMENT_FAILED',
+  'DISPUTE_CREATED',
+  'DISPUTE_CLOSED',
+];
+
+const BillingEventsLog: FC = () => {
+  const t = useT();
+  const { data } = useBillingEvents();
+  const events = data?.items || [];
+
+  if (!events.length) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-col gap-[8px]">
+      <div className="text-[14px] font-bold">
+        {t('billing_history', 'Billing history')}
+      </div>
+      <div className="max-h-[200px] overflow-y-auto flex flex-col gap-[4px]">
+        {events.map((event) => (
+          <div
+            key={event.id}
+            className="flex gap-[8px] items-baseline text-[12px] border-b border-newTableBorder py-[4px]"
+          >
+            <span className="text-newTextColor/60 shrink-0">
+              {new Date(event.createdAt).toLocaleString()}
+            </span>
+            <span
+              className={`shrink-0 font-bold ${
+                MONEY_EVENTS.includes(event.type)
+                  ? 'text-red-400'
+                  : 'text-newTextColor/80'
+              }`}
+            >
+              {event.type.split('_').join(' ').toLowerCase()}
+            </span>
+            {typeof event.amount === 'number' && (
+              <span className="shrink-0">
+                ${(event.amount / 100).toFixed(2)}{' '}
+                {(event.currency || 'usd').toUpperCase()}
+              </span>
+            )}
+            <span className="text-newTextColor/60 truncate">
+              {event.description}
+            </span>
+            {event.actorUserId && (
+              <span
+                className="text-newTextColor/40 shrink-0"
+                title={event.actorUserId}
+              >
+                {t('by_admin', 'by admin')}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const ChargesModal: FC<{ close: () => void }> = ({ close }) => {
   const fetch = useFetch();
   const t = useT();
@@ -215,6 +307,7 @@ const ChargesModal: FC<{ close: () => void }> = ({ close }) => {
           </table>
         )}
       </div>
+      <BillingEventsLog />
       <div className="flex gap-[12px] justify-end">
         <Button
           onClick={handleRefund}

@@ -1,7 +1,11 @@
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 export const ChromeExtensionComponent = () => {
   const { billingEnabled } = useVariables();
-  if (!billingEnabled) {
+  // Hidden until Postaryx has its own Web Store listing — the link below is
+  // upstream Postiz's extension. Kept here rather than removed from the header
+  // so upstream layout changes still merge cleanly.
+  const hasOwnListing = false;
+  if (!billingEnabled || !hasOwnListing) {
     return null;
   }
   return (

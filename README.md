@@ -395,3 +395,90 @@ Two cautions:
 | [docs/INFRASTRUCTURE-AND-DEPLOYMENT.md](docs/INFRASTRUCTURE-AND-DEPLOYMENT.md)                     | Architecture overview                                                                                                        |
 | [docs/billing-current-state.md](docs/billing-current-state.md)                                     | Stripe/Polar wiring, `BILLING_ENABLED`                                                                                       |
 | [CLAUDE.md](CLAUDE.md)                                                                             | Repo conventions, the Postaryx rename policy, upstream-parity rule                                                           |
+
+## 7. Production health check: is anything stuck?
+
+Run these on the server. The orchestrator can sit at `online` in pm2 while
+doing nothing. When that happens no emails and no scheduled posts go out, and
+nothing alerts you. The `main` task-queue check below is the one that catches it.
+
+### Check (paste as one block)
+
+```bash
+echo "== pm2 processes"
+docker exec postaryx pm2 ls
+
+echo "== CPU / memory (real processes)"
+docker exec postaryx ps -eo pid,etime,%cpu,rss,args --sort=-%cpu 2>/dev/null | head -6 || echo "ps not available"
+
+echo "== HTTP health"
+docker exec postaryx node -e '
+const checks = [
+  ["backend",      "http://localhost:3000/monitor/queue/check"],
+  ["frontend",     "http://localhost:4200/"],
+  ["orchestrator", "http://localhost:3002/health/status"],
+];
+(async () => {
+  for (const [name, url] of checks) {
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      console.log(name.padEnd(13), r.status);
+    } catch {
+      console.log(name.padEnd(13), "DOWN");
+    }
+  }
+})()'
+
+echo "== Is anything picking up jobs (emails + posts)?"
+docker exec temporal-admin-tools temporal task-queue describe --task-queue main --address temporal:7233
+```
+
+### Reading it
+
+| Check            | Healthy                                                      | Stuck                                     |
+| ---------------- | ------------------------------------------------------------ | ----------------------------------------- |
+| pm2              | all 3 `online`, `↺` not going up between checks              | `errored`, or `↺` climbing                |
+| HTTP             | `backend 200`, `frontend 200`, `orchestrator 200`            | `DOWN` or `500`                           |
+| `main` task queue | at least one **poller** with a last-access time in the last minute | no pollers, or last access minutes ago |
+
+For the first 2–3 minutes after a restart the orchestrator sits at 100% CPU with
+no pollers. That's normal: it builds one workflow bundle per task queue (webpack
+output lands in `orchestrator-error.log`, but it isn't an error). Only treat it
+as stuck if it's still like that after about 5 minutes, or if its log ends at the
+`node --experimental-require-module …` line with nothing after it.
+
+### Restarting what's stuck
+
+Capture the evidence first (the `ps` output above, plus the line below) so the
+cause can be found:
+
+```bash
+docker exec postaryx pm2 logs orchestrator --lines 30 --nostream
+```
+
+Then restart only what's broken:
+
+```bash
+# Orchestrator stuck (no pollers on main / health DOWN)
+docker exec postaryx pm2 restart orchestrator
+
+# Backend or frontend DOWN
+docker exec postaryx pm2 restart backend
+docker exec postaryx pm2 restart frontend
+
+# The task-queue command itself can't connect → Temporal is the problem
+docker compose -p postaryx-prod restart temporal
+docker exec postaryx pm2 restart orchestrator   # so it reconnects
+
+# Last resort: the whole app container (also re-runs prisma-db-push)
+docker compose -p postaryx-prod restart postaryx
+```
+
+Wait about 3 minutes after any restart, then run the check again. You're done
+when `main` shows a fresh poller.
+
+- After **changing `.env.prod`**, `restart` isn't enough. Run
+  `docker compose -p postaryx-prod up -d postaryx` from the folder with
+  `docker-compose.yaml` (see [Restarting a service after an env change](#restarting-a-service-after-an-env-change)).
+- The orchestrator's `/health/status` only proves Nest started and can reach
+  Temporal. The `main` poller check is what proves jobs are actually running.

@@ -148,9 +148,34 @@ export class KickProvider extends SocialAbstract implements SocialProvider {
     return {
       id: String(user.user_id || user.id),
       name: user.name,
-      username: user.name,
+      username: (await this.getChannelSlug(accessToken)) || user.name,
       picture: user.profile_picture || '',
     };
+  }
+
+  // Channel URLs use the slug, which differs from the username
+  // (e.g. "swe_qwertz15" -> kick.com/swe-qwertz15). With no query params
+  // the endpoint returns the authenticated user's own channel.
+  private async getChannelSlug(
+    accessToken: string
+  ): Promise<string | undefined> {
+    try {
+      const channelResponse = await fetch(
+        'https://api.kick.com/public/v1/channels',
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      const channelData = await channelResponse.json();
+      const channel = channelData.data?.[0] || channelData.data;
+      return channel?.slug || undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   async post(

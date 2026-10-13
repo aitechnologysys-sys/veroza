@@ -3,6 +3,10 @@ import {
   Injectable,
   PipeTransform,
 } from '@nestjs/common';
+import {
+  MAX_UPLOAD_SIZE,
+  MAX_UPLOAD_SIZE_LABEL,
+} from '@gitroom/helpers/utils/max.upload.size';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { fromBuffer } = require('file-type');
 
@@ -16,6 +20,10 @@ const ALLOWED_MIME_TYPES = new Set<string>([
   'image/tiff',
   'video/mp4',
 ]);
+
+// multer (busboy) rejects a file that reaches `fileSize`, so allow one extra byte
+// to accept files of exactly MAX_UPLOAD_SIZE, matching the check below.
+export const UPLOAD_LIMITS = { fileSize: MAX_UPLOAD_SIZE + 1 };
 
 @Injectable()
 export class CustomFileValidationPipe implements PipeTransform {
@@ -38,10 +46,9 @@ export class CustomFileValidationPipe implements PipeTransform {
       throw new BadRequestException('Unsupported file type.');
     }
 
-    const maxSize = this.getMaxSize(detected.mime);
-    if (value.size > maxSize) {
+    if (value.size > MAX_UPLOAD_SIZE) {
       throw new BadRequestException(
-        `File size exceeds the maximum allowed size of ${maxSize} bytes.`
+        `File is too large. The maximum size is ${MAX_UPLOAD_SIZE_LABEL}.`
       );
     }
 
@@ -53,15 +60,5 @@ export class CustomFileValidationPipe implements PipeTransform {
     value.originalname = `${safeBase}.${detected.ext}`;
 
     return value;
-  }
-
-  private getMaxSize(mimeType: string): number {
-    if (mimeType.startsWith('image/')) {
-      return 10 * 1024 * 1024; // 10 MB
-    } else if (mimeType.startsWith('video/')) {
-      return 1024 * 1024 * 1024; // 1 GB
-    } else {
-      throw new BadRequestException('Unsupported file type.');
-    }
   }
 }

@@ -8,12 +8,17 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
+  HeadObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Request, Response } from 'express';
 import crypto from 'crypto';
 import path from 'path';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import {
+  MAX_UPLOAD_SIZE,
+  MAX_UPLOAD_SIZE_LABEL,
+} from '@gitroom/helpers/utils/max.upload.size';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { fromBuffer } = require('file-type');
 
@@ -111,6 +116,12 @@ export async function createMultipartUpload(req: Request, res: Response) {
   if (!safeExt) {
     return res.status(400).json({ message: 'Unsupported file type.' });
   }
+  const declaredSize = Number(file?.size);
+  if (!Number.isFinite(declaredSize) || declaredSize > MAX_UPLOAD_SIZE) {
+    return res.status(400).json({
+      message: `File is too large. The maximum size is ${MAX_UPLOAD_SIZE_LABEL}.`,
+    });
+  }
   const safeContentType = ALLOWED_EXT_TO_MIME[safeExt];
   const randomFilename = generateRandomString() + safeExt;
 
@@ -206,6 +217,20 @@ export async function completeMultipartUpload(req: Request, res: Response) {
       return res.status(400).json({ message: 'Unsupported file type.' });
     }
     const expectedMime = ALLOWED_EXT_TO_MIME[safeExt];
+
+    // The client declares the size up front, but parts go straight to R2 via
+    // presigned URLs, so check the real object size before accepting it.
+    const { ContentLength } = await R2.send(
+      new HeadObjectCommand({ Bucket: CLOUDFLARE_BUCKETNAME, Key: key })
+    );
+    if (!ContentLength || ContentLength > MAX_UPLOAD_SIZE) {
+      await R2.send(
+        new DeleteObjectCommand({ Bucket: CLOUDFLARE_BUCKETNAME, Key: key })
+      );
+      return res.status(400).json({
+        message: `File is too large. The maximum size is ${MAX_UPLOAD_SIZE_LABEL}.`,
+      });
+    }
 
     const head = await R2.send(
       new GetObjectCommand({

@@ -1029,3 +1029,69 @@ model Announcement {
   color       AnnouncementColor @default(INFO)
   createdAt   DateTime          @default(now())
 }
+
+// Which Meta app a signed_request arrived from. App-scoped user IDs are only
+// comparable inside the app that issued them, so every lookup is keyed on the
+// app as well as the ID — the same person has a different ID per app.
+enum MetaApp {
+  // One app serves both the `facebook` and `instagram` providers; they share
+  // FACEBOOK_APP_ID/SECRET, so their IDs live in the same space.
+  FACEBOOK
+  // `instagram-standalone`, which has its own INSTAGRAM_APP_ID/SECRET.
+  INSTAGRAM
+  // `threads`, which has its own THREADS_APP_ID/SECRET.
+  THREADS
+}
+
+enum MetaCallbackType {
+  // The user removed the app from their Meta settings.
+  DEAUTHORIZE
+  // The user asked for their data to be deleted.
+  DATA_DELETION
+}
+
+enum MetaDeletionStatus {
+  // Accepted and queued, not yet picked up.
+  PENDING
+  // A worker is deleting.
+  PROCESSING
+  // Finished; nothing left to remove.
+  COMPLETED
+  // Gave up after retries. Needs an operator.
+  FAILED
+  // The signature verified but no integration matched the ID, so there is
+  // nothing to delete. Kept for audit rather than deleting blindly.
+  UNMATCHED
+}
+
+// One Meta deauthorization or data-deletion callback. Rows are the audit trail
+// for a legal obligation, so they are kept after the data itself is gone.
+model MetaDeletionRequest {
+  id               String             @id @default(uuid())
+  // Unguessable code handed back to Meta and used as the public status key.
+  confirmationCode String             @unique
+  callbackType     MetaCallbackType
+  metaApp          MetaApp
+  // The app-scoped user ID from the verified signed_request.
+  metaUserId       String
+  status           MetaDeletionStatus @default(PENDING)
+  // How many integrations the ID resolved to. 0 means UNMATCHED.
+  matchedCount     Int                @default(0)
+  // JSON [{id, organizationId}] of the integrations this request resolved to,
+  // recorded before anything is scrubbed. The scrub clears rootInternalId, so
+  // a retry could no longer re-derive the set by lookup and would wrongly
+  // settle as UNMATCHED with cached data still present.
+  matchedTargets   String?
+  // Operator-facing reason when status is FAILED. Never shown publicly.
+  failureReason    String?
+  attempts         Int                @default(0)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  completedAt      DateTime?
+
+  // Deduplication of replayed callbacks is done in the service against the
+  // open statuses; a DB unique here would also block the legitimate case of a
+  // user reconnecting and later asking for deletion again.
+  @@index([metaApp, metaUserId])
+  @@index([status])
+}

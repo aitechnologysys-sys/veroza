@@ -1,5 +1,13 @@
 services:
   postaryx:
+    # Cap container logs. Without this Docker's json-file driver grows without
+    # bound and keeps everything for the life of the container, which is how a
+    # credential printed once can sit on disk indefinitely.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     # PULL our own image — never build here. Dockerfile.dev builds all three apps
     # inside the image with a 4 GB Node heap, which spikes this box to ~11.4 GB
     # against 12 GB and can OOM the running stack. The build happens in GitHub
@@ -114,6 +122,14 @@ services:
         condition: service_healthy
 
   postaryx-postgres:
+    # Cap container logs. Without this Docker's json-file driver grows without
+    # bound and keeps everything for the life of the container, which is how a
+    # credential printed once can sit on disk indefinitely.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     image: postgres:17-alpine
     container_name: postaryx-postgres
     restart: always
@@ -142,6 +158,14 @@ services:
       timeout: 3s
       retries: 3
   postaryx-redis:
+    # Cap container logs. Without this Docker's json-file driver grows without
+    # bound and keeps everything for the life of the container, which is how a
+    # credential printed once can sit on disk indefinitely.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     image: redis:7.2
     container_name: postaryx-redis
     restart: always
@@ -177,6 +201,14 @@ services:
   # Temporal Stack
   # -----------------------
   temporal-elasticsearch:
+    # Cap container logs. Without this Docker's json-file driver grows without
+    # bound and keeps everything for the life of the container, which is how a
+    # credential printed once can sit on disk indefinitely.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     container_name: temporal-elasticsearch
     image: elasticsearch:7.17.27
     restart: unless-stopped
@@ -196,6 +228,14 @@ services:
       - temporal-es-volume:/var/lib/elasticsearch/data
 
   temporal-postgresql:
+    # Cap container logs. Without this Docker's json-file driver grows without
+    # bound and keeps everything for the life of the container, which is how a
+    # credential printed once can sit on disk indefinitely.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     container_name: temporal-postgresql
     image: postgres:16
     restart: unless-stopped
@@ -214,6 +254,14 @@ services:
       - temporal-postgres-volume:/var/lib/postgresql/data
 
   temporal:
+    # Cap container logs. Without this Docker's json-file driver grows without
+    # bound and keeps everything for the life of the container, which is how a
+    # credential printed once can sit on disk indefinitely.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     container_name: temporal
     restart: unless-stopped
     ports:
@@ -268,6 +316,14 @@ services:
       start_period: 120s
 
   temporal-admin-tools:
+    # Cap container logs. Without this Docker's json-file driver grows without
+    # bound and keeps everything for the life of the container, which is how a
+    # credential printed once can sit on disk indefinitely.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     container_name: temporal-admin-tools
     image: temporalio/admin-tools:1.28.1-tctl-1.18.4-cli-1.4.1
     restart: unless-stopped
@@ -282,6 +338,14 @@ services:
     tty: true
 
   temporal-ui:
+    # Cap container logs. Without this Docker's json-file driver grows without
+    # bound and keeps everything for the life of the container, which is how a
+    # credential printed once can sit on disk indefinitely.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     container_name: temporal-ui
     image: temporalio/ui:2.34.0
     restart: unless-stopped

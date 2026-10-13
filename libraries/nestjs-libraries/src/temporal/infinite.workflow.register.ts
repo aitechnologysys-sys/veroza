@@ -15,6 +15,16 @@ export class InfiniteWorkflowRegister implements OnModuleInit {
             taskQueue: 'main',
           });
       } catch (err) {}
+
+      try {
+        // Safety net for Meta deletion requests whose workflow never started.
+        await this._temporalService.client
+          ?.getRawClient()
+          ?.workflow?.start('metaDeletionReconcileWorkflow', {
+            workflowId: 'meta-deletion-reconcile-workflow',
+            taskQueue: 'main',
+          });
+      } catch (err) {}
     }
   }
 }

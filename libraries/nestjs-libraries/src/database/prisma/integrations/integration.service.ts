@@ -372,6 +372,13 @@ export class IntegrationService {
   ): Promise<AnalyticsData[]> {
     const getIntegration = await this.getIntegrationById(org.id, integration);
 
+    // A deleted integration must not refill the analytics cache: deletion
+    // clears the cached entries, and a concurrent or later read would
+    // otherwise write Meta-derived data straight back under the same keys.
+    if (getIntegration?.deletedAt) {
+      return [];
+    }
+
     if (!getIntegration) {
       throw new Error('Invalid integration');
     }

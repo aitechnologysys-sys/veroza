@@ -4,6 +4,14 @@
 
 services:
   postaryx-postgres:
+    # Cap container logs. Without this Docker's json-file driver grows without
+    # bound and keeps everything for the life of the container, which is how a
+    # credential printed once can sit on disk indefinitely.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     # ref: https://hub.docker.com/_/postgres
     image: postgres:17-alpine # 17.0
     container_name: postaryx-postgres
@@ -24,6 +32,14 @@ services:
     networks:
       - postaryx-network
   postaryx-redis:
+    # Cap container logs. Without this Docker's json-file driver grows without
+    # bound and keeps everything for the life of the container, which is how a
+    # credential printed once can sit on disk indefinitely.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     # ref: https://hub.docker.com/_/redis
     image: redis:7-alpine # 7.4.0
     container_name: postaryx-redis
@@ -33,6 +49,14 @@ services:
     networks:
       - postaryx-network
   postaryx-pg-admin:
+    # Cap container logs. Without this Docker's json-file driver grows without
+    # bound and keeps everything for the life of the container, which is how a
+    # credential printed once can sit on disk indefinitely.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     # ref: https://hub.docker.com/r/dpage/pgadmin4/tags
     image: dpage/pgadmin4:latest
     container_name: postaryx-pg-admin
@@ -45,6 +69,14 @@ services:
     networks:
       - postaryx-network
   postaryx-redisinsight:
+    # Cap container logs. Without this Docker's json-file driver grows without
+    # bound and keeps everything for the life of the container, which is how a
+    # credential printed once can sit on disk indefinitely.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     # ref: https://hub.docker.com/r/redis/redisinsight
     image: redis/redisinsight:latest
     container_name: postaryx-redisinsight
@@ -59,6 +91,14 @@ services:
     restart: always
 
   temporal-elasticsearch:
+    # Cap container logs. Without this Docker's json-file driver grows without
+    # bound and keeps everything for the life of the container, which is how a
+    # credential printed once can sit on disk indefinitely.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     container_name: temporal-elasticsearch
     image: elasticsearch:7.17.27
     environment:
@@ -77,6 +117,14 @@ services:
       - temporal-es-volume:/var/lib/elasticsearch/data
 
   temporal-postgresql:
+    # Cap container logs. Without this Docker's json-file driver grows without
+    # bound and keeps everything for the life of the container, which is how a
+    # credential printed once can sit on disk indefinitely.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     container_name: temporal-postgresql
     image: postgres:16
     environment:
@@ -94,6 +142,14 @@ services:
       - temporal-postgres-volume:/var/lib/postgresql/data
 
   temporal:
+    # Cap container logs. Without this Docker's json-file driver grows without
+    # bound and keeps everything for the life of the container, which is how a
+    # credential printed once can sit on disk indefinitely.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     container_name: temporal
     ports:
       - '127.0.0.1:7233:7233'
@@ -120,6 +176,14 @@ services:
       kompose.volume.type: configMap
 
   temporal-admin-tools:
+    # Cap container logs. Without this Docker's json-file driver grows without
+    # bound and keeps everything for the life of the container, which is how a
+    # credential printed once can sit on disk indefinitely.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     container_name: temporal-admin-tools
     image: temporalio/admin-tools:1.28.1-tctl-1.18.4-cli-1.4.1
     environment:
@@ -133,6 +197,14 @@ services:
     tty: true
 
   temporal-ui:
+    # Cap container logs. Without this Docker's json-file driver grows without
+    # bound and keeps everything for the life of the container, which is how a
+    # credential printed once can sit on disk indefinitely.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     container_name: temporal-ui
     image: temporalio/ui:2.34.0
     environment:

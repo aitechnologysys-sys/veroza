@@ -14,6 +14,7 @@ import slugify from 'slugify';
 import axios from 'axios';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import { string } from 'yup';
+import { logProviderError } from '@gitroom/nestjs-libraries/helpers/redact';
 
 export class WordpressProvider
   extends SocialAbstract
@@ -133,7 +134,7 @@ export class WordpressProvider
         username: body.username,
       };
     } catch (err) {
-      console.log(err);
+      logProviderError('wordpress', 'authenticate', err);
       return 'Invalid credentials';
     }
   }

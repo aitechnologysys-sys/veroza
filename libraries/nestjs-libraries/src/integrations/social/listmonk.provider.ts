@@ -12,6 +12,7 @@ import { ListmonkDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-sett
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import slugify from 'slugify';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
+import { logProviderError } from '@gitroom/nestjs-libraries/helpers/redact';
 
 export class ListmonkProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 100; // Bluesky has moderate rate limits
@@ -79,7 +80,6 @@ export class ListmonkProvider extends SocialAbstract implements SocialProvider {
     const body: { url: string; username: string; password: string } =
       JSON.parse(Buffer.from(params.code, 'base64').toString());
 
-    console.log(body);
     try {
       const basic = Buffer.from(body.username + ':' + body.password).toString(
         'base64'
@@ -105,7 +105,7 @@ export class ListmonkProvider extends SocialAbstract implements SocialProvider {
         username: data['app.site_name'],
       };
     } catch (e) {
-      console.log(e);
+      logProviderError('listmonk', 'authenticate', e);
       return 'Invalid credentials';
     }
   }

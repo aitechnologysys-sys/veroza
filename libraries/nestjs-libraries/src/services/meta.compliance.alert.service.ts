@@ -43,15 +43,19 @@ export class MetaComplianceAlertService {
     const environment = process.env.NODE_ENV || 'development';
     const timestamp = new Date().toISOString();
 
-    // initializeSentry() returns early when NEXT_PUBLIC_SENTRY_DSN is unset,
-    // and captureMessage then silently does nothing. Reporting that as
-    // delivered would hide a compliance alert that never left the process, so
-    // an uninitialized client counts as a delivery failure.
+    // initializeSentry() returns early when neither SENTRY_DSN nor the legacy
+    // NEXT_PUBLIC_SENTRY_DSN is set, and captureMessage then silently does
+    // nothing. Reporting that as delivered would hide a compliance alert that
+    // never left the process, so an uninitialized client counts as a delivery
+    // failure.
     const sentryReady = Boolean((Sentry as any).getClient?.());
 
     try {
       if (!sentryReady) {
-        throw new Error('Sentry is not initialized (NEXT_PUBLIC_SENTRY_DSN unset)');
+        // Name the variable an operator should actually set. SENTRY_DSN is
+        // what .env.example and scripts/preflight.sh use; NEXT_PUBLIC_* is a
+        // Next.js browser convention kept only for backward compatibility.
+        throw new Error('Sentry is not initialized (SENTRY_DSN unset)');
       }
 
       Sentry.withScope((scope) => {

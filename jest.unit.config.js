@@ -19,6 +19,9 @@ module.exports = {
   testMatch: ['**/*.spec.ts'],
   // Nest entrypoints load this before any decorated class.
   setupFiles: ['reflect-metadata'],
+  // Closes the Redis client that redis.service.ts opens at import time;
+  // without it the run finishes its tests and then hangs on an open socket.
+  setupFilesAfterEnv: ['<rootDir>/jest-setup/close-shared-handles.ts'],
   transform: {
     '^.+\\.ts$': [
       'ts-jest',

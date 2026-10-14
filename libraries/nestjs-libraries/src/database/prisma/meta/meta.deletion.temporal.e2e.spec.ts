@@ -29,12 +29,22 @@ import { AnalyticsCacheService } from '@gitroom/nestjs-libraries/redis/analytics
 import { MetaComplianceAlertService } from '@gitroom/nestjs-libraries/services/meta.compliance.alert.service';
 import { MetaActivity } from '@gitroom/orchestrator/activities/meta.activity';
 import { MetaController } from '@gitroom/backend/api/routes/meta.controller';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 
 const DATABASE_URL = process.env.META_E2E_DATABASE_URL;
 const REDIS_URL = process.env.META_E2E_REDIS_URL;
 const TEMPORAL_ADDRESS = process.env.META_E2E_TEMPORAL_ADDRESS;
 const enabled = DATABASE_URL && REDIS_URL && TEMPORAL_ADDRESS;
 const describeTemporal = enabled ? describe : describe.skip;
+
+// Importing the modules above constructs the shared Redis client in
+// redis.service.ts as an import side effect, before any test runs. When this
+// suite is skipped Jest runs no hook for this file, so nothing would close
+// that socket and the whole run hangs after the last test. Release it here;
+// when the suite is enabled the hooks own it instead.
+if (!enabled) {
+  (ioRedis as any)?.disconnect?.();
+}
 
 const FACEBOOK_SECRET = 'e2e-facebook-secret';
 // The workflow pins its activities to the 'main' queue (see
@@ -172,6 +182,8 @@ describeTemporal('Meta deletion through a real Temporal server (e2e)', () => {
   }, 180000);
 
   afterAll(async () => {
+    // shutdown() returns void: it only signals the worker to stop. The
+    // promise to wait on is run()'s, held in workerRun below.
     worker?.shutdown();
     await workerRun?.catch(() => undefined);
     await connection?.close().catch(() => undefined);

@@ -26,10 +26,20 @@ import { MetaDeletionService } from '@gitroom/nestjs-libraries/database/prisma/m
 import { IntegrationRepository } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.repository';
 import { AnalyticsCacheService } from '@gitroom/nestjs-libraries/redis/analytics.cache.service';
 import { MetaController } from '@gitroom/backend/api/routes/meta.controller';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 
 const DATABASE_URL = process.env.META_E2E_DATABASE_URL;
 const REDIS_URL = process.env.META_E2E_REDIS_URL;
 const describeE2E = DATABASE_URL && REDIS_URL ? describe : describe.skip;
+
+// Importing the modules above constructs the shared Redis client in
+// redis.service.ts as an import side effect, before any test runs. When this
+// suite is skipped Jest runs no hook for this file, so nothing would close
+// that socket and the whole run hangs after the last test. Release it here;
+// when the suite is enabled the hooks own it instead.
+if (!DATABASE_URL || !REDIS_URL) {
+  (ioRedis as any)?.disconnect?.();
+}
 
 const FACEBOOK_SECRET = 'e2e-facebook-secret';
 const THREADS_SECRET = 'e2e-threads-secret';

@@ -76,6 +76,7 @@ describeTemporal('Meta deletion through a real Temporal server (e2e)', () => {
   let controller: MetaController;
   let deletionService: MetaDeletionService;
   let analyticsCache: AnalyticsCacheService;
+  let activity: MetaActivity;
 
   const ORG = `e2e-org-${randomUUID()}`;
 
@@ -132,7 +133,7 @@ describeTemporal('Meta deletion through a real Temporal server (e2e)', () => {
     );
 
     // The real activity, wired to the real services.
-    const activity = new MetaActivity(
+    activity = new MetaActivity(
       deletionService,
       new MetaComplianceAlertService()
     );
@@ -145,13 +146,11 @@ describeTemporal('Meta deletion through a real Temporal server (e2e)', () => {
     worker = await Worker.create({
       connection: nativeConnection,
       taskQueue: TASK_QUEUE,
-      // The compiled workflow, which is what the orchestrator actually loads.
-      // Bundling the .ts source instead makes Temporal's swc-loader read
-      // apps/orchestrator/.swcrc, whose `baseUrl` is an absolute path from the
-      // upstream author's machine and fails to resolve anywhere else.
-      workflowsPath: require.resolve(
-        '../../../../../../apps/orchestrator/dist/apps/orchestrator/src/workflows/meta.deletion.workflow.js'
-      ),
+      // Both Meta workflows, bundled from source. Pointing at a single
+      // compiled file left metaDeletionReconcileWorkflow out of the bundle, so
+      // starting it failed with "no such function is exported by the workflow
+      // bundle" and the reconciler was never executed by any test.
+      workflowsPath: require.resolve('./meta.e2e.workflows'),
       activities: {
         processMetaDeletion: (id: string) => activity.processMetaDeletion(id),
         failMetaDeletion: (id: string, reason: string) =>
@@ -300,6 +299,153 @@ describeTemporal('Meta deletion through a real Temporal server (e2e)', () => {
     expect(settled!.attempts).toBe(1);
   }, 180000);
 
+  it('the real reconciler workflow runs on the server and schedules its sweep', async () => {
+    // Guards the gap this bundle entry was added for: when the workflow is
+    // missing from the bundle the task fails with "no such function is
+    // exported by the workflow bundle" and no timer is ever scheduled, while
+    // the execution still reports RUNNING. Asserting on status alone would
+    // pass against a workflow that never ran a line.
+    const workflowId = `meta-deletion-reconcile-real-${randomUUID()}`;
+    const handle = await client.workflow.start('metaDeletionReconcileWorkflow', {
+      args: [],
+      workflowId,
+      taskQueue: TASK_QUEUE,
+    });
+
+    let timerStarted = false;
+    let taskFailure: string | undefined;
+    for (let i = 0; i < 60 && !timerStarted; i++) {
+      const history = await handle.fetchHistory();
+      for (const event of history.events ?? []) {
+        if (event.timerStartedEventAttributes) {
+          timerStarted = true;
+        }
+        if (event.workflowTaskFailedEventAttributes) {
+          taskFailure =
+            event.workflowTaskFailedEventAttributes.failure?.message ??
+            'workflow task failed';
+        }
+      }
+      if (!timerStarted) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    }
+
+    // Reported before the timer assertion: it says *why* nothing was scheduled.
+    expect(taskFailure).toBeUndefined();
+    // The body reached `sleep('15 minutes')`, so the real workflow code ran.
+    expect(timerStarted).toBe(true);
+    expect((await handle.describe()).status.name).toBe('RUNNING');
+
+    await handle.terminate('test cleanup');
+  }, 180000);
+
+  it('recovers a stranded PENDING request without touching unrelated data', async () => {
+    // A crash between writing the request row and starting its workflow leaves
+    // a request nothing would ever pick up. This reproduces exactly that: the
+    // row exists and no workflow was ever started for it.
+    const metaUser = `e2e-stranded-${randomUUID()}`;
+    const strandedIntegration = await seedIntegration(metaUser);
+
+    // A channel in a different organization, with a published post, that the
+    // sweep must leave completely alone.
+    const bystanderOrg = `e2e-org-bystander-${randomUUID()}`;
+    await prisma.organization.create({
+      data: { id: bystanderOrg, name: bystanderOrg } as any,
+    });
+    const bystanderId = randomUUID();
+    await prisma.integration.create({
+      data: {
+        id: bystanderId,
+        name: 'Bystander channel',
+        internalId: `page-${randomUUID()}`,
+        rootInternalId: `e2e-bystander-${randomUUID()}`,
+        providerIdentifier: 'facebook',
+        organizationId: bystanderOrg,
+        token: 'bystander-access-token',
+        refreshToken: 'bystander-refresh-token',
+        picture: 'https://example.invalid/b.png',
+        profile: 'bystander-profile',
+        type: 'social',
+      } as any,
+    });
+    const bystanderPostId = randomUUID();
+    await prisma.post.create({
+      data: {
+        id: bystanderPostId,
+        state: 'PUBLISHED',
+        publishDate: new Date(),
+        organizationId: bystanderOrg,
+        integrationId: bystanderId,
+        content: 'bystander post',
+        group: randomUUID(),
+        releaseId: 'bystander-release',
+        releaseURL: 'https://example.invalid/bystander',
+      } as any,
+    });
+
+    // Older than the 10 minute grace period, so the sweep treats it as
+    // stranded rather than as a request whose workflow is still starting.
+    const requestId = randomUUID();
+    await prisma.metaDeletionRequest.create({
+      data: {
+        id: requestId,
+        confirmationCode: `STRANDED${randomUUID().replace(/-/g, '').slice(0, 12)}`,
+        callbackType: 'DATA_DELETION',
+        metaApp: 'FACEBOOK',
+        metaUserId: metaUser,
+        status: 'PENDING',
+        matchedCount: 0,
+        attempts: 0,
+        createdAt: new Date(Date.now() - 30 * 60 * 1000),
+      } as any,
+    });
+
+    // Nothing is driving it yet.
+    await expect(
+      client.workflow.getHandle(`meta_deletion_${requestId}`).describe()
+    ).rejects.toThrow();
+
+    const swept = await activity.reconcileMetaDeletions();
+    expect(swept.restarted).toBeGreaterThanOrEqual(1);
+    // 30 minutes old is stranded but well inside the 24 hour window, so it is
+    // re-driven quietly rather than escalated.
+    expect(swept.stalled).toBe(0);
+
+    // The sweep started the real deletion workflow; let it settle.
+    await client.workflow.getHandle(`meta_deletion_${requestId}`).result();
+
+    const settled = await prisma.metaDeletionRequest.findUnique({
+      where: { id: requestId },
+    });
+    expect(settled!.status).toBe('COMPLETED');
+    expect(settled!.matchedCount).toBe(1);
+
+    const scrubbed = await prisma.integration.findUnique({
+      where: { id: strandedIntegration },
+    });
+    expect(scrubbed!.deletedAt).not.toBeNull();
+    expect(scrubbed!.token).toBe('');
+    expect(scrubbed!.refreshToken).toBeNull();
+    expect(scrubbed!.rootInternalId).toBeNull();
+
+    // The other organization is untouched: channel, credentials and the post's
+    // Meta receipts all survive.
+    const bystander = await prisma.integration.findUnique({
+      where: { id: bystanderId },
+    });
+    expect(bystander!.deletedAt).toBeNull();
+    expect(bystander!.token).toBe('bystander-access-token');
+    expect(bystander!.refreshToken).toBe('bystander-refresh-token');
+    expect(bystander!.rootInternalId).not.toBeNull();
+
+    const bystanderPost = await prisma.post.findUnique({
+      where: { id: bystanderPostId },
+    });
+    expect(bystanderPost!.releaseId).toBe('bystander-release');
+    expect(bystanderPost!.releaseURL).toBe('https://example.invalid/bystander');
+  }, 180000);
+
   it('two orchestrator instances cannot start competing reconcilers', async () => {
     // InfiniteWorkflowRegister starts this with a fixed workflow ID on every
     // boot, so a second instance (or a restart) must not create a second
@@ -326,6 +472,17 @@ describeTemporal('Meta deletion through a real Temporal server (e2e)', () => {
       (e) => e.status?.name === 'RUNNING'
     );
     expect(running).toHaveLength(1);
+
+    // The surviving execution must be the real workflow actually running, not
+    // one stuck retrying a failing workflow task because the bundle does not
+    // export it.
+    const history = await client.workflow
+      .getHandle('meta-deletion-reconcile-workflow')
+      .fetchHistory();
+    const failed = (history.events ?? []).find(
+      (e) => e.workflowTaskFailedEventAttributes
+    );
+    expect(failed?.workflowTaskFailedEventAttributes?.failure?.message).toBeUndefined();
 
     await client.workflow
       .getHandle('meta-deletion-reconcile-workflow')

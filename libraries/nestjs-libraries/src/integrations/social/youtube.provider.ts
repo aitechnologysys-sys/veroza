@@ -265,11 +265,22 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
    * transport failure is worth surfacing.
    */
   async revokeToken(token: string): Promise<void> {
-    await fetch('https://oauth2.googleapis.com/revoke', {
+    const response = await fetch('https://oauth2.googleapis.com/revoke', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ token }).toString(),
     });
+
+    if (!response.ok) {
+      // Status only — the token is in the request body and Google's error
+      // payload can quote it back, so neither reaches the message. `status`
+      // is a field so callers never have to parse message text.
+      const error = new Error(
+        `Google token revocation failed with status ${response.status}`
+      ) as Error & { status: number };
+      error.status = response.status;
+      throw error;
+    }
   }
 
   async refreshToken(refresh_token: string): Promise<AuthTokenDetails> {

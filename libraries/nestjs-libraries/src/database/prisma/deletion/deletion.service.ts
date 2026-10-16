@@ -4,6 +4,7 @@ import { IntegrationRepository } from '@gitroom/nestjs-libraries/database/prisma
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import { MediaRepository } from '@gitroom/nestjs-libraries/database/prisma/media/media.repository';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
+import { logRevocationFailure } from '@gitroom/nestjs-libraries/helpers/revocation.log';
 
 /**
  * Reusable deletion primitives.
@@ -53,10 +54,7 @@ export class DeletionService {
       await provider.revokeToken(integration.token);
       return true;
     } catch (err) {
-      console.error(
-        `Upstream revocation failed for integration ${integration.id}:`,
-        err
-      );
+      logRevocationFailure(integration, err);
       return false;
     }
   }

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { IntegrationRepository } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.repository';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
+import { logRevocationFailure } from '@gitroom/nestjs-libraries/helpers/revocation.log';
 import {
   AnalyticsData,
   SocialProvider,
@@ -304,10 +305,7 @@ export class IntegrationService {
 
       await provider.revokeToken(integration.token);
     } catch (err) {
-      console.error(
-        `Upstream revocation failed for integration ${integration.id}:`,
-        err
-      );
+      logRevocationFailure(integration, err);
     }
   }
 

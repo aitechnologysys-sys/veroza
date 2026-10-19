@@ -20,7 +20,7 @@ const Valid: FC = () => {
     >
       <path
         d="M6 7.33333L8 9.33333L14.6667 2.66667M10.6667 2H5.2C4.0799 2 3.51984 2 3.09202 2.21799C2.71569 2.40973 2.40973 2.71569 2.21799 3.09202C2 3.51984 2 4.07989 2 5.2V10.8C2 11.9201 2 12.4802 2.21799 12.908C2.40973 13.2843 2.71569 13.5903 3.09202 13.782C3.51984 14 4.07989 14 5.2 14H10.8C11.9201 14 12.4802 14 12.908 13.782C13.2843 13.5903 13.5903 13.2843 13.782 12.908C14 12.4802 14 11.9201 14 10.8V8"
-        stroke="#00EB75"
+        stroke="currentColor"
         strokeWidth="1.2"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -171,19 +171,21 @@ export const InformationComponent: FC<{
   return (
     <div
       className={clsx(
-        'group rounded-[6px] gap-[4px] h-[30px] px-[6px] flex justify-center items-center relative',
-        isValid ? 'border border-newColColor' : 'bg-[#FF3F3F]'
+        'group rounded-full gap-[6px] h-[30px] px-[10px] flex justify-center items-center relative border font-mono',
+        isValid
+          ? 'border-calOkLine bg-calOkBg text-calOkFg'
+          : 'border-calDanger bg-calDanger text-white'
       )}
     >
       {isValid ? <Valid /> : <Invalid />}
 
       {!isGlobal && (
-        <div className={clsx("text-[10px] font-[600] flex justify-center items-center", !isValid && 'text-white')}>
+        <div className={clsx("text-[11px] font-[500] flex justify-center items-center", !isValid && 'text-white')}>
           {totalChars}/{totalAllowedChars}
         </div>
       )}
       {isGlobal && globalDisplayLimit !== null && (
-        <div className={clsx("text-[10px] font-[600] flex justify-center items-center", !isValid && 'text-white')}>
+        <div className={clsx("text-[11px] font-[500] flex justify-center items-center", !isValid && 'text-white')}>
           {totalChars}/{globalDisplayLimit}
         </div>
       )}
@@ -205,14 +207,14 @@ export const InformationComponent: FC<{
       {((isGlobal && selectedIntegrations.length) || !isValid) && (
         <div
           className={clsx(
-            'z-[300] hidden rounded-[12px] bg-newBgColorInner group-hover:flex absolute end-0 bottom-[100%] mb-[5px] p-[12px] flex-col',
-            isValid ? 'border border-newColColor' : 'border border-[#FF3F3F]'
+            'z-[300] hidden rounded-[14px] bg-calCard text-calInk font-sans shadow-[0_18px_40px_-18px_rgba(0,0,0,0.35)] group-hover:flex absolute end-0 bottom-[100%] mb-[6px] px-[14px] py-[12px] flex-col',
+            isValid ? 'border border-calLine' : 'border border-calDanger'
           )}
         >
           {!isPicture && !totalChars && (
             <div
               className={clsx(
-                'text-sm text-[#FF3F3F] whitespace-nowrap',
+                'text-sm text-calDanger whitespace-nowrap',
                 isGlobal && selectedIntegrations.length && 'mb-[12px]'
               )}
             >
@@ -220,7 +222,7 @@ export const InformationComponent: FC<{
             </div>
           )}
           {isGlobal && (
-            <div className="grid grid-cols-[auto_auto_auto] text-[14px] font-[500] gap-[8px] items-center">
+            <div className="grid grid-cols-[auto_auto_auto] text-[13px] font-[500] gap-x-[8px] gap-y-[8px] items-center">
               {selectedIntegrations.map((p, index) => (
                 <Fragment key={p.integration.id}>
                   <div>
@@ -238,7 +240,7 @@ export const InformationComponent: FC<{
                       isInternal?.[index]
                         ? ''
                         : totalChars > (chars?.[p.integration.id] || 0)
-                        ? 'text-[#FF3F3F]'
+                        ? 'text-calDanger'
                         : ''
                     )}
                   >
@@ -247,11 +249,11 @@ export const InformationComponent: FC<{
                   </div>
                   <div
                     className={clsx(
-                      'whitespace-nowrap',
+                      'whitespace-nowrap font-mono text-end',
                       isInternal?.[index]
-                        ? ''
+                        ? 'text-calEmberText font-sans'
                         : totalChars > (chars?.[p.integration.id] || 0)
-                        ? 'text-[#FF3F3F]'
+                        ? 'text-calDanger'
                         : ''
                     )}
                   >
@@ -266,7 +268,7 @@ export const InformationComponent: FC<{
           {showStripLinkWarning && (
             <div
               className={clsx(
-                'text-sm text-[#FF3F3F] whitespace-nowrap',
+                'text-sm text-calDanger whitespace-nowrap pt-[8px] border-t border-calLine',
                 ((isGlobal && selectedIntegrations.length) ||
                   (!isPicture && !totalChars)) &&
                   'mt-[12px]'

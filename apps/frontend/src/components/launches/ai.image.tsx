@@ -120,9 +120,11 @@ ${style}
 export const AiImage: FC<{
   value: string;
   onChange: (params: { id: string; path: string }) => void;
+  // 'composer' = Create Post modal toolbar pill; 'default' = original look.
+  variant?: 'default' | 'composer';
 }> = (props) => {
   const t = useT();
-  const { onChange } = props;
+  const { onChange, variant = 'default' } = props;
   const [loading, setLoading] = useState(false);
   const modals = useModals();
 
@@ -147,7 +149,9 @@ export const AiImage: FC<{
       <div
         onClick={openImageModal}
         className={clsx(
-          'cursor-pointer h-[30px] rounded-[6px] justify-center items-center flex bg-newColColor px-[8px]'
+          variant === 'composer'
+            ? 'cursor-pointer h-[32px] rounded-full justify-center items-center flex bg-calTealBg text-calTealFg hover:opacity-90 px-[10px]'
+            : 'cursor-pointer h-[30px] rounded-[6px] justify-center items-center flex bg-newColColor px-[8px]'
         )}
       >
         {loading && (
@@ -185,7 +189,14 @@ export const AiImage: FC<{
               </defs>
             </svg>
           </div>
-          <div className="text-[10px] font-[600] iconBreak:hidden block">
+          <div
+            className={clsx(
+              'iconBreak:hidden block',
+              variant === 'composer'
+                ? 'text-[12.5px] font-[500]'
+                : 'text-[10px] font-[600]'
+            )}
+          >
             {t('ai', 'AI')} Image
           </div>
         </div>

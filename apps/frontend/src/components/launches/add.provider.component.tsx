@@ -44,12 +44,13 @@ export const AddProviderButton: FC<{
   const t = useT();
 
   return (
-    <div className="flex group-[.sidebar]:block gap-[8px]">
+    <div className="flex-none flex items-start gap-[14px] group-[.sidebar]:gap-[10px] group-[.sidebar]:items-center pt-[8px] group-[.sidebar]:pt-0">
       <button
-        className="flex-1 group-[.sidebar]:w-[100%] group-[.sidebar]:flex-none text-btnText bg-btnSimple h-[44px] pt-[12px] pb-[14px] ps-[16px] pe-[20px] justify-center items-center flex rounded-[8px] gap-[8px]"
+        className="flex-none w-[66px] group-[.sidebar]:w-auto flex flex-col items-center gap-[6px] bg-transparent text-calMuted hover:text-calInk cursor-pointer"
         onClick={add}
+        aria-label={t('add_channel', 'Add Channel')}
       >
-        <div>
+        <div className="w-[44px] h-[44px] group-[.sidebar]:w-[36px] group-[.sidebar]:h-[36px] rounded-full border-[1.5px] border-dashed border-calLineStrong flex justify-center items-center">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="20"
@@ -66,7 +67,7 @@ export const AddProviderButton: FC<{
             />
           </svg>
         </div>
-        <div className="text-start text-[14px] group-[.sidebar]:hidden">
+        <div className="max-w-full text-[11.5px] leading-[1.3] whitespace-nowrap text-ellipsis overflow-hidden group-[.sidebar]:hidden">
           {t('add_channel', 'Add Channel')}
         </div>
       </button>
@@ -77,7 +78,7 @@ export const AddProviderButton: FC<{
           'invite_link',
           'Send Invite Link to a customer to add channel'
         )}
-        className="group-[.sidebar]:hidden min-h-[44px] min-w-[44px] bg-btnSimple justify-center items-center flex rounded-[8px] cursor-pointer"
+        className="flex-none w-[44px] h-[44px] group-[.sidebar]:w-[36px] group-[.sidebar]:h-[36px] border border-calLine rounded-full bg-transparent text-calMuted hover:text-calInk justify-center items-center flex cursor-pointer"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"

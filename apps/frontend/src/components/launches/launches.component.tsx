@@ -160,27 +160,34 @@ export const MenuGroupComponent: FC<
   }));
   return (
     <div
-      className="gap-[16px] flex flex-col relative"
+      className={clsx(
+        'flex-none flex items-center relative',
+        collapsed ? 'gap-[10px]' : 'gap-[14px]'
+      )}
       // @ts-ignore
       ref={drop}
     >
       {collectedProps.isOver && (
-        <div className="absolute start-0 top-0 w-full h-full pointer-events-none">
-          <div className="w-full h-full start-0 top-0 relative">
-            <div className="bg-white/30 w-full h-full p-[8px] box-content rounded-md" />
-          </div>
-        </div>
+        <div className="absolute -inset-[4px] pointer-events-none rounded-[14px] border-2 border-btnPrimary bg-calEmberSoft opacity-60" />
       )}
       {!!group.name && (
-        <div
-          className="flex items-center gap-[5px] cursor-pointer"
+        <button
+          type="button"
+          className={clsx(
+            'flex-none flex items-center gap-[6px] px-[12px] border border-dashed border-calLineStrong rounded-[12px] bg-transparent text-calMuted font-mono text-[11px] uppercase cursor-pointer hover:text-calInk',
+            collapsed ? 'h-[36px]' : 'h-[52px]'
+          )}
           onClick={changeOpenClose}
+          aria-expanded={isOpen}
         >
-          <div>
+          <span className="flex">
             <OpenClose isOpen={isOpen} />
-          </div>
-          <div
-            className="line-clamp-1"
+          </span>
+          <span
+            className={clsx(
+              'line-clamp-1',
+              collapsed ? 'max-w-[72px]' : 'max-w-[140px]'
+            )}
             {...(collapsed
               ? {
                   'data-tooltip-id': 'tooltip',
@@ -189,12 +196,13 @@ export const MenuGroupComponent: FC<
               : {})}
           >
             {group.name}
-          </div>
-        </div>
+          </span>
+        </button>
       )}
       <div
         className={clsx(
-          'gap-[12px] flex flex-col relative',
+          'flex items-center relative',
+          collapsed ? 'gap-[10px]' : 'gap-[14px]',
           !isOpen && 'hidden'
         )}
       >
@@ -260,58 +268,11 @@ export const MenuComponent: FC<
           }
         : {})}
       className={clsx(
-        'flex gap-[12px] items-center bg-newBgColorInner hover:bg-boxHover group/profile transition-all rounded-e-[8px]',
+        'relative flex-none flex flex-col items-center pt-[8px] group/profile',
+        collapsed ? 'w-[40px]' : 'w-[66px]',
         integration.refreshNeeded && 'cursor-pointer'
       )}
     >
-      <div
-        className={clsx(
-          'relative gap-[6px] flex justify-center items-center',
-          integration.disabled && 'opacity-50'
-        )}
-      >
-        <div className="h-full w-[4px] -ms-[12px] rounded-s-[3px] opacity-0 group-hover/profile:opacity-100 transition-opacity">
-          <SVGLine />
-        </div>
-        {(integration.inBetweenSteps || integration.refreshNeeded) && (
-          <div
-            className="absolute start-0 top-0 w-[39px] h-[46px] cursor-pointer"
-            onClick={
-              integration.refreshNeeded
-                ? refreshChannel(integration)
-                : continueIntegration(integration)
-            }
-          >
-            <div className="bg-red-500 w-[15px] h-[15px] rounded-full start-[5px] top-[5px] absolute z-[200] text-[10px] flex justify-center items-center">
-              !
-            </div>
-            <div className="bg-primary/60 w-[39px] h-[46px] start-0 top-0 absolute rounded-full z-[199]" />
-          </div>
-        )}
-        <ImageWithFallback
-          fallbackSrc={'/no-picture.jpg'}
-          src={integration.picture || '/no-picture.jpg'}
-          className="rounded-[8px] min-w-[36px] min-h-[36px]"
-          alt={integration.identifier}
-          width={36}
-          height={36}
-        />
-        {integration.identifier === 'youtube' ? (
-          <img
-            src="/icons/platforms/youtube.svg"
-            className="absolute z-10 bottom-[5px] -end-[5px]"
-            width={20}
-          />
-        ) : (
-          <SafeImage
-            src={`/icons/platforms/${integration.identifier}.png`}
-            className="rounded-[8px] absolute z-10 bottom-[5px] -end-[5px] border border-fifth"
-            alt={integration.identifier}
-            width={18.41}
-            height={18.41}
-          />
-        )}
-      </div>
       <div
         // @ts-ignore
         ref={drag}
@@ -327,25 +288,84 @@ export const MenuComponent: FC<
           : {})}
         role="Handle"
         className={clsx(
-          'group-[.sidebar]:hidden flex-1 whitespace-nowrap text-ellipsis overflow-hidden cursor-move',
+          'w-full flex flex-col items-center gap-[6px] cursor-move',
           integration.disabled && 'opacity-50'
         )}
       >
-        {integration.name}
+        <div
+          className={clsx(
+            'relative flex justify-center items-center rounded-full ring-2 ring-offset-2 ring-offset-calDock transition-all',
+            collapsed ? 'w-[28px] h-[28px]' : 'w-[44px] h-[44px]',
+            integration.refreshNeeded
+              ? 'ring-red-500'
+              : 'ring-calLine group-hover/profile:ring-btnPrimary'
+          )}
+        >
+          {(integration.inBetweenSteps || integration.refreshNeeded) && (
+            <div
+              className="absolute inset-0 cursor-pointer"
+              onClick={
+                integration.refreshNeeded
+                  ? refreshChannel(integration)
+                  : continueIntegration(integration)
+              }
+            >
+              <div className="bg-red-500 text-white font-[700] w-[16px] h-[16px] rounded-full -start-[4px] -top-[4px] absolute z-[200] text-[10px] flex justify-center items-center">
+                !
+              </div>
+              <div className="bg-primary/60 inset-0 absolute rounded-full z-[199]" />
+            </div>
+          )}
+          <ImageWithFallback
+            fallbackSrc={'/no-picture.jpg'}
+            src={integration.picture || '/no-picture.jpg'}
+            className={clsx(
+              'rounded-full object-cover',
+              collapsed
+                ? 'w-[28px] h-[28px] min-w-[28px] min-h-[28px]'
+                : 'w-[44px] h-[44px] min-w-[44px] min-h-[44px]'
+            )}
+            alt={integration.identifier}
+            width={collapsed ? 28 : 44}
+            height={collapsed ? 28 : 44}
+          />
+          {integration.identifier === 'youtube' ? (
+            <img
+              src="/icons/platforms/youtube.svg"
+              className="absolute z-10 -bottom-[3px] -end-[5px]"
+              width={collapsed ? 14 : 18}
+            />
+          ) : (
+            <SafeImage
+              src={`/icons/platforms/${integration.identifier}.png`}
+              className="rounded-full absolute z-10 -bottom-[3px] -end-[3px] border-2 border-calDock"
+              alt={integration.identifier}
+              width={collapsed ? 14 : 18}
+              height={collapsed ? 14 : 18}
+            />
+          )}
+        </div>
+        {!collapsed && (
+          <div className="max-w-full text-[11.5px] leading-[1.3] text-calMuted whitespace-nowrap text-ellipsis overflow-hidden">
+            {integration.name}
+          </div>
+        )}
       </div>
-      <Menu
-        canChangeProfilePicture={integration.changeProfilePicture}
-        canChangeNickName={integration.changeNickName}
-        refreshChannel={refreshChannel}
-        mutate={mutate}
-        onChange={update}
-        id={integration.id}
-        canEnable={
-          user?.totalChannels! > totalNonDisabledChannels &&
-          integration.disabled
-        }
-        canDisable={!integration.disabled}
-      />
+      <div className="absolute top-0 -end-[6px] z-[10]">
+        <Menu
+          canChangeProfilePicture={integration.changeProfilePicture}
+          canChangeNickName={integration.changeNickName}
+          refreshChannel={refreshChannel}
+          mutate={mutate}
+          onChange={update}
+          id={integration.id}
+          canEnable={
+            user?.totalChannels! > totalNonDisabledChannels &&
+            integration.disabled
+          }
+          canDisable={!integration.disabled}
+        />
+      </div>
     </div>
   );
 };
@@ -486,7 +506,7 @@ export const LaunchesComponent = () => {
   }, []);
   if (isLoading || reload) {
     return (
-      <div className="bg-newBgColorInner p-[20px] flex flex-1 flex-col gap-[15px] transition-all items-center justify-center">
+      <div className="bg-calBg p-[20px] flex flex-1 flex-col gap-[15px] transition-all items-center justify-center">
         <LoadingComponent />
       </div>
     );
@@ -497,90 +517,66 @@ export const LaunchesComponent = () => {
     <DNDProvider>
       <Onboarding />
       <CalendarWeekProvider integrations={sortedIntegrations}>
-        <div
-          className={clsx(
-            'flex relative flex-col',
-            collapseMenu === '1' ? 'group sidebar w-[100px]' : 'w-[260px]'
-          )}
-        >
-          <div
+        <div className="flex-1 flex flex-col min-w-0 bg-calBg text-calInk">
+          <section
+            aria-label={t('channels')}
             className={clsx(
-              'bg-newBgColorInner p-[20px] flex flex-col gap-[15px] transition-all absolute start-0 top-0 w-full h-full overflow-x-hidden overflow-y-auto scrollbar scrollbar-thumb-fifth scrollbar-track-newBgColor'
+              'flex-none flex items-center bg-calDock border-b border-calLine px-[32px] overflow-x-auto overflow-y-hidden select-none scrollbar scrollbar-thumb-fifth scrollbar-track-newBgColor',
+              collapseMenu === '1'
+                ? 'group sidebar gap-[10px] py-[8px]'
+                : 'gap-[14px] py-[12px]'
             )}
           >
-            <div className="flex items-center">
-              <h2 className="group-[.sidebar]:hidden flex-1 text-[20px] font-[500]">
-                {t('channels')}
-              </h2>
-              <div
-                onClick={() =>
-                  setCollapseMenu(collapseMenu === '1' ? '0' : '1')
-                }
-                className="group-[.sidebar]:rotate-[180deg] group-[.sidebar]:mx-auto text-btnText bg-btnSimple rounded-[6px] w-[24px] h-[24px] flex items-center justify-center cursor-pointer select-none"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="7"
-                  height="13"
-                  viewBox="0 0 7 13"
-                  fill="none"
-                >
-                  <path
-                    d="M6 11.5L1 6.5L6 1.5"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-            </div>
-            <div className="flex flex-col gap-[8px] group-[.sidebar]:mx-auto group-[.sidebar]:w-[44px]">
-              <AddProviderButton update={() => update(true)} />
-              <div className="flex gap-[8px] group-[.sidebar]:flex-col">
-                {sortedIntegrations?.length > 0 && <NewPost />}
-                {sortedIntegrations?.length > 0 &&
-                  user?.tier?.ai &&
-                  billingEnabled && <GeneratorComponent />}
-              </div>
-            </div>
-            <div className="gap-[32px] flex flex-col select-none flex-1">
-              {sortedIntegrations.length === 0 && collapseMenu === '0' && (
-                <div className="flex-1 max-h-[500px] justify-center items-center flex">
-                  <div className="flex flex-col gap-[12px] text-center">
-                    <img
-                      src={
-                        mode === 'dark'
-                          ? '/no-channels.svg'
-                          : '/no-channels-colors.svg'
-                      }
-                      alt="No channels"
-                      className="mx-auto min-w-[100%]"
-                    />
-                    <div className="font-[600] text-[20px]">
-                      {t('no_channels', 'No channels yet')}
-                    </div>
-                    <div className="text-[14px]">
-                      {t('connect_your_accounts')}
-                    </div>
+            {sortedIntegrations?.length > 0 && <NewPost />}
+            {sortedIntegrations?.length > 0 &&
+              user?.tier?.ai &&
+              billingEnabled && <GeneratorComponent />}
+            {sortedIntegrations?.length > 0 && (
+              <span
+                aria-hidden="true"
+                className={clsx(
+                  'flex-none w-[1px] bg-calLine',
+                  collapseMenu === '1' ? 'h-[28px]' : 'h-[40px]'
+                )}
+              />
+            )}
+            {sortedIntegrations.length === 0 && collapseMenu === '0' && (
+              <div className="flex-none flex items-center gap-[14px]">
+                <img
+                  src={
+                    mode === 'dark'
+                      ? '/no-channels.svg'
+                      : '/no-channels-colors.svg'
+                  }
+                  alt="No channels"
+                  className="h-[52px] w-auto"
+                />
+                <div className="flex flex-col gap-[2px]">
+                  <div className="font-serif font-[600] text-[18px] text-calInk">
+                    {t('no_channels', 'No channels yet')}
+                  </div>
+                  <div className="text-[13px] text-calMuted">
+                    {t('connect_your_accounts')}
                   </div>
                 </div>
-              )}
-              {menuIntegrations.map((menu) => (
-                <MenuGroupComponent
-                  collapsed={collapseMenu === '1'}
-                  changeItemGroup={changeItemGroup}
-                  key={menu.name}
-                  group={menu}
-                  mutate={mutate}
-                  continueIntegration={continueIntegration}
-                  update={update}
-                  refreshChannel={refreshChannel}
-                  totalNonDisabledChannels={totalNonDisabledChannels}
-                />
-              ))}
-            </div>
-            <div className="mt-[5px] text-center flex flex-col">
+              </div>
+            )}
+            {menuIntegrations.map((menu) => (
+              <MenuGroupComponent
+                collapsed={collapseMenu === '1'}
+                changeItemGroup={changeItemGroup}
+                key={menu.name}
+                group={menu}
+                mutate={mutate}
+                continueIntegration={continueIntegration}
+                update={update}
+                refreshChannel={refreshChannel}
+                totalNonDisabledChannels={totalNonDisabledChannels}
+              />
+            ))}
+            <AddProviderButton update={() => update(true)} />
+            <span className="flex-1 min-w-[8px]" />
+            <div className="flex-none flex flex-col items-end font-mono text-[11px] text-calMuted whitespace-nowrap">
               {billingEnabled && user?.isLifetime && (
                 <div>{capitalize(user?.tier?.current || '')} tier</div>
               )}
@@ -590,12 +586,44 @@ export const LaunchesComponent = () => {
                   : ''}
               </div>
             </div>
-          </div>
-        </div>
-        <div className="bg-newBgColorInner flex-1 flex-col flex p-[20px] gap-[12px]">
-          <Filters />
-          <div className="flex-1 flex">
-            <Calendar />
+            <button
+              type="button"
+              onClick={() =>
+                setCollapseMenu(collapseMenu === '1' ? '0' : '1')
+              }
+              aria-expanded={collapseMenu !== '1'}
+              className="flex-none h-[36px] px-[12px] border border-calLine rounded-[10px] bg-transparent text-calMuted hover:text-calInk text-[12.5px] flex items-center gap-[6px] cursor-pointer whitespace-nowrap"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="13"
+                height="13"
+                viewBox="0 0 16 16"
+                fill="none"
+                aria-hidden="true"
+                className={clsx(
+                  'transition-transform',
+                  collapseMenu === '1' && 'rotate-180'
+                )}
+              >
+                <path
+                  d="M3 10l5-5 5 5"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              {collapseMenu === '1'
+                ? t('show_channels', 'Show channels')
+                : t('hide_channels', 'Hide channels')}
+            </button>
+          </section>
+          <div className="flex-1 flex flex-col min-h-0 px-[32px] pt-[24px] pb-[32px] gap-[18px]">
+            <Filters />
+            <div className="flex-1 flex">
+              <Calendar />
+            </div>
           </div>
         </div>
       </CalendarWeekProvider>

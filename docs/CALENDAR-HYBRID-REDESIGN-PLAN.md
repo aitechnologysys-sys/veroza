@@ -23,7 +23,17 @@ The hybrid is three earlier directions combined:
 - **Masthead + type (from "E")** — "Week 43" in Fraunces, italic date range, round prev/next, black "Today" pill, underlined text tabs for Day/Week/Month and Calendar/List, customer pill.
 - **Grid (from "D")** — rounded, gapped cells; posts as tiles with a coloured top band (tag tint + platform + time chip) and a body (avatar, one line of text, tag/draft line).
 
-### Important: the app shell is NOT part of this redesign
+### Update 2026-10-19: the app shell IS now part of the redesign
+
+After the first pass the user asked for the mockup's top bar too, on **every page**, as **one merged bar**:
+Postaryx lockup (theme-matched light/dark) · every `TopMenu` item as a horizontal text tab (same filters,
+including Integrations, UGC, Billing, Settings) · spacer · the old header's controls (streak, org selector,
+mode toggle, language, extension, feedback, notifications). The left icon rail and the 80px header row
+(with the `Title` page heading) are gone. Files: `new-layout/layout.component.tsx`, `new-layout/menu-item.tsx`,
+`new-layout/logo.tsx` (new `LogoLockup`; `Logo` is kept for `billing.after.tsx`), `layout/top.menu.tsx`
+(container classes only). The section below is the original, superseded decision.
+
+### Original decision (superseded): the app shell is NOT part of this redesign
 
 The mockup shows a `Postaryx · Calendar Agent Analytics Media Plugs` bar at the very top. That is a
 **stand-in** for the real app shell. The real shell — left icon rail (`TopMenu`) and the 80px header

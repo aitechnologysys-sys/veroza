@@ -20,7 +20,10 @@ import { ApiTags } from '@nestjs/swagger';
 import handleR2Upload from '@gitroom/nestjs-libraries/upload/r2.uploader';
 import { isBillingEnabled } from '@gitroom/helpers/utils/is.billing.enabled';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { CustomFileValidationPipe } from '@gitroom/nestjs-libraries/upload/custom.upload.validation';
+import {
+  CustomFileValidationPipe,
+  UPLOAD_LIMITS,
+} from '@gitroom/nestjs-libraries/upload/custom.upload.validation';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { SaveMediaInformationDto } from '@gitroom/nestjs-libraries/dtos/media/save.media.information.dto';
@@ -86,7 +89,7 @@ export class MediaController {
   }
 
   @Post('/upload-server')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: UPLOAD_LIMITS }))
   @UsePipes(new CustomFileValidationPipe())
   async uploadServer(
     @GetOrgFromRequest() org: Organization,
@@ -129,7 +132,7 @@ export class MediaController {
   }
 
   @Post('/upload-simple')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: UPLOAD_LIMITS }))
   @UsePipes(new CustomFileValidationPipe())
   async uploadSimple(
     @GetOrgFromRequest() org: Organization,
@@ -162,6 +165,11 @@ export class MediaController {
     const upload = await handleR2Upload(endpoint, req, res);
     if (endpoint !== 'complete-multipart-upload') {
       return upload;
+    }
+
+    // The uploader already sent an error response (too large or wrong type)
+    if (res.headersSent) {
+      return;
     }
 
     // @ts-ignore

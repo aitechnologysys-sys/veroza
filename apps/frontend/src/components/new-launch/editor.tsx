@@ -1,5 +1,9 @@
 'use client';
 
+import {
+  MAX_UPLOAD_SIZE,
+  MAX_UPLOAD_SIZE_LABEL,
+} from '@gitroom/helpers/utils/max.upload.size';
 import React, {
   FC,
   useCallback,
@@ -68,7 +72,6 @@ import {
 } from '@gitroom/frontend/components/ui/icons';
 import { DelayComponent } from '@gitroom/frontend/components/new-launch/delay.component';
 
-const MAX_UPLOAD_SIZE = 1024 * 1024 * 1024; // 1 GB
 
 const InterceptBoldShortcut = Extension.create({
   name: 'preventBoldWithUnderline',
@@ -577,13 +580,11 @@ export const Editor: FC<{
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
-      const totalSize = acceptedFiles.reduce((acc, file) => acc + file.size, 0);
-
-      if (totalSize > MAX_UPLOAD_SIZE) {
+      if (acceptedFiles.some((file) => file.size > MAX_UPLOAD_SIZE)) {
         toaster.show(
           t(
-            'upload_size_limit_exceeded',
-            'Upload size limit exceeded. Maximum 1 GB per upload session.'
+            'file_size_limit_exceeded',
+            `Each file must be ${MAX_UPLOAD_SIZE_LABEL} or smaller.`
           ),
           'warning'
         );
@@ -621,13 +622,11 @@ export const Editor: FC<{
         }
       }
 
-      const totalSize = files.reduce((acc, file) => acc + file.size, 0);
-
-      if (totalSize > MAX_UPLOAD_SIZE) {
+      if (files.some((file) => file.size > MAX_UPLOAD_SIZE)) {
         toaster.show(
           t(
-            'upload_size_limit_exceeded',
-            'Upload size limit exceeded. Maximum 1 GB per upload session.'
+            'file_size_limit_exceeded',
+            `Each file must be ${MAX_UPLOAD_SIZE_LABEL} or smaller.`
           ),
           'warning'
         );

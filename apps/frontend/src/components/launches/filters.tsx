@@ -48,20 +48,42 @@ export const Filters = () => {
   const currentLanguage = i18next.resolvedLanguage || 'en';
   dayjs.locale();
 
-  // Calculate display date range text
+  // Masthead title and subtitle for the current range (display only)
+  const getDisplayTitle = () => {
+    const startDate = newDayjs(calendar.startDate);
+
+    switch (calendar.display) {
+      case 'day':
+        return startDate.format('dddd');
+      case 'week':
+        return t('week_number', 'Week {{number}}', {
+          number: startDate.isoWeek(),
+        });
+      case 'month':
+        return startDate.format('MMMM');
+      default:
+        return t('all_posts', 'All posts');
+    }
+  };
+
   const getDisplayText = () => {
     const startDate = newDayjs(calendar.startDate);
     const endDate = newDayjs(calendar.endDate);
 
     switch (calendar.display) {
       case 'day':
-        return startDate.format('dddd (L)');
+        return startDate.format('LL');
       case 'week':
-        return `${startDate.format('L')} - ${endDate.format('L')}`;
+        return startDate.month() === endDate.month()
+          ? `${startDate.format('MMMM D')} – ${endDate.format('D')}`
+          : `${startDate.format('MMM D')} – ${endDate.format('MMM D')}`;
       case 'month':
-        return startDate.format('MMMM YYYY');
+        return startDate.format('YYYY');
       default:
-        return '';
+        return `${t('page', 'Page')} ${calendar.listPage + 1} ${t(
+          'of',
+          'of'
+        )} ${Math.max(1, calendar.listTotalPages)}`;
     }
   };
 
@@ -286,230 +308,214 @@ export const Filters = () => {
     }
   }, [calendar]);
 
+  const tabClass = (active: boolean) =>
+    clsx(
+      'py-[6px] border-b-2 bg-transparent cursor-pointer whitespace-nowrap transition-colors',
+      active
+        ? 'font-[600] text-calInk border-btnPrimary'
+        : 'text-calMuted border-transparent hover:text-calInk'
+    );
+
+  const roundButtonClass = (enabled: boolean) =>
+    clsx(
+      'w-[40px] h-[40px] border border-calInk rounded-full bg-transparent text-calInk flex items-center justify-center transition-colors',
+      enabled
+        ? 'cursor-pointer hover:bg-calInk hover:text-calInkInverse'
+        : 'opacity-50 cursor-not-allowed'
+    );
+
+  const chevronPrevious = (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+      className="rtl:rotate-180"
+    >
+      <path
+        d="M10 3L5 8l5 5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+
+  const chevronNext = (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+      className="rtl:rotate-180"
+    >
+      <path
+        d="M6 3l5 5-5 5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+
   return (
-    <div className="text-textColor flex flex-col md:flex-row gap-[8px] items-center select-none">
-      {!isListView && (
-        <div className="flex flex-grow flex-row items-center gap-[10px]">
-          <div className="border h-[42px] border-newTableBorder bg-newTableBorder gap-[1px] flex items-center rounded-[8px] overflow-hidden">
-            <div
-              onClick={previous}
-              className="cursor-pointer text-textColor rtl:rotate-180 px-[9px] bg-newBgColorInner h-full flex items-center justify-center hover:text-textItemFocused hover:bg-boxFocused"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="8"
-                height="12"
-                viewBox="0 0 8 12"
-                fill="none"
+    <div className="text-calInk flex flex-col gap-[12px] border-t-[3px] border-b border-calInk pt-[12px] pb-[14px] select-none">
+      <div className="flex items-center gap-[16px] flex-wrap font-mono text-[11px] text-calMuted uppercase">
+        <span>
+          Postaryx · {t('calendar', 'Calendar')}
+        </span>
+        <span
+          aria-hidden="true"
+          className="flex-1 h-[1px] bg-calLine min-w-[40px]"
+        />
+        <span>{newDayjs().format('dddd, LL')}</span>
+      </div>
+      <div className="flex items-end gap-x-[24px] gap-y-[12px] flex-wrap">
+        <div className="flex items-baseline gap-x-[18px] gap-y-[4px] flex-wrap">
+          <h1 className="m-0 font-serif font-[600] text-[48px] lg:text-[64px] xl:text-[76px] leading-[0.9] text-calInk">
+            {getDisplayTitle()}
+          </h1>
+          <span className="font-serif italic font-[500] text-[22px] text-calMuted">
+            {getDisplayText()}
+          </span>
+        </div>
+        <span className="flex-1" />
+        <div
+          role="toolbar"
+          aria-label={t('calendar', 'Calendar')}
+          className="flex items-center gap-x-[18px] gap-y-[12px] flex-wrap"
+        >
+          {!isListView && (
+            <div className="flex items-center gap-[4px]">
+              <button
+                type="button"
+                onClick={previous}
+                aria-label={t('previous', 'Previous')}
+                className={roundButtonClass(true)}
               >
-                <path
-                  d="M6.5 11L1.5 6L6.5 1"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
-            <div className="min-w-[200px] text-center bg-newBgColorInner h-full flex items-center justify-center">
-              <div className="py-[3px] px-[9px] rounded-[5px] transition-all text-[14px]">
-                {getDisplayText()}
-              </div>
-            </div>
-            <div
-              onClick={next}
-              className="cursor-pointer text-textColor rtl:rotate-180 px-[9px] bg-newBgColorInner h-full flex items-center justify-center hover:text-textItemFocused hover:bg-boxFocused"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="8"
-                height="12"
-                viewBox="0 0 8 12"
-                fill="none"
+                {chevronPrevious}
+              </button>
+              <button
+                type="button"
+                onClick={next}
+                aria-label={t('next', 'Next')}
+                className={roundButtonClass(true)}
               >
-                <path
-                  d="M1.5 11L6.5 6L1.5 1"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
-          </div>
-          <div className="flex-1 text-[14px] font-[500]">
-            <div className="text-center flex h-[42px]">
-              <div
+                {chevronNext}
+              </button>
+              <button
+                type="button"
                 onClick={setToday}
-                className="hover:text-textItemFocused hover:bg-boxFocused py-[3px] px-[9px] flex justify-center items-center rounded-[8px] transition-all cursor-pointer text-[14px] bg-newBgColorInner border border-newTableBorder"
+                className="h-[40px] px-[16px] ms-[4px] rounded-full bg-calInk text-calInkInverse font-[500] text-[14px] cursor-pointer hover:opacity-90"
               >
                 {t('today', 'Today')}
-              </div>
+              </button>
             </div>
-          </div>
-        </div>
-      )}
-      {isListView && (
-        <div className="flex flex-grow flex-row items-center gap-[10px]">
-          <div className="border h-[42px] border-newTableBorder bg-newTableBorder gap-[1px] flex items-center rounded-[8px] overflow-hidden">
-            <div
-              onClick={previousPage}
-              className={clsx(
-                'text-textColor rtl:rotate-180 px-[9px] bg-newBgColorInner h-full flex items-center justify-center',
-                calendar.listPage > 0
-                  ? 'cursor-pointer hover:text-textItemFocused hover:bg-boxFocused'
-                  : 'opacity-50 cursor-not-allowed'
-              )}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="8"
-                height="12"
-                viewBox="0 0 8 12"
-                fill="none"
+          )}
+          {isListView && (
+            <div className="flex items-center gap-[4px]">
+              <button
+                type="button"
+                onClick={previousPage}
+                aria-label={t('previous', 'Previous')}
+                aria-disabled={!(calendar.listPage > 0)}
+                className={roundButtonClass(calendar.listPage > 0)}
               >
-                <path
-                  d="M6.5 11L1.5 6L6.5 1"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
-            <div className="min-w-[200px] text-center bg-newBgColorInner h-full flex items-center justify-center">
-              <div className="py-[3px] px-[9px] rounded-[5px] transition-all text-[14px]">
-                {t('page', 'Page')} {calendar.listPage + 1} {t('of', 'of')} {Math.max(1, calendar.listTotalPages)}
-              </div>
-            </div>
-            <div
-              onClick={nextPage}
-              className={clsx(
-                'text-textColor rtl:rotate-180 px-[9px] bg-newBgColorInner h-full flex items-center justify-center',
-                calendar.listPage < calendar.listTotalPages - 1
-                  ? 'cursor-pointer hover:text-textItemFocused hover:bg-boxFocused'
-                  : 'opacity-50 cursor-not-allowed'
-              )}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="8"
-                height="12"
-                viewBox="0 0 8 12"
-                fill="none"
-              >
-                <path
-                  d="M1.5 11L6.5 6L1.5 1"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
-          </div>
-          <div className="flex flex-row p-[4px] border border-newTableBorder rounded-[8px] text-[14px] font-[500]">
-            {listStateOptions.map((option) => (
-              <div
-                key={option.value}
-                onClick={setListStateFilter(option.value)}
-                className={clsx(
-                  'pt-[6px] pb-[5px] cursor-pointer min-w-[80px] px-[12px] text-center rounded-[6px]',
-                  calendar.listState === option.value &&
-                    'text-textItemFocused bg-boxFocused'
+                {chevronPrevious}
+              </button>
+              <button
+                type="button"
+                onClick={nextPage}
+                aria-label={t('next', 'Next')}
+                aria-disabled={
+                  !(calendar.listPage < calendar.listTotalPages - 1)
+                }
+                className={roundButtonClass(
+                  calendar.listPage < calendar.listTotalPages - 1
                 )}
               >
-                {option.label}
-              </div>
-            ))}
-          </div>
-          <div className="flex-1" />
-        </div>
-      )}
-      <SelectCustomer
-        customer={calendar.customer as string}
-        onChange={(customer: string) => setCustomer(customer)}
-        integrations={calendar.integrations}
-      />
-      {!isListView && (
-        <div className="flex flex-row p-[4px] border border-newTableBorder rounded-[8px] text-[14px] font-[500]">
-          <div
-            className={clsx(
-              'pt-[6px] pb-[5px] cursor-pointer w-[74px] text-center rounded-[6px]',
-              calendar.display === 'day' && 'text-textItemFocused bg-boxFocused'
-            )}
-            onClick={setDay}
-          >
-            {t('day', 'Day')}
-          </div>
-          <div
-            className={clsx(
-              'pt-[6px] pb-[5px] cursor-pointer w-[74px] text-center rounded-[6px]',
-              calendar.display === 'week' && 'text-textItemFocused bg-boxFocused'
-            )}
-            onClick={setWeek}
-          >
-            {t('week', 'Week')}
-          </div>
-          <div
-            className={clsx(
-              'pt-[6px] pb-[5px] cursor-pointer w-[74px] text-center rounded-[6px]',
-              calendar.display === 'month' && 'text-textItemFocused bg-boxFocused'
-            )}
-            onClick={setMonth}
-          >
-            {t('month', 'Month')}
-          </div>
-        </div>
-      )}
-      <div className="flex flex-row p-[4px] border border-newTableBorder rounded-[8px] text-[14px] font-[500]">
-        <div
-          onClick={setCalendarView}
-          className={clsx(
-            'pt-[6px] pb-[5px] cursor-pointer flex justify-center items-center w-[34px] text-center rounded-[6px]',
-            !isListView && 'text-textItemFocused bg-boxFocused'
+                {chevronNext}
+              </button>
+            </div>
           )}
-        >
-          {/*calendar*/}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="17"
-            height="19"
-            viewBox="0 0 17 19"
-            fill="none"
+          <div
+            role="group"
+            className="flex items-stretch gap-x-[16px] gap-y-[4px] flex-wrap font-serif text-[18px]"
           >
-            <path
-              d="M15.75 7.41667H0.75M11.5833 0.75V4.08333M4.91667 0.75V4.08333M4.75 17.4167H11.75C13.1501 17.4167 13.8502 17.4167 14.385 17.1442C14.8554 16.9045 15.2378 16.522 15.4775 16.0516C15.75 15.5169 15.75 14.8168 15.75 13.4167V6.41667C15.75 5.01654 15.75 4.31647 15.4775 3.78169C15.2378 3.31129 14.8554 2.92883 14.385 2.68915C13.8502 2.41667 13.1501 2.41667 11.75 2.41667H4.75C3.34987 2.41667 2.6498 2.41667 2.11502 2.68915C1.64462 2.92883 1.26217 3.31129 1.02248 3.78169C0.75 4.31647 0.75 5.01654 0.75 6.41667V13.4167C0.75 14.8168 0.75 15.5169 1.02248 16.0516C1.26217 16.522 1.64462 16.9045 2.11502 17.1442C2.6498 17.4167 3.34987 17.4167 4.75 17.4167Z"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-        <div
-          onClick={setList}
-          className={clsx(
-            'pt-[6px] pb-[5px] flex justify-center items-center cursor-pointer w-[34px] text-center rounded-[6px]',
-            isListView && 'text-textItemFocused bg-boxFocused'
-          )}
-        >
-          {/*list*/}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
-            fill="none"
-          >
-            <path
-              d="M17.5 10L7.5 10M17.5 5.00002L7.5 5.00002M17.5 15L7.5 15M4.16667 10C4.16667 10.4603 3.79357 10.8334 3.33333 10.8334C2.8731 10.8334 2.5 10.4603 2.5 10C2.5 9.53978 2.8731 9.16669 3.33333 9.16669C3.79357 9.16669 4.16667 9.53978 4.16667 10ZM4.16667 5.00002C4.16667 5.46026 3.79357 5.83335 3.33333 5.83335C2.8731 5.83335 2.5 5.46026 2.5 5.00002C2.5 4.53978 2.8731 4.16669 3.33333 4.16669C3.79357 4.16669 4.16667 4.53978 4.16667 5.00002ZM4.16667 15C4.16667 15.4603 3.79357 15.8334 3.33333 15.8334C2.8731 15.8334 2.5 15.4603 2.5 15C2.5 14.5398 2.8731 14.1667 3.33333 14.1667C3.79357 14.1667 4.16667 14.5398 4.16667 15Z"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+            {!isListView && (
+              <>
+                <button
+                  type="button"
+                  aria-pressed={calendar.display === 'day'}
+                  className={tabClass(calendar.display === 'day')}
+                  onClick={setDay}
+                >
+                  {t('day', 'Day')}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={calendar.display === 'week'}
+                  className={tabClass(calendar.display === 'week')}
+                  onClick={setWeek}
+                >
+                  {t('week', 'Week')}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={calendar.display === 'month'}
+                  className={tabClass(calendar.display === 'month')}
+                  onClick={setMonth}
+                >
+                  {t('month', 'Month')}
+                </button>
+                <span aria-hidden="true" className="w-[1px] bg-calLineStrong" />
+              </>
+            )}
+            <button
+              type="button"
+              aria-pressed={!isListView}
+              className={tabClass(!isListView)}
+              onClick={setCalendarView}
+            >
+              {t('calendar', 'Calendar')}
+            </button>
+            <button
+              type="button"
+              aria-pressed={isListView}
+              className={tabClass(isListView)}
+              onClick={setList}
+            >
+              {t('list', 'List')}
+            </button>
+            {isListView && (
+              <>
+                <span aria-hidden="true" className="w-[1px] bg-calLineStrong" />
+                {listStateOptions.map((option) => (
+                  <button
+                    type="button"
+                    key={option.value}
+                    aria-pressed={calendar.listState === option.value}
+                    onClick={setListStateFilter(option.value)}
+                    className={tabClass(calendar.listState === option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+          <SelectCustomer
+            variant="pill"
+            customer={calendar.customer as string}
+            onChange={(customer: string) => setCustomer(customer)}
+            integrations={calendar.integrations}
+          />
         </div>
       </div>
     </div>

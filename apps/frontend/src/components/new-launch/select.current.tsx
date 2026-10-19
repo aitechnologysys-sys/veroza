@@ -10,7 +10,7 @@ import SafeImage from '@gitroom/react/helpers/safe.image';
 import { useShallow } from 'zustand/react/shallow';
 import { GlobalIcon } from '@gitroom/frontend/components/ui/icons';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { capitalize } from 'lodash';
+import { useProviderNames } from '@gitroom/frontend/components/launches/helpers/use.provider.names';
 import { Integrations } from '@gitroom/frontend/components/launches/calendar.context';
 import {
   useDecisionModal,
@@ -54,6 +54,7 @@ export function useHasScroll(ref: RefObject<HTMLElement | null>): boolean {
 export const SelectCurrent: FC = () => {
   const t = useT();
   const modals = useDecisionModal();
+  const providerName = useProviderNames();
   const {
     selectedIntegrations,
     current,
@@ -140,8 +141,8 @@ export const SelectCurrent: FC = () => {
             }}
             {...{
               'data-tooltip-id': 'tooltip',
-              'data-tooltip-content': `${integration.name} · ${capitalize(
-                integration.identifier.split('-')[0]
+              'data-tooltip-content': `${integration.name} · ${providerName(
+                integration.identifier
               )}`,
             }}
             className="flex items-center gap-[6px] cursor-pointer"

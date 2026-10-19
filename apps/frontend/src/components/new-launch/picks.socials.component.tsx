@@ -8,12 +8,13 @@ import { useShallow } from 'zustand/react/shallow';
 import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
-import { capitalize } from 'lodash';
+import { useProviderNames } from '@gitroom/frontend/components/launches/helpers/use.provider.names';
 
 export const PicksSocialsComponent: FC<{ toolTip?: boolean }> = ({
   toolTip,
 }) => {
   const exising = useExistingData();
+  const providerName = useProviderNames();
 
   const {
     locked,
@@ -47,8 +48,8 @@ export const PicksSocialsComponent: FC<{ toolTip?: boolean }> = ({
                   className="flex gap-[8px] items-center"
                   {...(toolTip && {
                     'data-tooltip-id': 'tooltip',
-                    'data-tooltip-content': `${integration.name} · ${capitalize(
-                      integration.identifier.split('-')[0]
+                    'data-tooltip-content': `${integration.name} · ${providerName(
+                      integration.identifier
                     )}`,
                   })}
                 >

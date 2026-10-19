@@ -26,6 +26,7 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useIntegrationList } from '@gitroom/frontend/components/launches/helpers/use.integration.list';
 import useCookie from 'react-use-cookie';
 import { Onboarding } from '@gitroom/frontend/components/onboarding/onboarding';
+import { useProviderNames } from '@gitroom/frontend/components/launches/helpers/use.provider.names';
 
 export const SVGLine = () => {
   return (
@@ -243,6 +244,7 @@ export const MenuComponent: FC<
   } = props;
   const user = useUser();
   const t = useT();
+  const providerName = useProviderNames();
   const [collected, drag, dragPreview] = useDrag(() => ({
     type: 'menu',
     item: {
@@ -261,10 +263,12 @@ export const MenuComponent: FC<
           'Channel disconnected, click to reconnect.'
         ),
       })}
-      {...(collapsed
+      {...(collapsed || !integration.refreshNeeded
         ? {
             'data-tooltip-id': 'tooltip',
-            'data-tooltip-content': integration.name,
+            'data-tooltip-content': `${integration.name} · ${providerName(
+              integration.identifier
+            )}`,
           }
         : {})}
       className={clsx(

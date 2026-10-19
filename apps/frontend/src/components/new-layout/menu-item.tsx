@@ -13,16 +13,19 @@ export const MenuItem: FC<{ label: string; icon: ReactNode; path: string; onClic
   const currentPath = usePathname();
   const isActive = currentPath.indexOf(path) === 0;
 
+  // Horizontal tab in the top bar; text-only, so the icon is not displayed.
   const className = clsx(
-    'w-full minCustom:h-[54px] custom:h-[30px] py-[8px] px-[6px] gap-[4px] flex flex-col custom:flex-row text-[10px] font-[600] items-center minCustom:justify-center rounded-[12px] hover:text-textItemFocused hover:bg-boxFocused',
-    isActive ? 'text-textItemFocused bg-boxFocused' : 'text-textItemBlur'
+    'flex-none h-[36px] px-[12px] flex items-center rounded-[8px] text-[14px] whitespace-nowrap transition-colors',
+    isActive
+      ? 'bg-calEmberSoft text-calEmberText font-[500]'
+      : 'text-calMuted hover:text-calInk hover:bg-boxHover'
   );
 
   if (onClick) {
     return (
       <button onClick={onClick} className={className}>
-        <div className="custom:hidden">{icon}</div>
-        <div className="text-[10px]">{label}</div>
+        <div className="hidden">{icon}</div>
+        <div>{label}</div>
       </button>
     );
   }
@@ -33,9 +36,10 @@ export const MenuItem: FC<{ label: string; icon: ReactNode; path: string; onClic
       href={path}
       {...path.indexOf('http') === 0 && { target: '_blank' }}
       className={className}
+      {...(isActive ? { 'aria-current': 'page' as const } : {})}
     >
-      <div className="custom:hidden">{icon}</div>
-      <div className="text-[10px]">{label}</div>
+      <div className="hidden">{icon}</div>
+      <div>{label}</div>
     </Link>
   );
 };

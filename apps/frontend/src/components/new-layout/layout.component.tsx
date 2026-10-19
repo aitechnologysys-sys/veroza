@@ -1,7 +1,7 @@
 'use client';
 
 import React, { ReactNode, useCallback } from 'react';
-import { Logo } from '@gitroom/frontend/components/new-layout/logo';
+import { LogoLockup } from '@gitroom/frontend/components/new-layout/logo';
 const ModeComponent = dynamic(
   () => import('@gitroom/frontend/components/layout/mode.component'),
   {
@@ -30,7 +30,6 @@ import { CopilotKit } from '@copilotkit/react-core';
 import { MantineWrapper } from '@gitroom/react/helpers/mantine.wrapper';
 import { Impersonate } from '@gitroom/frontend/components/layout/impersonate';
 import { AnnouncementBanner } from '@gitroom/frontend/components/layout/announcement.banner';
-import { Title } from '@gitroom/frontend/components/layout/title';
 import { TopMenu } from '@gitroom/frontend/components/layout/top.menu';
 import { LanguageComponent } from '@gitroom/frontend/components/layout/language.component';
 import { ChromeExtensionComponent } from '@gitroom/frontend/components/layout/chrome.extension.component';
@@ -94,26 +93,17 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
                   <AnnouncementBanner />
                   <div className="flex-1 flex gap-[8px]">
                     <Support />
-                    <div className="flex flex-col bg-newBgColorInner w-[80px] rounded-[12px]">
-                      <div
-                        id="left-menu"
-                        className={clsx(
-                          'fixed h-full w-[64px] start-[17px] flex flex-1 top-0',
-                          user?.admin && 'pt-[60px] max-h-[1000px]:w-[500px]'
-                        )}
-                      >
-                        <div className="flex flex-col h-full gap-[32px] flex-1 py-[12px]">
-                          <Logo />
+                    <div className="flex-1 min-w-0 bg-newBgLineColor rounded-[12px] overflow-hidden flex flex-col gap-[1px] blurMe">
+                      <header className="flex flex-wrap items-center gap-x-[28px] gap-y-[8px] min-h-[56px] py-[10px] px-[24px] bg-calBg">
+                        <LogoLockup />
+                        <nav
+                          aria-label="App"
+                          className="flex flex-wrap items-center gap-x-[4px] gap-y-[4px]"
+                        >
                           <TopMenu />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex-1 bg-newBgLineColor rounded-[12px] overflow-hidden flex flex-col gap-[1px] blurMe">
-                      <div className="flex bg-newBgColorInner h-[80px] px-[20px] items-center">
-                        <div className="text-[24px] font-[600] flex flex-1">
-                          <Title />
-                        </div>
-                        <div className="flex gap-[20px] text-textItemBlur">
+                        </nav>
+                        <span className="flex-1" />
+                        <div className="flex flex-wrap items-center gap-[20px] text-textItemBlur">
                           <StreakComponent />
                           <div className="w-[1px] h-[20px] bg-blockSeparator" />
                           <OrganizationSelector />
@@ -127,7 +117,7 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
                           <AttachToFeedbackIcon />
                           <NotificationComponent />
                         </div>
-                      </div>
+                      </header>
                       <div className="flex flex-1 gap-[1px]">{children}</div>
                     </div>
                   </div>

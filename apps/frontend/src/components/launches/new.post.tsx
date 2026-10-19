@@ -77,7 +77,8 @@ export const NewPost = () => {
   return (
     <button
       onClick={createAPost}
-      className="text-white flex-1 pt-[12px] pb-[14px] ps-[16px] pe-[20px] group-[.sidebar]:p-0 min-h-[44px] max-h-[44px] rounded-md bg-btnPrimary flex justify-center items-center gap-[5px] outline-none"
+      aria-label={t('create_new_post', 'Create Post')}
+      className="text-white flex-none h-[52px] ps-[20px] pe-[22px] group-[.sidebar]:h-[36px] group-[.sidebar]:w-[36px] group-[.sidebar]:p-0 rounded-full bg-btnPrimary hover:opacity-90 flex justify-center items-center gap-[8px] outline-none whitespace-nowrap"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -85,17 +86,17 @@ export const NewPost = () => {
         height="20"
         viewBox="0 0 21 20"
         fill="none"
-        className="min-w-[21px] min-h-[20px]"
+        className="min-w-[21px] min-h-[20px] group-[.sidebar]:min-w-[18px] group-[.sidebar]:min-h-[18px] group-[.sidebar]:w-[18px] group-[.sidebar]:h-[18px]"
       >
         <path
           d="M10.5001 4.16699V15.8337M4.66675 10.0003H16.3334"
-          stroke="white"
-          strokeWidth="1.5"
+          stroke="currentColor"
+          strokeWidth="1.8"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
       </svg>
-      <div className="flex-1 text-start text-[14px] group-[.sidebar]:hidden">
+      <div className="flex-1 text-start text-[15px] font-[600] group-[.sidebar]:hidden">
         {t('create_new_post', 'Create Post')}
       </div>
     </button>

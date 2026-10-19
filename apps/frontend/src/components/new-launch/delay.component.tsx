@@ -88,30 +88,34 @@ export const DelayComponent: FC<{
             : `${t('delay_comment_by', 'Comment delayed by')} ${getCurrentDelayLabel()}`
         }
         className={clsx(
-          'cursor-pointer flex items-center gap-[4px]',
-          currentDelay > 0 && 'bg-btnPrimary text-white rounded-full'
+          'cursor-pointer flex items-center justify-center gap-[4px]',
+          currentDelay > 0
+            ? 'h-[22px] min-w-[30px] px-[6px] bg-btnPrimary text-white rounded-full font-mono text-[10px]'
+            : 'w-[30px] h-[26px] rounded-[8px] hover:bg-calModalCell hover:text-calInk'
         )}
       >
-        <DelayIcon />
+        {currentDelay > 0 ? getCurrentDelayLabel() : <DelayIcon />}
       </div>
       {isOpen && (
-        <div className="z-[300] absolute end-0 top-[100%] w-[200px] bg-newBgColorInner p-[8px] menu-shadow translate-y-[10px] flex flex-col rounded-[8px]">
-          <div className="grid grid-cols-4 gap-[4px]">
+        <div className="z-[300] absolute end-0 top-[100%] w-[260px] bg-calCard border border-calLine text-calInk p-[12px] shadow-[0_18px_40px_-18px_rgba(0,0,0,0.3)] translate-y-[10px] flex flex-col rounded-[14px]">
+          <div className="grid grid-cols-4 gap-[6px] font-mono">
             {delayOptions.map((option) => (
               <div
                 onClick={() => handleSelectDelay(option.value)}
                 key={option.value}
                 className={clsx(
-                  'h-[32px] flex items-center justify-center rounded-[4px] cursor-pointer hover:bg-newBgColor text-[13px]',
-                  currentDelay === option.value && 'bg-[#c2410c] text-white hover:bg-[#c2410c]'
+                  'h-[32px] flex items-center justify-center rounded-[8px] cursor-pointer text-[12px]',
+                  currentDelay === option.value
+                    ? 'bg-btnPrimary text-white'
+                    : 'bg-calModalCell hover:opacity-80'
                 )}
               >
                 {option.label}
               </div>
             ))}
           </div>
-          <div className="border-t border-newTextColor/10 mt-[8px] pt-[8px]">
-            <div className="flex gap-[4px]">
+          <div className="mt-[10px]">
+            <div className="flex gap-[6px]">
               <input
                 type="number"
                 min="1"
@@ -120,8 +124,8 @@ export const DelayComponent: FC<{
                 onClick={(e) => e.stopPropagation()}
                 placeholder="Custom min"
                 className={clsx(
-                  'flex-1 w-full h-[32px] px-[8px] rounded-[4px] bg-newBgColor border text-[13px] outline-none focus:border-[#c2410c]',
-                  isCustomDelay ? 'border-[#c2410c]' : 'border-newTextColor/10'
+                  'flex-1 w-full h-[34px] px-[10px] rounded-[8px] bg-transparent border text-[13px] outline-none focus:border-btnPrimary',
+                  isCustomDelay ? 'border-btnPrimary' : 'border-calLineStrong'
                 )}
               />
               <button
@@ -133,7 +137,7 @@ export const DelayComponent: FC<{
                     setCustomValue('');
                   }
                 }}
-                className="h-[32px] px-[10px] rounded-[4px] bg-[#c2410c] text-white text-[12px] font-[600] hover:bg-[#c2410c]/80"
+                className="h-[34px] px-[14px] rounded-[8px] bg-calInk text-calInkInverse text-[12px] font-[600] hover:opacity-90"
               >
                 Set
               </button>
@@ -142,7 +146,7 @@ export const DelayComponent: FC<{
           {currentDelay > 0 && (
             <button
               onClick={() => handleSelectDelay(0)}
-              className="mt-[8px] h-[32px] w-full rounded-[4px] text-[13px] text-red-400 hover:bg-red-400/10"
+              className="mt-[10px] h-[32px] w-full rounded-[8px] text-[13px] font-[500] bg-calDangerSoft text-calDanger hover:opacity-90"
             >
               Remove delay
             </button>

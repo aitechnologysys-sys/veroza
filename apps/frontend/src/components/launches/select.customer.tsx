@@ -15,8 +15,17 @@ export const SelectCustomer: FC<{
   onChange: (value: string) => void;
   integrations: Integrations[];
   customer?: string;
+  // 'pill' is the calendar masthead trigger; 'icon-pill' is the Create Post
+  // modal header trigger (icon + chevron, dropdown aligned to its end edge so
+  // it stays on screen at the modal's right edge); 'default' is the original.
+  variant?: 'default' | 'pill' | 'icon-pill';
 }> = (props) => {
-  const { onChange, integrations, customer: currentCustomer } = props;
+  const {
+    onChange,
+    integrations,
+    customer: currentCustomer,
+    variant = 'default',
+  } = props;
   const { setCurrent } = useLaunchStore(
     useShallow((state) => ({
       setCurrent: state.setCurrent,
@@ -40,13 +49,21 @@ export const SelectCustomer: FC<{
     }
 
     const { x, y, width, height } = ref.current?.getBoundingClientRect();
-    setPos({ top: y + height, left: x });
+    setPos(
+      variant === 'icon-pill'
+        ? { top: y + height + 6, right: window.innerWidth - (x + width) }
+        : { top: y + height, left: x }
+    );
     setOpen(true);
-  }, [open]);
+  }, [open, variant]);
 
   const totalCustomers = useMemo(() => {
     return uniqBy(integrations, (i) => i?.customer?.id).length;
   }, [integrations]);
+  const selectedCustomerName = useMemo(() => {
+    return integrations.find((i) => customer && i?.customer?.id === customer)
+      ?.customer?.name;
+  }, [integrations, customer]);
   if (totalCustomers <= 1) {
     return null;
   }
@@ -58,13 +75,31 @@ export const SelectCustomer: FC<{
         data-tooltip-content={t('select_customer_tooltip', 'Select Customer')}
         onClick={openClose}
         className={clsx(
-          'relative z-[20] cursor-pointer h-[42px] rounded-[8px] pl-[16px] pr-[12px] gap-[8px] border flex items-center',
-          open ? 'border-[#c2410c]' : 'border-newColColor'
+          variant === 'pill'
+            ? 'relative z-[20] cursor-pointer h-[40px] rounded-full ps-[14px] pe-[12px] gap-[8px] border flex items-center text-calInk text-[14px] whitespace-nowrap'
+            : variant === 'icon-pill'
+            ? 'relative z-[20] cursor-pointer h-[36px] rounded-full px-[12px] gap-[6px] border flex items-center text-calInk'
+            : 'relative z-[20] cursor-pointer h-[42px] rounded-[8px] pl-[16px] pr-[12px] gap-[8px] border flex items-center',
+          open
+            ? 'border-[#c2410c]'
+            : variant === 'pill' || variant === 'icon-pill'
+            ? 'border-calInk'
+            : 'border-newColColor'
         )}
       >
         <div>
-          <UserIcon />
+          <UserIcon
+            size={
+              variant === 'pill' ? 16 : variant === 'icon-pill' ? 14 : undefined
+            }
+          />
         </div>
+        {variant === 'pill' && (
+          <div className="max-w-[160px] overflow-hidden text-ellipsis">
+            {selectedCustomerName ||
+              t('select_customer_label', 'Select Customer')}
+          </div>
+        )}
         <div>
           <DropdownArrowIcon rotated={open} />
         </div>

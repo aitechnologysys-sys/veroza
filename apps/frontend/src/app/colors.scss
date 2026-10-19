@@ -60,6 +60,40 @@
     --new-col-color: #2a2620;
     --new-menu-dots: #5f5b52;
     --new-menu-hover: #fff;
+    /* Calendar tab (/launches) hybrid redesign tokens.
+       See docs/CALENDAR-HYBRID-REDESIGN-PLAN.md §5. */
+    --cal-bg: #141210;
+    --cal-dock: #191712;
+    --cal-card: #24211c;
+    --cal-cell: #1f1c17;
+    --cal-today: #26190f;
+    --cal-ink: #f4f1ea;
+    --cal-ink-inverse: #141210;
+    --cal-muted: #a8a297;
+    --cal-line: #2a2620;
+    --cal-line-strong: #4a4438;
+    --cal-ember-soft: #2e1a10;
+    --cal-ember-text: #f08a5d;
+    --cal-teal-bg: #12302d;
+    --cal-teal-fg: #7fd8cd;
+    --cal-teal-line: #1d4f4a;
+    --cal-danger: #ff8a80;
+    --cal-danger-soft: #3a1712;
+    --cal-hatch-a: #1a1814;
+    --cal-hatch-b: #201d18;
+    --cal-chip: rgba(244, 241, 234, 0.14);
+    --cal-chip-text: #f4f1ea;
+    --cal-tile-shadow: none;
+    /* Create Post modal (docs/CREATE-POST-MODAL-REDESIGN-PLAN.md §5) */
+    --cal-modal-bg: #191712;
+    --cal-modal-cell: #2a2620;
+    --cal-surface: #141210;
+    --cal-ok-bg: #16291b;
+    --cal-ok-fg: #8fd19e;
+    --cal-ok-line: #24452c;
+    --cal-warn-bg: #3a2a12;
+    --cal-warn-fg: #e3b56b;
+    --cal-warn-line: #5a4218;
     --radius-control: 8px;
     --radius-button: 10px;
     --radius-card: 12px;
@@ -126,6 +160,40 @@
     --new-col-color: #f4f1ea;
     --new-menu-dots: #5f5b52;
     --new-menu-hover: #000;
+    /* Calendar tab (/launches) hybrid redesign tokens.
+       See docs/CALENDAR-HYBRID-REDESIGN-PLAN.md §5. */
+    --cal-bg: #f7f6f3;
+    --cal-dock: #fbfaf8;
+    --cal-card: #ffffff;
+    --cal-cell: #efece6;
+    --cal-today: #fbefe7;
+    --cal-ink: #191712;
+    --cal-ink-inverse: #f7f6f3;
+    --cal-muted: #5f5b52;
+    --cal-line: #e7e3db;
+    --cal-line-strong: #cfc8bb;
+    --cal-ember-soft: #f4e7df;
+    --cal-ember-text: #9a330a;
+    --cal-teal-bg: #dff6f4;
+    --cal-teal-fg: #0f766e;
+    --cal-teal-line: #b8e6e1;
+    --cal-danger: #b42318;
+    --cal-danger-soft: #fbeae8;
+    --cal-hatch-a: #ebe8e1;
+    --cal-hatch-b: #f3f1ec;
+    --cal-chip: rgba(25, 23, 18, 0.8);
+    --cal-chip-text: #ffffff;
+    --cal-tile-shadow: 0 1px 2px rgba(25, 23, 18, 0.08);
+    /* Create Post modal (docs/CREATE-POST-MODAL-REDESIGN-PLAN.md §5) */
+    --cal-modal-bg: #f7f6f3;
+    --cal-modal-cell: #efece6;
+    --cal-surface: #fbfaf8;
+    --cal-ok-bg: #e6f0e8;
+    --cal-ok-fg: #2f5f3b;
+    --cal-ok-line: #c5dccb;
+    --cal-warn-bg: #f6ecd9;
+    --cal-warn-fg: #7a4f12;
+    --cal-warn-line: #e3cfa6;
     --radius-control: 8px;
     --radius-button: 10px;
     --radius-card: 12px;

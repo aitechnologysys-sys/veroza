@@ -49,15 +49,15 @@ export const GeneralPreviewComponent: FC<{
   });
 
   return (
-    <div className={clsx('w-full p-[15px]')}>
+    <div className={clsx('w-full p-[16px] text-calInk text-[13.5px] leading-[1.5]')}>
       <div className="w-full h-full relative flex flex-col">
         {renderContent.map((value, index) => (
           <div
             key={`tweet_${index}`}
             style={{}}
             className={clsx(
-              `flex gap-[8px] relative`,
-              index === renderContent.length - 1 ? 'pb-[12px]' : 'pb-[24px]'
+              `flex gap-[12px] relative`,
+              index === renderContent.length - 1 ? 'pb-[4px]' : 'pb-[20px]'
             )}
           >
             <div className="min-w-[40px] h-[40px] min-h-[40px] w-[40px] flex flex-col items-center">
@@ -75,7 +75,7 @@ export const GeneralPreviewComponent: FC<{
                 {current !== 'global' && (
                   <SafeImage
                     src={`/icons/platforms/${integration?.identifier}.png`}
-                    className="min-w-[20px] min-h-[20px] rounded-full absolute z-10 -bottom-[5px] -end-[5px] border border-fifth"
+                    className="min-w-[18px] min-h-[18px] rounded-full absolute z-10 -bottom-[3px] -end-[3px] border-2 border-calCard"
                     alt={integration.identifier}
                     width={20}
                     height={20}
@@ -83,12 +83,12 @@ export const GeneralPreviewComponent: FC<{
                 )}
               </div>
               {index !== topValue.length - 1 && (
-                <div className="flex-1 w-[2px] h-[calc(100%-10px)] bg-customColor25 absolute top-[10px] z-[1]" />
+                <div className="flex-1 w-[2px] h-[calc(100%-10px)] bg-calLine absolute top-[10px] z-[1]" />
               )}
             </div>
             <div className="flex-1 flex flex-col gap-[4px]">
               <div className="flex">
-                <div className="h-[22px] text-[15px] font-[700]">
+                <div className="h-[22px] text-[13.5px] font-[600] flex items-center">
                   {current === 'global' ? 'Global Edit' : integration?.name}
                 </div>
                 <div className="text-[15px] text-customColor26 mt-[1px] ms-[2px]">
@@ -104,7 +104,7 @@ export const GeneralPreviewComponent: FC<{
                     </g>
                   </svg>
                 </div>
-                <div className="text-[15px] font-[400] text-customColor27 ms-[4px]">
+                <div className="text-[12.5px] font-[400] font-mono text-calMuted ms-[6px] flex items-center">
                   {current === 'global'
                     ? ''
                     : integration?.display || '@username'}
@@ -119,10 +119,10 @@ export const GeneralPreviewComponent: FC<{
               {!!value?.images?.length && (
                 <div
                   className={clsx(
-                    'w-full rounded-[16px] overflow-hidden mt-[12px]',
+                    'w-full rounded-[12px] overflow-hidden mt-[10px]',
                     value?.images?.length > 3
-                      ? 'grid grid-cols-2 gap-[4px]'
-                      : 'flex gap-[4px]'
+                      ? 'grid grid-cols-2 gap-[6px]'
+                      : 'flex gap-[6px]'
                   )}
                 >
                   {value.images.map((image, index) => (

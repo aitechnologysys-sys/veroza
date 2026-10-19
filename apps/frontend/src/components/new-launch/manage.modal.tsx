@@ -43,6 +43,7 @@ import { useHasScroll } from '@gitroom/frontend/components/ui/is.scroll.hook';
 import { useShortlinkPreference } from '@gitroom/frontend/components/settings/shortlink-preference.component';
 import dayjs from 'dayjs';
 import { Button } from '@gitroom/react/form/button';
+import { useClickOutside } from '@mantine/hooks';
 
 export const ManageModal: FC<AddEditModalProps> = (props) => {
   const t = useT();
@@ -53,6 +54,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const toaster = useToaster();
   const modal = useModals();
   const [showSettings, setShowSettings] = useState(false);
+  const [postNowOpen, setPostNowOpen] = useState(false);
+  const postNowRef = useClickOutside<HTMLDivElement>(() => {
+    setPostNowOpen(false);
+  });
   const { data: shortlinkPreferenceData } = useShortlinkPreference();
 
   const { addEditSets, mutate, customClose, dummy } = props;
@@ -436,229 +441,276 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
     [ref, repeater, tags, date, addEditSets, dummy, shortlinkPreferenceData]
   );
 
+  const publishDisabled =
+    selectedIntegrations.length === 0 || loading || locked;
+
   return (
-    <div className="w-full h-full flex-1 p-[40px] flex relative">
-      <div className="flex flex-1 bg-newBgColorInner rounded-[16px] flex-col">
-        <div className="flex-1 flex">
-          <div className="flex flex-col flex-1 border-e border-newBorder">
-            <div className="bg-newBgColor h-[65px] rounded-s-[16px] !rounded-b-[0] flex items-center gap-[12px] px-[20px] text-[20px] font-[600]">
+    <div className="w-full h-full flex-1 p-[28px] flex relative">
+      <div className="flex flex-1 min-w-0 bg-calModalBg text-calInk rounded-[22px] overflow-hidden flex-col shadow-[0_30px_80px_-30px_rgba(0,0,0,0.5)]">
+        <div className="flex-none flex flex-col gap-[14px] px-[28px] pt-[18px] pb-[16px] border-b border-calInk">
+          <div className="flex items-center gap-[14px] border-t-[3px] border-calInk pt-[10px]">
+            <h2 className="m-0 font-serif font-[600] text-[22px] leading-[1.2]">
               {t('create_post_title', 'Create Post')}
-              <CreationMethodBadge
-                creationMethod={existingData?.posts?.[0]?.creationMethod}
-                size="sm"
+            </h2>
+            <CreationMethodBadge
+              creationMethod={existingData?.posts?.[0]?.creationMethod}
+              size="sm"
+            />
+            <span aria-hidden="true" className="flex-1 h-[1px] bg-calLine" />
+            {!dummy && (
+              <SelectCustomer
+                variant="icon-pill"
+                onChange={changeCustomer}
+                integrations={integrations}
               />
+            )}
+          </div>
+          <div className="font-serif font-[500] text-[24px] xl:text-[30px] leading-[1.45] flex flex-wrap items-center gap-x-[12px] gap-y-[8px]">
+            <span>{t('post_to', 'Post to')}</span>
+            <div className="inline-flex items-center px-[8px] py-[5px] rounded-[30px] border border-calLine bg-calSurface">
+              <PicksSocialsComponent toolTip={true} />
             </div>
-            <div className="flex-1 flex flex-col gap-[16px]">
+            <span>{t('on_date', 'on')}</span>
+            <DatePicker placement="bottom" onChange={setDate} date={date} />
+            {!dummy && (
+              <>
+                <span aria-hidden="true" className="text-calMuted">
+                  ·
+                </span>
+                <RepeatComponent
+                  placement="bottom"
+                  repeat={repeater}
+                  onChange={setRepeater}
+                />
+              </>
+            )}
+            {!dummy && (
+              <>
+                <span aria-hidden="true" className="text-calMuted">
+                  ·
+                </span>
+                <TagsComponent
+                  placement="bottom"
+                  name="tags"
+                  label={t('tags', 'Tags')}
+                  initial={tags}
+                  onChange={(e) => {
+                    setTags(e.target.value);
+                  }}
+                />
+              </>
+            )}
+          </div>
+        </div>
+        <div className="flex-1 min-h-0 flex">
+          <div className="flex flex-col flex-1 min-w-0 gap-[12px] px-[28px] pt-[16px] pb-[16px]">
+            {!existingData.integration && <SelectCurrent />}
+            <div
+              className={clsx('flex-1 relative', showSettings && 'hidden')}
+            >
               <div
-                className={clsx('flex-1 relative', showSettings && 'hidden')}
+                id="social-content"
+                className="flex flex-col pe-[8px] absolute top-0 start-0 w-full h-full overflow-x-hidden overflow-y-scroll scrollbar scrollbar-thumb-newColColor scrollbar-track-newBgColorInner"
+              >
+                <div className="flex flex-1 gap-[6px] flex-col">
+                  <div className="flex-1 flex">
+                    {!hide && <EditorWrapper totalPosts={1} value="" />}
+                  </div>
+                  <div
+                    id="social-empty"
+                    className={clsx(
+                      'pb-[16px]'
+                      // current !== 'global' && 'hidden'
+                    )}
+                  />
+                </div>
+              </div>
+            </div>
+            <div
+              id="wrapper-settings"
+              className={clsx(
+                'select-none',
+                showSettings && 'flex-1 flex',
+                current === 'global' && 'hidden'
+              )}
+            >
+              <div
+                className={clsx(
+                  'flex-1 flex flex-col rounded-[14px] overflow-hidden',
+                  showSettings && 'bg-calModalCell'
+                )}
               >
                 <div
-                  id="social-content"
-                  className="gap-[32px] flex flex-col pe-[8px] pt-[20px] ps-[20px] absolute top-0 left-0 w-full h-full overflow-x-hidden overflow-y-scroll scrollbar scrollbar-thumb-newColColor scrollbar-track-newBgColorInner"
+                  onClick={() => setShowSettings(!showSettings)}
+                  aria-expanded={showSettings}
+                  className={clsx(
+                    'bg-btnPrimary rounded-[14px] h-[46px] flex-none flex items-center gap-[10px] cursor-pointer px-[16px] hover:opacity-95 transition-opacity',
+                    showSettings ? '!rounded-b-none' : ''
+                  )}
                 >
-                  <div className="flex w-full">
-                    <div className="flex flex-1">
-                      <PicksSocialsComponent toolTip={true} />
-                    </div>
-                    <div>
-                      {!dummy && (
-                        <SelectCustomer
-                          onChange={changeCustomer}
-                          integrations={integrations}
-                        />
-                      )}
-                    </div>
+                  <div className="flex-1 text-[14px] font-[600] text-white">
+                    {currentIntegrationText}
                   </div>
-                  <div className="flex flex-1 gap-[6px] flex-col">
-                    <div>{!existingData.integration && <SelectCurrent />}</div>
-                    <div className="flex-1 flex">
-                      {!hide && <EditorWrapper totalPosts={1} value="" />}
-                    </div>
-                    <div
-                      id="social-empty"
-                      className={clsx(
-                        'pb-[16px]'
-                        // current !== 'global' && 'hidden'
-                      )}
+                  <div>
+                    <ChevronDownIcon
+                      rotated={showSettings}
+                      className="text-white"
                     />
                   </div>
                 </div>
-              </div>
-              <div
-                id="wrapper-settings"
-                className={clsx(
-                  'pb-[20px] px-[20px] select-none',
-                  showSettings && 'flex-1 flex pt-[20px]',
-                  current === 'global' && 'hidden'
-                )}
-              >
-                <div className="flex-1 flex flex-col rounded-[12px] gap-[12px] overflow-hidden bg-newSettings">
-                  <div
-                    onClick={() => setShowSettings(!showSettings)}
-                    className={clsx(
-                      'bg-[#c2410c] rounded-[12px] flex items-center gap-[8px] cursor-pointer p-[12px]',
-                      showSettings ? '!rounded-b-none' : ''
-                    )}
-                  >
-                    <div className="flex-1 text-[14px] font-[600] text-white">
-                      {currentIntegrationText}
-                    </div>
-                    <div>
-                      <ChevronDownIcon
-                        rotated={showSettings}
-                        className="text-white"
-                      />
-                    </div>
+                <div
+                  className={clsx(
+                    !showSettings ? 'hidden' : 'flex-1',
+                    'text-[14px] text-textColor font-[500] relative'
+                  )}
+                >
+                  <div className="absolute start-0 top-0 w-full h-full flex flex-col overflow-x-hidden overflow-y-auto scrollbar scrollbar-thumb-newBgColorInner scrollbar-track-newColColor">
+                    <div
+                      id="social-settings"
+                      className="flex flex-col gap-[16px] p-[16px]"
+                    />
                   </div>
-                  <div
-                    className={clsx(
-                      !showSettings ? 'hidden' : 'flex-1',
-                      'text-[14px] text-textColor font-[500] relative'
-                    )}
-                  >
-                    <div className="absolute left-0 top-0 w-full h-full flex flex-col overflow-x-hidden overflow-y-auto scrollbar scrollbar-thumb-newBgColorInner scrollbar-track-newColColor">
-                      <div
-                        id="social-settings"
-                        className="flex flex-col gap-[20px] bg-newBgColor"
-                      />
-                    </div>
-                  </div>
-                  <style>
-                    {`#social-settings [data-id="${current}"] {display: block !important;}`}
-                  </style>
                 </div>
+                <style>
+                  {`#social-settings [data-id="${current}"] {display: block !important;}`}
+                </style>
               </div>
             </div>
           </div>
-          <div className="w-[580px] flex flex-col">
-            <div className="bg-newBgColor h-[65px] rounded-e-[16px] !rounded-b-[0] flex items-center px-[20px] text-[20px] font-[600]">
-              <div className="flex-1">{t('post_preview', 'Post Preview')}</div>
-              <div className="cursor-pointer">
-                <CloseIcon onClick={askClose} className="text-textItemBlur" />
-              </div>
+          <div className="w-[400px] xl:w-[470px] flex-none flex flex-col bg-calSurface border-s border-calLine">
+            <div className="h-[58px] flex-none flex items-center gap-[12px] ps-[24px] pe-[18px] border-b border-calLine">
+              <h3 className="m-0 flex-1 font-serif italic font-[500] text-[21px]">
+                {t('post_preview', 'Post Preview')}
+              </h3>
+              <button
+                type="button"
+                onClick={askClose}
+                aria-label={t('close', 'Close')}
+                className="w-[40px] h-[40px] rounded-full border border-calLine bg-transparent text-calInk hover:bg-calModalCell flex items-center justify-center transition-colors"
+              >
+                <CloseIcon size={16} />
+              </button>
             </div>
             <div className="flex-1 relative">
               <Scrollable
                 scrollClasses="!pe-[20px]"
-                className="absolute top-0 p-[20px] pe-[8px] left-0 w-full h-full overflow-x-hidden overflow-y-scroll scrollbar scrollbar-thumb-newColColor scrollbar-track-newBgColorInner"
+                className="absolute top-0 px-[24px] py-[20px] start-0 w-full h-full overflow-x-hidden overflow-y-scroll scrollbar scrollbar-thumb-newColColor scrollbar-track-newBgColorInner"
               >
                 <ShowAllProviders ref={ref} />
               </Scrollable>
             </div>
           </div>
         </div>
-        <div className="select-none h-[84px] py-[20px] border-t border-newBorder flex items-center">
-          <div className="flex-1 flex ps-[20px] gap-[8px]">
-            {!dummy && (
-              <TagsComponent
-                name="tags"
-                label={t('tags', 'Tags')}
-                initial={tags}
-                onChange={(e) => {
-                  setTags(e.target.value);
-                }}
-              />
-            )}
-
-            {!dummy && (
-              <RepeatComponent repeat={repeater} onChange={setRepeater} />
-            )}
-          </div>
-          <div className="pe-[20px] flex items-center justify-end gap-[8px]">
-            {existingData?.integration && (
-              <button
-                onClick={deletePost}
-                className="cursor-pointer flex text-[#FF3F3F] gap-[8px] items-center text-[15px] font-[600]"
-              >
-                <div>
-                  <TrashIcon />
+        <div className="select-none h-[80px] flex-none px-[24px] border-t border-calInk flex items-center gap-[10px]">
+          {existingData?.integration && (
+            <button
+              onClick={deletePost}
+              className="cursor-pointer h-[44px] px-[16px] rounded-full bg-calDangerSoft text-calDanger flex gap-[8px] items-center text-[14px] font-[600] hover:opacity-90 transition-opacity"
+            >
+              <div>
+                <TrashIcon size={16} />
+              </div>
+              <div>{t('delete_post', 'Delete Post')}</div>
+            </button>
+          )}
+          <span className="flex-1" />
+          {!addEditSets && (
+            <button
+              disabled={publishDisabled}
+              onClick={schedule('draft')}
+              className="relative cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 px-[20px] h-[44px] bg-calModalCell text-calInk hover:opacity-90 justify-center items-center flex rounded-full text-[14px] font-[600] transition-all"
+            >
+              {loading && (
+                <div className="absolute left-[50%] top-[50%] -translate-y-[50%] -translate-x-[50%]">
+                  <div className="animate-spin h-[20px] w-[20px] border-4 border-textColor border-t-transparent rounded-full" />
                 </div>
-                <div>{t('delete_post', 'Delete Post')}</div>
-              </button>
-            )}
-            <DatePicker onChange={setDate} date={date} />
-            {!addEditSets && (
+              )}
+              <div className={clsx(loading && 'invisible')}>
+                {t('save_as_draft', 'Save as Draft')}
+              </div>
+            </button>
+          )}
+          {addEditSets && (
+            <button
+              className="text-white text-[14px] font-[600] min-w-[180px] btnSub disabled:cursor-not-allowed disabled:opacity-80 outline-none gap-[8px] flex justify-center items-center h-[44px] rounded-full bg-btnPrimary hover:opacity-95 px-[22px] transition-all"
+              disabled={publishDisabled}
+              onClick={schedule('draft')}
+            >
+              Save Set
+            </button>
+          )}
+          {!addEditSets && (
+            <div ref={postNowRef} className="group relative flex">
               <button
-                disabled={
-                  selectedIntegrations.length === 0 || loading || locked
-                }
-                onClick={schedule('draft')}
-                className="relative cursor-pointer disabled:cursor-not-allowed px-[20px] h-[44px] bg-third text-textColor border border-tableBorder hover:bg-boxHover justify-center items-center flex rounded-[10px] text-[14px] font-[600] transition-all"
+                disabled={publishDisabled}
+                onClick={schedule('schedule')}
+                className={clsx(
+                  'text-white relative min-w-[190px] btnSub disabled:cursor-not-allowed disabled:opacity-80 outline-none gap-[8px] flex justify-center items-center h-[44px] bg-btnPrimary hover:opacity-95 px-[22px] transition-all',
+                  dummy ? 'rounded-full' : 'rounded-s-full'
+                )}
               >
                 {loading && (
                   <div className="absolute left-[50%] top-[50%] -translate-y-[50%] -translate-x-[50%]">
-                    <div className="animate-spin h-[20px] w-[20px] border-4 border-textColor border-t-transparent rounded-full" />
+                    <div className="animate-spin h-[20px] w-[20px] border-4 border-white border-t-transparent rounded-full" />
                   </div>
                 )}
-                <div className={clsx(loading && 'invisible')}>
-                  {t('save_as_draft', 'Save as Draft')}
+                <div
+                  className={clsx(
+                    'text-[14px] font-[600]',
+                    loading && 'invisible'
+                  )}
+                >
+                  {selectedIntegrations.length === 0
+                    ? t('check_circles_above', 'Check the circles above')
+                    : dummy
+                    ? t('create_output', 'Create output')
+                    : !existingData?.integration
+                    ? t('add_to_calendar', 'Add to calendar')
+                    : existingData?.posts?.[0]?.state === 'DRAFT'
+                    ? t('schedule', 'Schedule')
+                    : t('update', 'Update')}
                 </div>
               </button>
-            )}
-            {addEditSets && (
-              <button
-                className="text-white text-[14px] font-[600] min-w-[180px] btnSub disabled:cursor-not-allowed disabled:opacity-80 outline-none gap-[8px] flex justify-center items-center h-[44px] rounded-[10px] bg-btnPrimary hover:opacity-95 shadow-[var(--menu-shadow)] px-[20px] transition-all"
-                disabled={
-                  selectedIntegrations.length === 0 || loading || locked
-                }
-                onClick={schedule('draft')}
-              >
-                Save Set
-              </button>
-            )}
-            {!addEditSets && (
-              <div className="group cursor-pointer relative">
+              {!dummy && (
                 <button
-                  disabled={
-                    selectedIntegrations.length === 0 || loading || locked
-                  }
-                  onClick={schedule('schedule')}
-                  className="text-white relative min-w-[180px] btnSub disabled:cursor-not-allowed disabled:opacity-80 outline-none gap-[8px] flex justify-center items-center h-[44px] rounded-[10px] bg-btnPrimary hover:opacity-95 shadow-[var(--menu-shadow)] px-[20px] transition-all"
+                  type="button"
+                  aria-label={t('more_publish_options', 'More publish options')}
+                  aria-haspopup="menu"
+                  aria-expanded={postNowOpen}
+                  onClick={() => setPostNowOpen(!postNowOpen)}
+                  className="w-[44px] h-[44px] rounded-e-full bg-btnPrimary hover:opacity-95 border-s border-white/35 flex justify-center items-center transition-all"
                 >
-                  {loading && (
-                    <div className="absolute left-[50%] top-[50%] -translate-y-[50%] -translate-x-[50%]">
-                      <div className="animate-spin h-[20px] w-[20px] border-4 border-white border-t-transparent rounded-full" />
-                    </div>
-                  )}
-                  <div
+                  <DropdownArrowSmallIcon
                     className={clsx(
-                      'text-[14px] font-[600]',
-                      loading && 'invisible'
+                      'text-white transition-transform',
+                      postNowOpen ? 'rotate-180' : 'group-hover:rotate-180'
                     )}
-                  >
-                    {selectedIntegrations.length === 0
-                      ? t('check_circles_above', 'Check the circles above')
-                      : dummy
-                      ? t('create_output', 'Create output')
-                      : !existingData?.integration
-                      ? t('add_to_calendar', 'Add to calendar')
-                      : existingData?.posts?.[0]?.state === 'DRAFT'
-                      ? t('schedule', 'Schedule')
-                      : t('update', 'Update')}
-                  </div>
-                  {!dummy && (
-                    <div className="flex justify-center items-center h-[20px] w-[20px] pt-[4px] arrow-change">
-                      <DropdownArrowSmallIcon className="group-hover:rotate-180 text-white" />
-                    </div>
-                  )}
+                  />
                 </button>
+              )}
 
-                {!dummy && (
-                  <button
-                    onClick={schedule('now')}
-                    disabled={
-                      selectedIntegrations.length === 0 || loading || locked
-                    }
-                    className="rounded-[8px] z-[300] disabled:cursor-not-allowed disabled:opacity-80 hidden group-hover:flex absolute bottom-[100%] -left-[12px] p-[12px] w-[206px] bg-newBgColorInner"
-                  >
-                    <div className="text-white rounded-[10px] bg-btnPrimary hover:opacity-95 shadow-[var(--menu-shadow)] h-[44px] w-full flex justify-center items-center text-[14px] font-[600]">
+              {!dummy && (
+                <div
+                  role="menu"
+                  className={clsx(
+                    'z-[300] absolute bottom-[100%] end-0 pb-[8px]',
+                    postNowOpen ? 'flex' : 'hidden group-hover:flex'
+                  )}
+                >
+                  <div className="w-[210px] p-[6px] rounded-[14px] bg-calCard border border-calLine shadow-[0_18px_40px_-18px_rgba(0,0,0,0.45)]">
+                    <button
+                      role="menuitem"
+                      onClick={schedule('now')}
+                      disabled={publishDisabled}
+                      className="w-full h-[40px] rounded-[10px] bg-calEmberSoft text-calEmberText text-start px-[12px] text-[14px] font-[600] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 transition-opacity"
+                    >
                       {t('post_now', 'Post Now')}
-                    </div>
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
       <CopilotPopup

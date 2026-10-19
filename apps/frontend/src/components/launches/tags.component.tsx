@@ -13,7 +13,6 @@ import { useClickOutside } from '@mantine/hooks';
 import clsx from 'clsx';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import {
-  TagIcon,
   DropdownArrowIcon,
   PlusIcon,
   CheckmarkIcon,
@@ -23,6 +22,8 @@ export const TagsComponent: FC<{
   name: string;
   label: string;
   initial: any[];
+  // 'top' opens the list above the trigger (original); 'bottom' below it.
+  placement?: 'top' | 'bottom';
   onChange: (event: {
     target: {
       value: any[];
@@ -49,6 +50,7 @@ export const TagsComponentInner: FC<{
   name: string;
   label: string;
   initial: any[];
+  placement?: 'top' | 'bottom';
   allTags: any;
   mutate: () => Promise<any>;
   onChange: (event: {
@@ -57,7 +59,14 @@ export const TagsComponentInner: FC<{
       name: string;
     };
   }) => void;
-}> = ({ initial, onChange, name, mutate, allTags: data }) => {
+}> = ({
+  initial,
+  onChange,
+  name,
+  mutate,
+  allTags: data,
+  placement = 'top',
+}) => {
   const t = useT();
   const fetch = useFetch();
   const [isOpen, setIsOpen] = useState(false);
@@ -161,31 +170,37 @@ export const TagsComponentInner: FC<{
     <div
       ref={ref}
       className={clsx(
-        'border rounded-[10px] justify-center flex items-center relative h-[44px] text-[14px] font-[600] select-none',
-        isOpen ? 'border-[#c2410c]' : 'border-newTextColor/10'
+        'border-b-2 flex items-center relative h-[48px] italic select-none',
+        isOpen
+          ? 'border-btnPrimary'
+          : tagValue.length
+          ? 'border-calInk'
+          : 'border-calLineStrong',
+        tagValue.length ? 'text-calInk' : 'text-calMuted'
       )}
     >
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className="px-[16px] justify-center flex gap-[8px] items-center h-full select-none flex-1"
+        className="px-[4px] flex gap-[8px] items-center h-full select-none flex-1"
       >
-        <div className="cursor-pointer">
-          <TagIcon />
-        </div>
-        <div className="cursor-pointer flex gap-[4px]">
+        <div className="cursor-pointer flex gap-[8px] items-center whitespace-nowrap">
           {tagValue.length === 0 ? (
             t('add_new_tag', 'Add New Tag')
           ) : (
             <>
               <div
-                className="h-full flex justify-center items-center px-[8px] rounded-[4px]"
+                className="flex justify-center items-center px-[10px] py-[2px] rounded-[12px] font-sans not-italic text-[13px] font-[500]"
                 style={{ backgroundColor: tagValue[0].color }}
               >
                 <span className="text-shadow-tags text-[#fff]">
                   {tagValue[0].name}
                 </span>
               </div>
-              {tagValue.length > 1 ? <span>+{tagValue.length - 1}</span> : null}
+              {tagValue.length > 1 ? (
+                <span className="font-sans not-italic text-[13px] text-calMuted">
+                  +{tagValue.length - 1}
+                </span>
+              ) : null}
             </>
           )}
         </div>
@@ -194,7 +209,14 @@ export const TagsComponentInner: FC<{
         </div>
       </div>
       {isOpen && (
-        <div className="z-[300] absolute start-0 bottom-[100%] w-[240px] bg-newBgColorInner p-[12px] menu-shadow -translate-y-[10px] flex flex-col">
+        <div
+          className={clsx(
+            'z-[300] absolute start-0 w-[280px] bg-calCard border border-calLine rounded-[14px] p-[10px] shadow-[0_18px_40px_-18px_rgba(0,0,0,0.35)] flex flex-col gap-[2px] font-sans not-italic text-[14px] font-[500] text-calInk',
+            placement === 'bottom'
+              ? 'top-[100%] translate-y-[10px]'
+              : 'bottom-[100%] -translate-y-[10px]'
+          )}
+        >
           {(data?.tags || []).map((p: any) => (
             <div
               onClick={() => {
@@ -217,7 +239,7 @@ export const TagsComponentInner: FC<{
                 });
               }}
               key={p.name}
-              className="min-h-[40px] py-[8px] px-[20px] -mx-[12px] flex gap-[8px] items-center group"
+              className="min-h-[38px] py-[6px] px-[6px] rounded-[10px] flex gap-[10px] items-center group cursor-pointer hover:bg-calModalCell"
             >
               <Check
                 onChange={() => {}}
@@ -225,7 +247,7 @@ export const TagsComponentInner: FC<{
               />
               <div className="h-full flex items-center flex-1 break-all">
                 <span
-                  className="text-[#fff] px-[8px] rounded-[8px] text-shadow-tags"
+                  className="text-[#fff] px-[10px] py-[2px] rounded-[10px] text-[12.5px] text-shadow-tags"
                   style={{ backgroundColor: p.color }}
                 >
                   {p.name}
@@ -234,7 +256,7 @@ export const TagsComponentInner: FC<{
               {!tagValue.find((a) => a.id === p.id) && (
                 <div
                   onClick={(e) => deleteTag(p, e)}
-                  className="ms-auto transition-opacity cursor-pointer text-red-500 text-[14px] font-[600]"
+                  className="ms-auto w-[22px] h-[22px] rounded-full bg-calDangerSoft text-calDanger flex items-center justify-center transition-opacity cursor-pointer text-[13px] font-[600]"
                 >
                   ×
                 </div>
@@ -243,7 +265,7 @@ export const TagsComponentInner: FC<{
           ))}
           <div
             onClick={addTag}
-            className="cursor-pointer gap-[8px] flex w-full h-[44px] rounded-[10px] mt-[12px] px-[20px] justify-center items-center bg-btnPrimary hover:opacity-95 text-white transition-all"
+            className="cursor-pointer gap-[8px] flex w-full h-[38px] rounded-[10px] mt-[8px] px-[20px] justify-center items-center bg-btnPrimary hover:opacity-95 text-white transition-all"
           >
             <div>
               <PlusIcon />
@@ -266,8 +288,8 @@ const Check: FC<{ value: boolean; onChange: (value: boolean) => void }> = ({
     <div
       onClick={() => onChange(!value)}
       className={clsx(
-        'text-[10px] font-[500] text-center flex border border-btnSimple rounded-[6px] min-w-[20px] min-h-[20px] w-[20px] h-[20px] justify-center items-center',
-        value && 'bg-[#c2410c]'
+        'text-[10px] font-[500] text-center flex rounded-[5px] min-w-[18px] min-h-[18px] w-[18px] h-[18px] justify-center items-center',
+        value ? 'bg-btnPrimary' : 'border-[1.5px] border-calLineStrong'
       )}
     >
       {value ? <CheckmarkIcon className="text-white" /> : ''}

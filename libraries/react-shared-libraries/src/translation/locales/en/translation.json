@@ -688,5 +688,16 @@
   "continue_without_channels": "Continue without channels",
   "back": "Back",
   "get_started": "Get Started",
-  "kick_select_channel": "Select Channel"
+  "kick_select_channel": "Select Channel",
+  "all_posts": "All posts",
+  "hide_channels": "Hide channels",
+  "show_channels": "Show channels",
+  "post_at": "Post at {{time}}",
+  "drop_to_move_here": "Drop to move here",
+  "failed": "Failed",
+  "list": "List",
+  "post_to": "Post to",
+  "on_date": "on",
+  "global": "Global",
+  "more_publish_options": "More publish options"
 }

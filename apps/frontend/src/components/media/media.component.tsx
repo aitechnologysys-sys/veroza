@@ -650,6 +650,9 @@ export const MultiMediaComponent: FC<{
   onClose?: () => void;
   toolBar?: React.ReactNode;
   information?: React.ReactNode;
+  // 'composer' = Create Post modal look; 'default' = original look (agent
+  // page, Veo3 video form, Reddit settings).
+  variant?: 'default' | 'composer';
   onChange: (event: {
     target: {
       name: string;
@@ -674,7 +677,9 @@ export const MultiMediaComponent: FC<{
     toolBar,
     information,
     mediaNotAvailable,
+    variant = 'default',
   } = props;
+  const composer = variant === 'composer';
   const user = useUser();
   const modals = useModals();
   const t = useT();
@@ -754,7 +759,13 @@ export const MultiMediaComponent: FC<{
   return (
     <>
       <div className="b1 flex flex-col gap-[8px] rounded-bl-[8px] select-none w-full">
-        <div className="flex gap-[10px] px-[12px]">
+        <div
+          className={clsx(
+            'flex gap-[10px]',
+            composer ? 'px-[16px]' : 'px-[12px]',
+            composer && !!currentMedia?.length && 'pt-[2px] pb-[10px]'
+          )}
+        >
           {!!currentMedia && (
             <ReactSortable
               list={currentMedia}
@@ -767,7 +778,15 @@ export const MultiMediaComponent: FC<{
               handle=".dragging"
             >
               {currentMedia.map((media, index) => (
-                  <div key={media.id} className="cursor-pointer rounded-[5px] w-[40px] h-[40px] border-2 border-tableBorder relative flex transition-all">
+                  <div
+                    key={media.id}
+                    className={clsx(
+                      'cursor-pointer relative flex transition-all',
+                      composer
+                        ? 'rounded-[8px] w-[44px] h-[44px] bg-calModalCell'
+                        : 'rounded-[5px] w-[40px] h-[40px] border-2 border-tableBorder'
+                    )}
+                  >
                     <DragHandleIcon className="z-[20] dragging absolute pe-[1px] pb-[3px] -start-[4px] -top-[4px] cursor-move" />
 
                     <div className="w-full h-full relative group">
@@ -807,7 +826,10 @@ export const MultiMediaComponent: FC<{
                         <VideoFrame url={mediaDirectory.set(media?.path)} />
                       ) : (
                         <img
-                          className="w-full h-full object-cover rounded-[4px]"
+                          className={clsx(
+                            'w-full h-full object-cover',
+                            composer ? 'rounded-[8px]' : 'rounded-[4px]'
+                          )}
                           src={mediaDirectory.set(media?.path)}
                         />
                       )}
@@ -822,58 +844,114 @@ export const MultiMediaComponent: FC<{
             </ReactSortable>
           )}
         </div>
-        <div className="flex gap-[8px] px-[12px] border-t border-newColColor w-full b1 text-textColor">
+        <div
+          className={clsx(
+            'flex border-t w-full b1',
+            composer
+              ? 'flex-wrap items-center gap-[4px] px-[10px] py-[8px] border-calLine text-calInk'
+              : 'gap-[8px] px-[12px] border-newColColor text-textColor'
+          )}
+        >
           {!mediaNotAvailable && (
-            <div className="flex py-[10px] b2 items-center gap-[4px]">
+            <div
+              className={clsx(
+                'flex b2 items-center gap-[4px]',
+                !composer && 'py-[10px]'
+              )}
+            >
               <div
                 onClick={showModal}
-                className="cursor-pointer h-[30px] rounded-[6px] justify-center items-center flex bg-newColColor px-[8px]"
+                className={clsx(
+                  'cursor-pointer justify-center items-center flex',
+                  composer
+                    ? 'h-[32px] rounded-full bg-calModalCell text-calInk hover:opacity-90 px-[10px]'
+                    : 'h-[30px] rounded-[6px] bg-newColColor px-[8px]'
+                )}
               >
                 <div className="flex gap-[8px] items-center">
                   <div>
                     <InsertMediaIcon />
                   </div>
-                  <div className="text-[10px] font-[600] maxMedia:hidden block">
+                  <div
+                    className={clsx(
+                      'maxMedia:hidden block',
+                      composer
+                        ? 'text-[12.5px] font-[500]'
+                        : 'text-[10px] font-[600]'
+                    )}
+                  >
                     {t('insert_media', 'Insert Media')}
                   </div>
                 </div>
               </div>
               <div
                 onClick={designMedia}
-                className="cursor-pointer h-[30px] rounded-[6px] justify-center items-center flex bg-newColColor px-[8px]"
+                className={clsx(
+                  'cursor-pointer justify-center items-center flex',
+                  composer
+                    ? 'h-[32px] rounded-full text-calMuted hover:text-calInk hover:bg-calModalCell px-[10px]'
+                    : 'h-[30px] rounded-[6px] bg-newColColor px-[8px]'
+                )}
               >
                 <div className="flex gap-[5px] items-center">
                   <div>
                     <DesignMediaIcon />
                   </div>
-                  <div className="text-[10px] font-[600] iconBreak:hidden block">
+                  <div
+                    className={clsx(
+                      'iconBreak:hidden block',
+                      composer
+                        ? 'text-[12.5px] font-[500]'
+                        : 'text-[10px] font-[600]'
+                    )}
+                  >
                     {t('design_media', 'Design Media')}
                   </div>
                 </div>
               </div>
 
-              <ThirdPartyMedia allData={allData} onChange={changeMedia} />
+              <ThirdPartyMedia
+                variant={variant}
+                allData={allData}
+                onChange={changeMedia}
+              />
 
               {!!user?.tier?.ai && (
                 <>
-                  <AiImage value={text} onChange={changeMedia} />
-                  <AiVideo value={text} onChange={changeMedia} />
+                  <AiImage variant={variant} value={text} onChange={changeMedia} />
+                  <AiVideo variant={variant} value={text} onChange={changeMedia} />
                 </>
               )}
             </div>
           )}
-          {!mediaNotAvailable && (
-            <div className="text-newColColor h-full flex items-center">
-              <VerticalDividerIcon />
-            </div>
-          )}
+          {!mediaNotAvailable &&
+            (composer ? (
+              <span
+                aria-hidden="true"
+                className="w-[1px] h-[20px] bg-calLine mx-[4px]"
+              />
+            ) : (
+              <div className="text-newColColor h-full flex items-center">
+                <VerticalDividerIcon />
+              </div>
+            ))}
           {!!toolBar && (
-            <div className="flex py-[10px] b2 items-center gap-[4px]">
+            <div
+              className={clsx(
+                'flex b2 items-center gap-[4px]',
+                !composer && 'py-[10px]'
+              )}
+            >
               {toolBar}
             </div>
           )}
           {information && (
-            <div className="flex-1 justify-end flex py-[10px] b2 items-center gap-[4px]">
+            <div
+              className={clsx(
+                'flex-1 justify-end flex b2 items-center gap-[4px]',
+                !composer && 'py-[10px]'
+              )}
+            >
               {information}
             </div>
           )}

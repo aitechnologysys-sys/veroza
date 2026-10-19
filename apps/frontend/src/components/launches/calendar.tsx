@@ -306,10 +306,10 @@ export const DayView = () => {
 
   return (
     <div className="flex flex-col gap-[10px] flex-1 relative">
-      <div className="absolute start-0 top-0 w-full h-full flex flex-col overflow-auto scrollbar scrollbar-thumb-fifth scrollbar-track-newBgColor">
+      <div className="absolute start-0 top-0 w-full h-full grid [grid-template-columns:80px_minmax(0,_1fr)] content-start gap-[8px] overflow-auto scrollbar scrollbar-thumb-fifth scrollbar-track-newBgColor">
         {options.map((option) => (
           <Fragment key={option[0].time}>
-            <div className="text-center text-[14px] min-h-[21px]">
+            <div className="pt-[10px] text-end font-mono text-[11px] text-calMuted whitespace-nowrap">
               {newDayjs()
                 .utc()
                 .startOf('day')
@@ -319,7 +319,7 @@ export const DayView = () => {
             </div>
             <div
               key={option[0].time}
-              className="min-h-[60px] rounded-[10px] flex justify-center items-center gap-[10px] mb-[20px]"
+              className="min-h-[72px] flex"
             >
               <CalendarContext.Provider
                 value={{
@@ -364,50 +364,65 @@ export const WeekView = () => {
   }, [i18next.resolvedLanguage, startDate]);
 
   return (
-    <div className="flex flex-col text-textColor flex-1">
+    <div className="flex flex-col text-calInk flex-1">
       <div className="flex-1 relative">
-        <div className="grid [grid-template-columns:136px_repeat(7,_minmax(0,_1fr))] gap-[4px] rounded-[10px] absolute h-full start-0 top-0 w-full overflow-auto scrollbar scrollbar-thumb-fifth scrollbar-track-newBgColor">
-          <div className="z-10 bg-newTableHeader flex justify-center items-center flex-col h-[62px] rounded-[8px] sticky top-0"></div>
-          {localizedDays.map((day, index) => (
-            <div
-              key={day.name}
-              className="p-2 text-center bg-newTableHeader flex justify-center items-center flex-col h-[62px] rounded-[8px] sticky top-0 z-[20]"
-            >
-              <div className="text-[14px] font-[500] text-newTableText">
-                {day.name}
-              </div>
+        <div className="absolute h-full start-0 top-0 w-full overflow-auto scrollbar scrollbar-thumb-fifth scrollbar-track-newBgColor">
+          <div className="grid [grid-template-columns:64px_repeat(7,_minmax(0,_1fr))] gap-[8px] min-w-[900px]">
+            <div className="z-10 bg-calBg sticky top-0"></div>
+            {localizedDays.map((day, index) => (
               <div
+                key={day.name}
+                title={day.name}
                 className={clsx(
-                  'text-[14px] font-[600] flex items-center justify-center gap-[6px]',
-                  day.day === newDayjs().format('L') &&
-                    'text-newTableTextFocused'
+                  'px-[6px] pt-[4px] pb-[10px] flex items-baseline gap-[8px] bg-calBg sticky top-0 z-[20]',
+                  day.day === newDayjs().format('L')
+                    ? 'border-b-[3px] border-btnPrimary'
+                    : 'border-b border-calInk'
                 )}
               >
-                {day.day === newDayjs().format('L') && (
-                  <div className="w-[6px] h-[6px] bg-newTableTextFocused rounded-full" />
-                )}
-                {day.day}
-              </div>
-            </div>
-          ))}
-          {hours.map((hour) => (
-            <Fragment key={hour}>
-              <div className="p-2 pe-4 text-center items-center justify-center flex text-[14px] text-newTableText">
-                {convertTimeFormatBasedOnLocality(hour)}
-              </div>
-              {localizedDays.map((day, indexDay) => (
-                <Fragment
-                  key={`${startDate}-${day.date.format('YYYY-MM-DD')}-${hour}`}
+                <span
+                  className={clsx(
+                    'font-serif font-[600] leading-none',
+                    day.day === newDayjs().format('L')
+                      ? 'text-[40px] text-btnPrimary'
+                      : 'text-[26px] text-calInk'
+                  )}
                 >
-                  <div className="relative">
-                    <CalendarColumn
-                      getDate={day.date.hour(hour).startOf('hour')}
-                    />
-                  </div>
-                </Fragment>
-              ))}
-            </Fragment>
-          ))}
+                  {day.date.format('D')}
+                </span>
+                <span
+                  className={clsx(
+                    'font-mono text-[11px] uppercase whitespace-nowrap overflow-hidden text-ellipsis',
+                    day.day === newDayjs().format('L')
+                      ? 'text-calEmberText'
+                      : 'text-calMuted'
+                  )}
+                >
+                  {day.date.format('ddd')}
+                  {day.day === newDayjs().format('L') &&
+                    ` · ${t('today', 'Today')}`}
+                </span>
+              </div>
+            ))}
+            {hours.map((hour) => (
+              <Fragment key={hour}>
+                <div className="pt-[10px] text-end font-mono text-[11px] text-calMuted whitespace-nowrap">
+                  {convertTimeFormatBasedOnLocality(hour)}
+                </div>
+                {localizedDays.map((day, indexDay) => (
+                  <Fragment
+                    key={`${startDate}-${day.date.format('YYYY-MM-DD')}-${hour}`}
+                  >
+                    <div className="relative min-h-[72px] flex">
+                      <CalendarColumn
+                        getDate={day.date.hour(hour).startOf('hour')}
+                      />
+                    </div>
+                  </Fragment>
+                ))}
+              </Fragment>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -463,28 +478,30 @@ export const MonthView = () => {
   }, [startDate]);
 
   return (
-    <div className="flex flex-col text-textColor flex-1">
+    <div className="flex flex-col text-calInk flex-1">
       <div className="flex-1 flex relative">
-        <div className="grid grid-cols-7 grid-rows-[62px_auto] gap-[4px] rounded-[10px] absolute start-0 top-0 overflow-auto w-full h-full scrollbar scrollbar-thumb-tableBorder scrollbar-track-secondary">
-          {localizedDays.map((day) => (
-            <div
-              key={day}
-              className="z-[20] p-2 bg-newTableHeader flex justify-center items-center flex-col h-[62px] rounded-[8px] sticky top-0"
-            >
-              <div>{day}</div>
-            </div>
-          ))}
-          {calendarDays.map((date, index) => (
-            <div
-              key={index}
-              className="text-center items-center justify-center flex"
-            >
-              <CalendarColumn
-                getDate={newDayjs(date.day).endOf('day')}
-                randomHour={true}
-              />
-            </div>
-          ))}
+        <div className="absolute start-0 top-0 overflow-auto w-full h-full scrollbar scrollbar-thumb-tableBorder scrollbar-track-secondary">
+          <div className="grid grid-cols-7 gap-[8px] min-w-[700px]">
+            {localizedDays.map((day) => (
+              <div
+                key={day}
+                className="z-[20] px-[6px] pt-[4px] pb-[10px] bg-calBg border-b border-calInk font-mono text-[11px] uppercase text-calMuted whitespace-nowrap overflow-hidden text-ellipsis sticky top-0"
+              >
+                <div>{day}</div>
+              </div>
+            ))}
+            {calendarDays.map((date, index) => (
+              <div
+                key={index}
+                className="flex min-h-[120px]"
+              >
+                <CalendarColumn
+                  getDate={newDayjs(date.day).endOf('day')}
+                  randomHour={true}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -522,7 +539,7 @@ export const ListView = () => {
   if (loading) {
     return (
       <div className="flex flex-col flex-1 items-center justify-center">
-        <div className="text-textColor">{t('loading', 'Loading...')}</div>
+        <div className="text-calMuted font-serif text-[18px]">{t('loading', 'Loading...')}</div>
       </div>
     );
   }
@@ -530,7 +547,7 @@ export const ListView = () => {
   if (listPosts.length === 0) {
     return (
       <div className="flex flex-col flex-1 items-center justify-center">
-        <div className="text-textColor text-[16px]">{emptyMessage}</div>
+        <div className="text-calMuted font-serif italic text-[20px]">{emptyMessage}</div>
       </div>
     );
   }
@@ -540,10 +557,13 @@ export const ListView = () => {
       <div className="absolute start-0 top-0 w-full h-full flex flex-col overflow-auto scrollbar scrollbar-thumb-fifth scrollbar-track-newBgColor">
         {groupedPosts.map(([dateKey, datePosts]) => (
           <Fragment key={dateKey}>
-            <div className="text-center text-[14px] min-h-[21px] text-textColor font-[500] mt-[10px]">
-              {newDayjs(dateKey).format(isUSCitizen() ? 'dddd, MMMM D, YYYY' : 'dddd, D MMMM YYYY')}
+            <div className="flex items-center gap-[12px] mt-[16px] mb-[10px]">
+              <div className="font-serif font-[600] text-[20px] text-calInk whitespace-nowrap">
+                {newDayjs(dateKey).format(isUSCitizen() ? 'dddd, MMMM D, YYYY' : 'dddd, D MMMM YYYY')}
+              </div>
+              <span aria-hidden="true" className="flex-1 h-[1px] bg-calLine" />
             </div>
-            <div className="flex flex-col gap-[10px] mb-[20px] px-[10px]">
+            <div className="flex flex-col gap-[10px] mb-[10px]">
               {datePosts.map((post) => (
                 <CalendarItem
                   key={post.id}
@@ -604,6 +624,7 @@ export const CalendarColumn: FC<{
     sets,
     signature,
     loading,
+    startDate,
   } = useCalendar();
   const modal = useModals();
   const fetch = useFetch();
@@ -825,36 +846,56 @@ export const CalendarColumn: FC<{
   }, [integrations, getDate, sets, signature]);
 
   const addProvider = useAddProvider();
+  const isToday = getDate.format('L') === newDayjs().format('L');
+  const isOtherMonth =
+    display === 'month' && getDate.month() !== newDayjs(startDate).month();
   return (
     <div
       className={clsx(
-        'flex flex-col w-full min-h-full relative',
+        'flex flex-col w-full min-h-full relative rounded-[14px] p-[4px]',
         isBeforeNow && 'repeated-strip',
         loading && 'animate-pulse',
         isBeforeNow
           ? 'cursor-not-allowed'
-          : 'border border-newTextColor/5 rounded-[8px]'
+          : display === 'week' && isToday
+          ? 'bg-calToday'
+          : 'bg-calCell',
+        isOtherMonth && 'opacity-60'
       )}
       ref={drop as any}
     >
       {display === 'month' && (
-        <div className={clsx('pt-[6px] text-[14px]')}>{getDate.date()}</div>
+        <div className="flex px-[4px] pt-[2px] pb-[4px]">
+          <div
+            className={clsx(
+              'font-serif font-[600] text-[16px] leading-none flex items-center justify-center',
+              isToday
+                ? 'min-w-[26px] h-[26px] px-[4px] rounded-full bg-btnPrimary text-white'
+                : isOtherMonth
+                ? 'text-calMuted'
+                : 'text-calInk'
+            )}
+          >
+            {getDate.date()}
+          </div>
+        </div>
       )}
       <div
         className={clsx(
-          'relative flex flex-col flex-1 text-white rounded-[8px] min-h-[70px]',
-          canDrop && 'border border-[#c2410c]'
+          'relative flex flex-col flex-1 rounded-[10px] min-h-[64px]',
+          canDrop && 'outline outline-2 outline-btnPrimary bg-calEmberSoft'
         )}
       >
         <div
           className={clsx(
-            'flex-col text-[12px] pointer w-full flex scrollbar scrollbar-thumb-tableBorder scrollbar-track-secondary',
+            'text-[12px] pointer w-full flex gap-[6px] scrollbar scrollbar-thumb-tableBorder scrollbar-track-secondary',
+            display === 'day' ? 'flex-row flex-wrap' : 'flex-col',
             isBeforeNow ? 'flex-1' : 'cursor-pointer',
             isBeforeNow && postList.length === 0 && 'col-calendar'
           )}
         >
           {loading && (
-            <div className="h-full w-full p-[5px] animate-pulse absolute left-0 top-0 z-[50]">
+            <div className="h-full w-full p-[4px] animate-pulse absolute start-0 top-0 z-[50]">
               <div className="h-full w-full bg-newSettings rounded-[10px]" />
             </div>
           )}
@@ -862,30 +903,29 @@ export const CalendarColumn: FC<{
             <div
               key={post.id}
               className={clsx(
-                'text-textColor p-[2.5px] relative flex flex-col justify-center items-center'
+                'relative flex flex-col',
+                display === 'day' ? 'w-[280px] max-w-full' : 'w-full'
               )}
             >
-              <div className="relative w-full flex flex-col items-center p-[2.5px]">
-                <CalendarItem
-                  display={display as 'day' | 'week' | 'month'}
-                  isBeforeNow={isBeforeNow}
-                  date={getDate}
-                  state={post.state}
-                  statistics={openStatistics(post.id)}
-                  missingRelease={openMissingRelease(post.id)}
-                  editPost={editPost(post, false)}
-                  duplicatePost={editPost(post, true)}
-                  copyDebugJson={user?.isSuperAdmin ? copyDebugJson(post) : undefined}
-                  post={post}
-                  integrations={integrations}
-                  deletePost={deletePost(post)}
-                />
-              </div>
+              <CalendarItem
+                display={display as 'day' | 'week' | 'month'}
+                isBeforeNow={isBeforeNow}
+                date={getDate}
+                state={post.state}
+                statistics={openStatistics(post.id)}
+                missingRelease={openMissingRelease(post.id)}
+                editPost={editPost(post, false)}
+                duplicatePost={editPost(post, true)}
+                copyDebugJson={user?.isSuperAdmin ? copyDebugJson(post) : undefined}
+                post={post}
+                integrations={integrations}
+                deletePost={deletePost(post)}
+              />
             </div>
           ))}
           {!showAll && postList.length > 3 && (
             <div
-              className="text-center hover:underline py-[5px] text-textColor"
+              className="h-[26px] px-[10px] rounded-[10px] bg-calCard text-calInk text-[12px] font-[500] flex items-center justify-center cursor-pointer hover:underline whitespace-nowrap"
               onClick={showAllFunc}
             >
               {t('show_more', '+ Show more')} ({postList.length - 3})
@@ -893,16 +933,21 @@ export const CalendarColumn: FC<{
           )}
           {showAll && postList.length > 3 && (
             <div
-              className="text-center hover:underline py-[5px]"
+              className="h-[26px] px-[10px] rounded-[10px] bg-calCard text-calInk text-[12px] font-[500] flex items-center justify-center cursor-pointer hover:underline whitespace-nowrap"
               onClick={showLessFunc}
             >
               {t('show_less', '- Show less')}
             </div>
           )}
         </div>
-        {!isBeforeNow && (
+        {canDrop && (
+          <div className="flex-1 min-h-[40px] flex items-center justify-center text-center text-[12px] font-[500] text-calEmberText pointer-events-none">
+            {t('drop_to_move_here', 'Drop to move here')}
+          </div>
+        )}
+        {!isBeforeNow && !canDrop && (
           <div
-            className="pb-[2.5px] px-[5px] flex-1 flex"
+            className={clsx('flex-1 flex', postList.length > 0 && 'pt-[6px]')}
             onClick={integrations.length ? addModal : addProvider}
           >
             <div
@@ -910,25 +955,41 @@ export const CalendarColumn: FC<{
                 display === ('month' as any)
                   ? 'flex-1 min-h-[40px] w-full'
                   : !postList.length
-                  ? 'min-h-full w-full p-[5px]'
+                  ? 'min-h-full w-full'
                   : 'min-h-[40px] w-full',
-                'flex items-center justify-center cursor-pointer pb-[2.5px]'
+                'flex items-stretch justify-center cursor-pointer'
               )}
             >
               {display !== 'day' && (
-                <div
-                  className={clsx(
-                    'group hover:before:h-[30px] w-full h-full rounded-[10px] flex justify-center items-center text-white'
+                <div className="w-full flex-1 min-h-[40px] rounded-[12px] flex justify-center items-center gap-[6px] px-[6px] text-center bg-calInk text-calInkInverse text-[12.5px] font-[500] opacity-0 hover:opacity-100 transition-opacity">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    aria-hidden="true"
+                    className="flex-none"
+                  >
+                    <path
+                      d="M8 3v10M3 8h10"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  {display === 'week' && (
+                    <span className="whitespace-nowrap overflow-hidden text-ellipsis">
+                      {t('post_at', 'Post at {{time}}', {
+                        time: getDate.format(isUSCitizen() ? 'h A' : 'HH:mm'),
+                      })}
+                    </span>
                   )}
-                >
-                  <div
-                    className={`group-hover:before:content-["+"] pb-[5px] flex justify-center items-center rounded-[8px] transition-all group-hover:bg-btnPrimary w-full h-full max-w-[40px] max-h-[40px]`}
-                  />
                 </div>
               )}
               {display === 'day' && (
                 <div
-                  className={`w-full h-full rounded-[10px] py-[10px] flex-wrap hover:border hover:border-seventh flex justify-center items-center gap-[20px] opacity-30 grayscale hover:grayscale-0 hover:opacity-100`}
+                  className={`w-full h-full rounded-[12px] py-[10px] flex-wrap hover:bg-calCard flex justify-center items-center gap-[20px] opacity-30 grayscale hover:grayscale-0 hover:opacity-100`}
                 >
                   {integrations.map((selectedIntegrations) => (
                     <div
@@ -937,14 +998,14 @@ export const CalendarColumn: FC<{
                     >
                       <div
                         className={clsx(
-                          'relative w-[34px] h-[34px] rounded-[8px] flex justify-center items-center filter transition-all duration-500'
+                          'relative w-[34px] h-[34px] rounded-full flex justify-center items-center filter transition-all duration-500'
                         )}
                       >
                         <SafeImage
                           src={
                             selectedIntegrations.picture || '/no-picture.jpg'
                           }
-                          className="rounded-[8px]"
+                          className="rounded-full"
                           alt={selectedIntegrations.identifier}
                           width={32}
                           height={32}
@@ -958,7 +1019,7 @@ export const CalendarColumn: FC<{
                         ) : (
                           <SafeImage
                             src={`/icons/platforms/${selectedIntegrations.identifier}.png`}
-                            className="rounded-[8px] absolute z-10 -bottom-[5px] -end-[5px] border border-fifth"
+                            className="rounded-full absolute z-10 -bottom-[5px] -end-[5px] border-2 border-calCell"
                             alt={selectedIntegrations.identifier}
                             width={20}
                             height={20}
@@ -1034,150 +1095,174 @@ const CalendarItem: FC<{
     }),
     []
   );
+  const compact = display === 'month';
+  const tagColor = post?.tags?.[0]?.tag?.color;
+  const tagNames = post.tags.map((p) => p.tag.name).join(', ');
+  const secondLine =
+    state === 'DRAFT'
+      ? t('draft', 'Draft') + (tagNames ? ' · ' + tagNames : '')
+      : tagNames;
+  const time = dayjs
+    .utc(post.publishDate)
+    .local()
+    .format(isUSCitizen() ? 'h:mm A' : 'HH:mm');
+  const actionClass =
+    'flex-1 min-w-[22px] h-[26px] rounded-[7px] flex items-center justify-center cursor-pointer bg-calCell text-calMuted hover:text-calInk [&_svg]:w-[13px] [&_svg]:h-[13px]';
+  const errorTooltip = {
+    'data-tooltip-id': 'tooltip',
+    'data-tooltip-content':
+      post.error || 'An error occurred while publishing this post',
+  };
   return (
     <div
       // @ts-ignore
       ref={dragRef}
       className={clsx(
-        'w-full flex h-full flex-1 flex-col group',
-        'relative',
-        state === 'ERROR' && 'rounded-[10px] ring-2 ring-red-500'
+        'w-full flex flex-col group',
+        'relative rounded-[12px] bg-calCard shadow-calTile text-calInk',
+        state === 'ERROR'
+          ? 'border-2 border-calDanger'
+          : state === 'DRAFT'
+          ? 'border border-dashed border-calLineStrong'
+          : 'border border-transparent'
       )}
       style={{
         opacity,
       }}
     >
-      {state === 'ERROR' && (
-        <div
-          className="absolute -top-[6px] -left-[6px] z-20 w-[18px] h-[18px] rounded-full bg-red-500 flex items-center justify-center text-white text-[11px] font-bold cursor-pointer"
-          data-tooltip-id="tooltip"
-          data-tooltip-content={post.error || 'An error occurred while publishing this post'}
-        >
-          !
-        </div>
-      )}
       {showCreationMethodBadge && (
-        <div className="absolute -bottom-[4px] -right-[4px] z-10">
+        <div className="absolute -bottom-[4px] -end-[4px] z-10">
           <CreationMethodBadge
             creationMethod={post.creationMethod}
             ringColor="var(--new-bgColor)"
           />
         </div>
       )}
+      {!compact && (
+        <div
+          onClick={editPost}
+          className={clsx(
+            'h-[30px] min-h-[30px] rounded-t-[10px] flex items-center justify-between gap-[6px] ps-[8px] pe-[6px] cursor-pointer',
+            state !== 'DRAFT' && !tagColor && 'bg-calLine'
+          )}
+          style={
+            state !== 'DRAFT' && tagColor
+              ? {
+                  backgroundColor: `color-mix(in srgb, ${tagColor} 22%, var(--cal-card))`,
+                }
+              : undefined
+          }
+        >
+          {state === 'ERROR' ? (
+            <div
+              className="px-[7px] py-[2px] rounded-[6px] bg-calDanger text-calCard text-[10.5px] font-[600] whitespace-nowrap cursor-pointer"
+              {...errorTooltip}
+            >
+              ! {t('failed', 'Failed')}
+            </div>
+          ) : (
+            <div className="min-w-0 font-mono text-[10px] uppercase text-calMuted whitespace-nowrap overflow-hidden text-ellipsis">
+              {post.integration?.providerIdentifier}
+            </div>
+          )}
+          <div className="flex-none px-[6px] py-[2px] rounded-[6px] bg-calChip text-calChipText font-mono text-[10px] whitespace-nowrap">
+            {time}
+          </div>
+        </div>
+      )}
       <div
+        onClick={editPost}
         className={clsx(
-          'text-white text-[11px] max-h-[24px] h-[24px] min-h-[24px] w-full rounded-tr-[10px] rounded-tl-[10px] flex items-center justify-center gap-[10px] px-[5px] bg-btnPrimary'
+          'w-full flex items-center cursor-pointer',
+          compact ? 'gap-[6px] p-[6px]' : 'gap-[7px] ps-[8px] pe-[8px] pt-[7px] pb-[8px]',
+          'relative',
+          isBeforeNow && '!grayscale'
         )}
-        style={{
-          backgroundColor: post?.tags?.[0]?.tag?.color,
-        }}
       >
+        {compact && state === 'ERROR' && (
+          <div
+            className="flex-none w-[16px] h-[16px] rounded-full bg-calDanger text-calCard flex items-center justify-center text-[10px] font-bold cursor-pointer"
+            {...errorTooltip}
+          >
+            !
+          </div>
+        )}
         <div
           className={clsx(
-            post?.tags?.[0]?.tag?.color ? 'mix-blend-difference' : '',
-            'group-hover:hidden cursor-pointer'
+            'relative flex-none',
+            compact ? 'w-[18px] h-[18px]' : 'w-[22px] h-[22px]'
           )}
         >
-          {post.tags.map((p) => p.tag.name).join(', ')}
+          <img
+            className="w-full h-full rounded-full object-cover"
+            src={post.integration.picture! || '/no-picture.jpg'}
+          />
+          <img
+            className="w-[10px] h-[10px] rounded-full absolute z-10 -bottom-[3px] -end-[3px] border border-calCard"
+            src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
+          />
         </div>
+        {compact && (
+          <div className="flex-none font-mono text-[10px] text-calMuted whitespace-nowrap">
+            {time}
+          </div>
+        )}
+        <div className="min-w-0 flex-1 flex flex-col gap-[1px]">
+          <div className="text-[12px] leading-[1.3] whitespace-nowrap overflow-hidden text-ellipsis text-start">
+            {stripHtmlValidation('none', post.content, false, true, false) ||
+              t('no_content', 'no content')}
+          </div>
+          {!compact && !!secondLine && (
+            <div
+              className={clsx(
+                'text-[10.5px] font-[500] whitespace-nowrap overflow-hidden text-ellipsis text-start',
+                state === 'DRAFT' ? 'text-calEmberText' : 'text-calMuted'
+              )}
+            >
+              {secondLine}
+            </div>
+          )}
+        </div>
+        {showTime && (
+          <div className="text-calMuted text-[12px] whitespace-nowrap flex items-center">
+            {newDayjs(post.publishDate).local().format(isUSCitizen() ? 'hh:mm A' : 'HH:mm')}
+          </div>
+        )}
+      </div>
+      <div className="hidden group-hover:flex gap-[2px] px-[6px] pb-[6px]">
         {copyDebugJson && (
-          <div
-            className={clsx(
-              'hidden group-hover:block hover:underline cursor-pointer',
-              post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
-            )}
-            onClick={copyDebugJson}
-          >
+          <div className={actionClass} onClick={copyDebugJson}>
             <CopyDebug />
           </div>
         )}
-        <div
-          className={clsx(
-            'hidden group-hover:block hover:underline cursor-pointer',
-            post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
-          )}
-          onClick={duplicatePost}
-        >
+        <div className={actionClass} onClick={duplicatePost}>
           <Duplicate />
         </div>
-        <div
-          className={clsx(
-            'hidden group-hover:block hover:underline cursor-pointer',
-            post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
-          )}
-          onClick={preview}
-        >
+        <div className={actionClass} onClick={preview}>
           <Preview />
-        </div>{' '}
+        </div>
         {((post.integration.providerIdentifier === 'x' && disableXAnalytics) || !post.releaseId) ? (
           <></>
         ) : post.releaseId === 'missing' && missingRelease ? (
-          <div
-            className={clsx(
-              'hidden group-hover:block hover:underline cursor-pointer',
-              post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
-            )}
-            onClick={missingRelease}
-          >
+          <div className={actionClass} onClick={missingRelease}>
             <Statistics />
           </div>
         ) : post.releaseId !== 'missing' ? (
-          <div
-            className={clsx(
-              'hidden group-hover:block hover:underline cursor-pointer',
-              post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
-            )}
-            onClick={statistics}
-          >
+          <div className={actionClass} onClick={statistics}>
             <Statistics />
           </div>
         ) : (
           <></>
-        )}{' '}
+        )}
         <div
           className={clsx(
-            'hidden group-hover:block hover:underline cursor-pointer',
-            post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
+            actionClass,
+            '!bg-calDangerSoft !text-calDanger'
           )}
           onClick={deletePost}
         >
           <DeletePost />
         </div>
-      </div>
-      <div
-        onClick={editPost}
-        className={clsx(
-          'gap-[5px] w-full flex h-full flex-1 rounded-br-[10px] rounded-bl-[10px] p-[8px] text-[14px] bg-newColColor',
-          'relative',
-          isBeforeNow && '!grayscale'
-        )}
-      >
-        <div className={clsx('relative min-w-[20px]')}>
-          <img
-            className="w-[20px] h-[20px] rounded-[8px]"
-            src={post.integration.picture! || '/no-picture.jpg'}
-          />
-          <img
-            className="w-[12px] h-[12px] rounded-[8px] absolute z-10 top-[10px] end-0 border border-fifth"
-            src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
-          />
-        </div>
-        <div className="w-full flex-1 flex flex-col min-h-[40px]">
-          <div className="text-start">
-            {state === 'DRAFT' ? t('draft', 'Draft') + ': ' : ''}
-          </div>
-            <div className="w-full relative">
-              <div className="absolute top-0 start-0 w-full text-ellipsis break-words line-clamp-1 text-start">
-                {stripHtmlValidation('none', post.content, false, true, false) ||
-                  t('no_content', 'no content')}
-              </div>
-            </div>
-        </div>
-        {showTime && (
-          <div className="text-textColor/50 text-[12px] whitespace-nowrap flex items-center">
-            {newDayjs(post.publishDate).local().format(isUSCitizen() ? 'hh:mm A' : 'HH:mm')}
-          </div>
-        )}
       </div>
     </div>
   );

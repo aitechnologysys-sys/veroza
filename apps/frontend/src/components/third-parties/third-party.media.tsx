@@ -154,8 +154,10 @@ export const ThirdPartyMedia: FC<{
       path: string;
     }>;
   }[];
+  // 'composer' = Create Post modal toolbar pill; 'default' = original look.
+  variant?: 'default' | 'composer';
 }> = (props) => {
-  const { allData, onChange } = props;
+  const { allData, onChange, variant = 'default' } = props;
   const t = useT();
   const fetch = useFetch();
   const modals = useModals();
@@ -184,7 +186,9 @@ export const ThirdPartyMedia: FC<{
       <div className="relative group">
         <div
           className={clsx(
-            'cursor-pointer h-[30px] rounded-[6px] justify-center items-center flex bg-newColColor px-[8px]'
+            variant === 'composer'
+              ? 'cursor-pointer h-[32px] rounded-full justify-center items-center flex text-calMuted hover:text-calInk hover:bg-calModalCell px-[10px]'
+              : 'cursor-pointer h-[30px] rounded-[6px] justify-center items-center flex bg-newColColor px-[8px]'
           )}
           onClick={() => {
             modals.openModal({
@@ -216,7 +220,14 @@ export const ThirdPartyMedia: FC<{
                 />
               </svg>
             </div>
-            <div className="text-[10px] font-[600] iconBreak:hidden block">
+            <div
+              className={clsx(
+                'iconBreak:hidden block',
+                variant === 'composer'
+                  ? 'text-[12.5px] font-[500]'
+                  : 'text-[10px] font-[600]'
+              )}
+            >
               {t('integrations', 'Integrations')}
             </div>
           </div>

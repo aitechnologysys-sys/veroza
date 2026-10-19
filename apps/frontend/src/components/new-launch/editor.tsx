@@ -64,7 +64,6 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import { InformationComponent } from '@gitroom/frontend/components/launches/information.component';
 import {
   LockIcon,
-  ConnectionLineIcon,
   ResetIcon,
   TrashIcon,
   EmojiIcon,
@@ -363,29 +362,25 @@ export const EditorWrapper: FC<{
   return (
     <div
       className={clsx(
-        'relative flex-col gap-[20px] flex-1',
+        'relative flex-col gap-0 flex-1',
         (items.length === 1 || !canEdit || !comments) && 'flex',
-        ((!canEdit && !isCreateSet) || !comments) &&
-          'bg-newSettings rounded-[12px]'
+        ((!canEdit && !isCreateSet) || !comments) && 'rounded-[16px]'
       )}
     >
       {isCreateSet && current !== 'global' && (
         <>
-          <div className="text-center absolute w-full h-full left-0 top-0 items-center justify-center flex z-[101] flex-col gap-[16px]">
-            <div>
-              <div className="w-[54px] h-[54px] rounded-full absolute z-[101] flex justify-center items-center">
-                <LockIcon />
-              </div>
-              <div className="w-[54px] h-[54px] rounded-full bg-newSettings opacity-80" />
+          <div className="text-center absolute w-full h-full start-0 top-0 p-[20px] items-center justify-center flex z-[101] flex-col gap-[12px]">
+            <div className="w-[48px] h-[48px] rounded-full bg-white/20 text-white flex justify-center items-center">
+              <LockIcon size={20} />
             </div>
-            <div className="text-[14px] font-[600] text-white">
+            <div className="text-[14px] font-[600] text-white max-w-[360px]">
               {t(
                 'cant_edit_networks_when_creating_set',
                 "You can't edit networks when creating a set"
               )}
             </div>
           </div>
-          <div className="absolute w-full h-full left-0 top-0 bg-newBackdrop opacity-60 z-[100] rounded-[12px]" />
+          <div className="absolute w-full h-full start-0 top-0 bg-newBackdrop opacity-55 z-[100] rounded-[16px]" />
         </>
       )}
       {!canEdit && !isCreateSet && (
@@ -395,45 +390,47 @@ export const EditorWrapper: FC<{
               setLoaded(false);
               addRemoveInternal(current);
             }}
-            className="text-center absolute w-full h-full p-[20px] left-0 top-0 items-center justify-center flex z-[101] flex-col gap-[16px]"
+            className="text-center absolute w-full h-full p-[20px] start-0 top-0 items-center justify-center flex z-[101] flex-col gap-[12px] cursor-pointer"
           >
-            <div>
-              <div className="w-[54px] h-[54px] rounded-full absolute z-[101] flex justify-center items-center">
-                <LockIcon />
-              </div>
-              <div className="w-[54px] h-[54px] rounded-full bg-newSettings opacity-80" />
+            <div className="w-[48px] h-[48px] rounded-full bg-white/20 text-white flex justify-center items-center">
+              <LockIcon size={20} />
             </div>
-            <div className="text-[14px] font-[600] text-white">
+            <div className="text-[14px] font-[600] text-white max-w-[360px]">
               {t(
                 'click_to_exit_global_editing',
                 'Click this button to exit global editing and customize the post for this channel'
               )}
             </div>
             <div>
-              <div className="text-white rounded-[10px] h-[44px] px-[20px] bg-btnPrimary hover:opacity-95 cursor-pointer flex justify-center items-center text-[14px] font-[600] transition-all">
+              <div className="text-white rounded-full h-[40px] px-[18px] bg-btnPrimary hover:opacity-95 cursor-pointer flex justify-center items-center text-[14px] font-[600] transition-all">
                 {t('edit_content', 'Edit content')}
               </div>
             </div>
           </div>
-          <div className="absolute w-full h-full left-0 top-0 bg-newBackdrop opacity-60 z-[100] rounded-[12px]" />
+          <div className="absolute w-full h-full start-0 top-0 bg-newBackdrop opacity-55 z-[100] rounded-[16px]" />
         </>
       )}
       {items.map((g, index) => (
         <div
           key={g.id}
           className={clsx(
-            'relative flex flex-col gap-[20px] flex-1 bg-newSettings',
-            index === 0 && 'rounded-t-[12px]',
-            (index === items.length - 1 || !comments) && 'rounded-b-[12px]',
+            'relative flex flex-col flex-1 bg-calCard text-calInk border border-calLine',
+            index > 0 && 'border-t-0',
+            index === 0 && 'rounded-t-[16px]',
+            (index === items.length - 1 || !comments || !canEdit) &&
+              'rounded-b-[16px]',
             !canEdit && !isCreateSet && 'blur-s',
             ((!canEdit && index > 0) || (!comments && index > 0)) && 'hidden'
           )}
         >
-          <div className="flex gap-[5px] flex-1 w-full">
-            <div className="flex-1 flex w-full">
+          <div className="flex flex-1 w-full">
+            <div className="flex-1 min-w-0 flex w-full">
               {index > 0 && (
-                <div className="flex justify-center pl-[12px] text-newSep">
-                  <ConnectionLineIcon />
+                <div
+                  aria-hidden="true"
+                  className="w-[28px] flex-none flex justify-center"
+                >
+                  <span className="w-[2px] bg-btnPrimary mb-[18px]" />
                 </div>
               )}
               <Editor
@@ -458,7 +455,7 @@ export const EditorWrapper: FC<{
                 childButton={
                   <>
                     {(canEdit && items.length - 1 === index) || !comments ? (
-                      <div className="flex items-center">
+                      <div className="flex items-center flex-wrap gap-x-[16px] gap-y-[8px] px-[12px] pb-[12px]">
                         <div className="flex-1">
                           {comments && (
                             <AddPostButton
@@ -470,11 +467,11 @@ export const EditorWrapper: FC<{
                         </div>
                         {!!internal && !existingData?.integration && (
                           <div
-                            className="mt-[12px] flex gap-[20px] items-center cursor-pointer select-none"
+                            className="mt-[12px] flex gap-[16px] items-center cursor-pointer select-none"
                             onClick={goBackToGlobal}
                           >
                             <div className="flex gap-[6px] items-center">
-                              <div className="w-[8px] h-[8px] rounded-full bg-[#c2410c]" />
+                              <div className="w-[8px] h-[8px] rounded-full bg-btnPrimary" />
                               <div className="text-[14px] font-[600]">
                                 {t(
                                   'editing_a_specific_network',
@@ -482,7 +479,7 @@ export const EditorWrapper: FC<{
                                 )}
                               </div>
                             </div>
-                            <div className="flex gap-[6px] items-center">
+                            <div className="flex gap-[6px] items-center text-calMuted hover:text-calInk">
                               <div>
                                 <ResetIcon />
                               </div>
@@ -499,7 +496,7 @@ export const EditorWrapper: FC<{
               />
             </div>
             {comments && (
-              <div className="flex flex-col items-center gap-[10px] pe-[12px]">
+              <div className="w-[44px] flex-none flex flex-col items-center gap-[4px] pt-[6px] border-s border-calLine text-calMuted">
                 <UpDownArrow
                   isUp={index !== 0}
                   isDown={index !== items.length - 1}
@@ -513,7 +510,8 @@ export const EditorWrapper: FC<{
                       'delete_post_tooltip',
                       'Delete Post'
                     )}
-                    className="cursor-pointer text-[#FF3F3F]"
+                    size={15}
+                    className="cursor-pointer text-calDanger w-[30px] h-[26px] px-[7px] py-[5px] rounded-[8px] hover:bg-calDangerSoft"
                   />
                 )}
                 {index > 0 && (
@@ -697,7 +695,7 @@ export const Editor: FC<{
     <div className="flex flex-col gap-[20px] flex-1">
       <div
         className={clsx(
-          'relative flex-1 px-[12px] pt-[12px] pb-[12px] flex flex-col',
+          'relative flex-1 flex flex-col',
           num > 0 && '!rounded-bs-[0]'
         )}
         id={id}
@@ -706,13 +704,13 @@ export const Editor: FC<{
           <div {...getRootProps()} className="flex flex-1 flex-col">
             <div
               className={clsx(
-                'absolute left-0 top-0 w-full h-full bg-black/70 z-[300] transition-all items-center justify-center flex text-white text-sm',
+                'absolute start-0 top-0 w-full h-full bg-black/70 rounded-[14px] z-[300] transition-all items-center justify-center flex text-white text-sm',
                 !isDragActive ? 'pointer-events-none opacity-0' : 'opacity-100'
               )}
             >
               {t('drop_files_here_to_upload', 'Drop your files here to upload')}
             </div>
-            <div className="px-[10px] pt-[10px] bg-newBgColorInner rounded-t-[8px] relative z-[99]">
+            <div className="px-[16px] pt-[14px] text-[15px] leading-[1.55] relative z-[99]">
               <OnlyEditor
                 value={props.value}
                 editorType={editorType}
@@ -722,7 +720,7 @@ export const Editor: FC<{
               />
             </div>
             <div
-              className="bg-newBgColorInner flex-1"
+              className="flex-1"
               onClick={() => {
                 if (editorRef?.current?.editor?.isFocused) {
                   return;
@@ -731,7 +729,7 @@ export const Editor: FC<{
               }}
             />
             <div className="w-full pointer-events-none">
-              <div className="w-full h-[46px] overflow-hidden absolute left-0 bg-newBgColorInner uppyChange">
+              <div className="w-full h-[46px] overflow-hidden absolute start-0 bg-calCard uppyChange">
                 <Dashboard
                   height={46}
                   uppy={uppy}
@@ -746,7 +744,7 @@ export const Editor: FC<{
               </div>
             </div>
             <div
-              className="w-full h-[46px] bg-newBgColorInner cursor-text"
+              className="w-full h-[46px] cursor-text"
               onClick={() => {
                 if (editorRef?.current?.editor?.isFocused) {
                   return;
@@ -754,9 +752,10 @@ export const Editor: FC<{
                 editorRef?.current?.editor?.commands?.focus('end');
               }}
             />
-            <div className="flex bg-newBgColorInner rounded-b-[8px] cursor-default">
+            <div className="flex cursor-default">
               {setImages && (
                 <MultiMediaComponent
+                  variant="composer"
                   mediaNotAvailable={num > 0 && comments === 'no-media'}
                   allData={allValues}
                   text={valueWithoutHtml}
@@ -775,7 +774,7 @@ export const Editor: FC<{
                     />
                   }
                   toolBar={
-                    <div className="flex gap-[5px]">
+                    <div className="flex gap-[2px] items-center">
                       <SignatureBox editor={editorRef?.current?.editor} />
                       {editorType !== 'none' && (
                         <>
@@ -809,7 +808,7 @@ export const Editor: FC<{
                       <div
                         data-tooltip-id="tooltip"
                         data-tooltip-content={t('insert_emoji', 'Insert Emoji')}
-                        className="select-none cursor-pointer rounded-[8px] w-[30px] h-[30px] bg-newColColor flex justify-center items-center"
+                        className="select-none cursor-pointer rounded-full w-[32px] h-[32px] text-calMuted hover:text-calInk hover:bg-calModalCell flex justify-center items-center transition-colors"
                         onClick={() => setEmojiPickerOpen(!emojiPickerOpen)}
                       >
                         <EmojiIcon />

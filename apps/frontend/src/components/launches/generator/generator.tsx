@@ -322,8 +322,10 @@ export const GeneratorComponent = () => {
   }, [user, all]);
   return (
     <div
-      className="h-[44px] w-[44px] group-[.sidebar]:w-full bg-ai justify-center items-center flex rounded-[8px] cursor-pointer"
+      className="flex-none h-[52px] w-[52px] group-[.sidebar]:h-[36px] group-[.sidebar]:w-[36px] bg-calTealBg text-calTealFg border border-calTealLine justify-center items-center flex rounded-full cursor-pointer hover:opacity-90"
       onClick={generate}
+      data-tooltip-id="tooltip"
+      data-tooltip-content={t('generate_posts', 'Generate Posts')}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -335,14 +337,14 @@ export const GeneratorComponent = () => {
         <g clipPath="url(#clip0_1930_7370)">
           <path
             d="M5.41675 10.8337L6.07046 12.1411C6.2917 12.5836 6.40232 12.8048 6.55011 12.9965C6.68124 13.1667 6.83375 13.3192 7.00388 13.4503C7.19559 13.5981 7.41684 13.7087 7.85932 13.9299L9.16675 14.5837L7.85932 15.2374C7.41684 15.4586 7.19559 15.5692 7.00388 15.717C6.83375 15.8482 6.68124 16.0007 6.55011 16.1708C6.40232 16.3625 6.2917 16.5837 6.07046 17.0262L5.41675 18.3337L4.76303 17.0262C4.54179 16.5837 4.43117 16.3625 4.28339 16.1708C4.15225 16.0007 3.99974 15.8482 3.82962 15.717C3.6379 15.5692 3.41666 15.4586 2.97418 15.2374L1.66675 14.5837L2.97418 13.9299C3.41666 13.7087 3.6379 13.5981 3.82962 13.4503C3.99974 13.3192 4.15225 13.1667 4.28339 12.9965C4.43117 12.8048 4.54179 12.5836 4.76303 12.1411L5.41675 10.8337Z"
-            stroke="white"
+            stroke="currentColor"
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
           <path
             d="M12.5001 1.66699L13.4823 4.22067C13.7173 4.8317 13.8348 5.13721 14.0175 5.39419C14.1795 5.62195 14.3785 5.82095 14.6062 5.9829C14.8632 6.16563 15.1687 6.28313 15.7797 6.51814L18.3334 7.50033L15.7797 8.48251C15.1687 8.71752 14.8632 8.83502 14.6062 9.01775C14.3785 9.1797 14.1795 9.3787 14.0175 9.60646C13.8348 9.86344 13.7173 10.169 13.4823 10.78L12.5001 13.3337L11.5179 10.78C11.2829 10.169 11.1654 9.86344 10.9827 9.60646C10.8207 9.3787 10.6217 9.1797 10.3939 9.01775C10.137 8.83503 9.83145 8.71752 9.22043 8.48251L6.66675 7.50033L9.22043 6.51814C9.83145 6.28313 10.137 6.16563 10.3939 5.9829C10.6217 5.82095 10.8207 5.62195 10.9827 5.39419C11.1654 5.13721 11.2829 4.8317 11.5179 4.22067L12.5001 1.66699Z"
-            stroke="white"
+            stroke="currentColor"
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"

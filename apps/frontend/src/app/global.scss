@@ -656,10 +656,10 @@ html[dir='rtl'] [dir='ltr'] {
 .repeated-strip {
   background: repeating-linear-gradient(
     135deg,
-    var(--new-bgColorInner),
-    var(--new-bgColorInner) 4px,
-    var(--new-past-strip) 4px,
-    var(--new-past-strip) 8px
+    var(--cal-hatch-a),
+    var(--cal-hatch-a) 6px,
+    var(--cal-hatch-b) 6px,
+    var(--cal-hatch-b) 12px
   );
 }
 

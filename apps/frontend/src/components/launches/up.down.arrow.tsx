@@ -27,14 +27,14 @@ export const UpDownArrow: FC<{
     []
   );
   return (
-    <div className="flex flex-col gap-[8px] pt-[8px]">
+    <div className="flex flex-col gap-[4px] pt-[4px]">
       <button
         onClick={changePosition('up')}
         className={clsx(
-          'outline-none w-[20px] h-[20px] flex justify-center items-center',
+          'outline-none w-[30px] h-[26px] rounded-[8px] flex justify-center items-center',
           isUp
-            ? 'cursor-pointer'
-            : 'pointer-events-none text-textColor opacity-50'
+            ? 'cursor-pointer hover:bg-calModalCell hover:text-calInk'
+            : 'pointer-events-none opacity-40'
         )}
       >
         <Arrow flip={true} />
@@ -42,10 +42,10 @@ export const UpDownArrow: FC<{
       <button
         onClick={changePosition('down')}
         className={clsx(
-          'outline-none rounded-bl-[20px] w-[20px] h-[20px] flex justify-center items-center',
+          'outline-none w-[30px] h-[26px] rounded-[8px] flex justify-center items-center',
           isDown
-            ? 'cursor-pointer'
-            : 'pointer-events-none text-textColor opacity-50'
+            ? 'cursor-pointer hover:bg-calModalCell hover:text-calInk'
+            : 'pointer-events-none opacity-40'
         )}
       >
         <Arrow flip={false} />

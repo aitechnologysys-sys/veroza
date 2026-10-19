@@ -240,7 +240,7 @@ export const withProvider = function <T extends object>(params: {
         <FormProvider {...form}>
           <div
             className={clsx(
-              'border border-borderPreview rounded-[12px] shadow-previewShadow',
+              'border border-calLine bg-calCard text-calInk rounded-[14px]',
               !current && 'hidden'
             )}
           >
@@ -248,7 +248,7 @@ export const withProvider = function <T extends object>(params: {
               (tab === 0 ||
                 (!SettingsComponent && !data?.internalPlugs?.length)) &&
               !value?.[0]?.content?.length && (
-                <div>
+                <div className="p-[16px] text-[14px] text-calMuted">
                   {t(
                     'start_writing_your_post',
                     'Start writing your post for a preview'
@@ -288,29 +288,29 @@ export const withProvider = function <T extends object>(params: {
               ))}
             {(SettingsComponent || !!data?.internalPlugs?.length) &&
               createPortal(
-                <div data-id={props.id} className={isGlobal ? 'bg-newSettings pb-[12px] px-[12px]' : 'hidden bg-newSettings px-[12px] pb-[12px]'}>
+                <div data-id={props.id} className={isGlobal ? 'bg-calCard border border-calLine rounded-[12px] pb-[14px] px-[14px]' : 'hidden'}>
                   {isGlobal && (
                     <style>{`#wrapper-settings {display: flex !important} #social-empty {display: block !important;}`}</style>
                   )}
                   {isGlobal && (
-                    <div className="flex py-[20px] items-center gap-[15px]">
+                    <div className="flex py-[14px] items-center gap-[12px]">
                       <div className="relative">
                         <SafeImage
                           alt={selectedIntegration?.integration.name!}
-                          width={42}
-                          height={42}
-                          className="min-w-[42px] min-h-[42px] w-[42px] h-[42px] rounded-full"
+                          width={32}
+                          height={32}
+                          className="min-w-[32px] min-h-[32px] w-[32px] h-[32px] rounded-full"
                           src={selectedIntegration?.integration.picture}
                         />
                         <SafeImage
                           alt={selectedIntegration?.integration.identifier}
-                          width={16}
-                          height={16}
-                          className="rounded-[16px] min-w-[16px] min-h-[16px] w-[16px] h-[16px] absolute bottom-0 end-0"
+                          width={14}
+                          height={14}
+                          className="rounded-full min-w-[14px] min-h-[14px] w-[14px] h-[14px] absolute -bottom-[2px] -end-[2px]"
                           src={`/icons/platforms/${selectedIntegration?.integration.identifier}.png`}
                         />
                       </div>
-                      <div className="text-[20px]">{selectedIntegration?.integration.name}</div>
+                      <div className="text-[16px] font-[600]">{selectedIntegration?.integration.name}</div>
                     </div>
                   )}
                   <SettingsComponent />

@@ -148,10 +148,10 @@ const Plug: FC<{
   return (
     <div
       key={plug.title}
-      className="flex flex-col gap-[10px] border-tableBorder border p-[15px] rounded-lg"
+      className="flex flex-col gap-[10px] bg-calCard border border-calLine px-[14px] py-[12px] rounded-[12px] mt-[12px]"
     >
       <div className="flex items-center">
-        <div className="flex-1">{plug.title}</div>
+        <div className="flex-1 font-[600]">{plug.title}</div>
         <div>
           <Slider
             value={active ? 'on' : 'off'}

@@ -29,9 +29,9 @@ export const ThreadFinisher = () => {
   const value = watch('thread_finisher');
 
   return (
-    <div className="flex flex-col gap-[10px] border-tableBorder border p-[15px] rounded-lg mb-5">
+    <div className="flex flex-col gap-[10px] bg-calCard border border-calLine px-[14px] py-[12px] rounded-[12px] mb-5">
       <div className="flex items-center">
-        <div className="flex-1">Add a thread finisher</div>
+        <div className="flex-1 font-[600]">Add a thread finisher</div>
         <div>
           <Slider
             value={slider ? 'on' : 'off'}
@@ -40,7 +40,7 @@ export const ThreadFinisher = () => {
           />
         </div>
       </div>
-      <div className="w-full mt-[20px]">
+      <div className="w-full mt-[4px] rounded-[10px] bg-calModalBg overflow-hidden">
         <div
           className={clsx(
             !slider && 'relative opacity-25 pointer-events-none editor'

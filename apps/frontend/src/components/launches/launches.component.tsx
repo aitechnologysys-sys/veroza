@@ -588,9 +588,7 @@ export const LaunchesComponent = () => {
             </div>
             <button
               type="button"
-              onClick={() =>
-                setCollapseMenu(collapseMenu === '1' ? '0' : '1')
-              }
+              onClick={() => setCollapseMenu(collapseMenu === '1' ? '0' : '1')}
               aria-expanded={collapseMenu !== '1'}
               className="flex-none h-[36px] px-[12px] border border-calLine rounded-[10px] bg-transparent text-calMuted hover:text-calInk text-[12.5px] flex items-center gap-[6px] cursor-pointer whitespace-nowrap"
             >

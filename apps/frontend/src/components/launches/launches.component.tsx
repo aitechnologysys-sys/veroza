@@ -521,7 +521,7 @@ export const LaunchesComponent = () => {
           <section
             aria-label={t('channels')}
             className={clsx(
-              'flex-none flex items-center bg-calDock border-b border-calLine px-[32px] overflow-x-auto overflow-y-hidden select-none scrollbar scrollbar-thumb-fifth scrollbar-track-newBgColor',
+              'relative z-[30] flex-none flex items-center bg-calDock border-b border-calLine px-[32px] overflow-x-auto overflow-y-hidden select-none scrollbar scrollbar-thumb-fifth scrollbar-track-newBgColor',
               collapseMenu === '1'
                 ? 'group sidebar gap-[10px] py-[8px]'
                 : 'gap-[14px] py-[12px]'

@@ -695,5 +695,9 @@
   "post_at": "Post at {{time}}",
   "drop_to_move_here": "Drop to move here",
   "failed": "Failed",
-  "list": "List"
+  "list": "List",
+  "post_to": "Post to",
+  "on_date": "on",
+  "global": "Global",
+  "more_publish_options": "More publish options"
 }

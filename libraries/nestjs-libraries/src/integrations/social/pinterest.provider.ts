@@ -20,6 +20,12 @@ import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 
+// Point at https://api-sandbox.pinterest.com to create Pins while the app only
+// has Trial access (e.g. for the Standard access demo video). Tokens only work
+// on the host that issued them, so reconnect Pinterest after switching.
+const pinterestApi = () =>
+  process.env.PINTEREST_API_BASE || 'https://api.pinterest.com';
+
 @Rules(
   'Pinterest requires at least one media, if posting a video, you must have two attachment, one for video, one for the cover picture, When posting a video, there can be only one, if posting images, there can be maximum 5'
 )
@@ -133,7 +139,7 @@ export class PinterestProvider
 
   async refreshToken(refreshToken: string): Promise<AuthTokenDetails> {
     const { access_token, expires_in } = await (
-      await fetch('https://api.pinterest.com/v5/oauth/token', {
+      await fetch(`${pinterestApi()}/v5/oauth/token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -151,7 +157,7 @@ export class PinterestProvider
     ).json();
 
     const { id, profile_image, username } = await (
-      await fetch('https://api.pinterest.com/v5/user_account', {
+      await fetch(`${pinterestApi()}/v5/user_account`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${access_token}`,
@@ -191,7 +197,7 @@ export class PinterestProvider
     refresh: string;
   }) {
     const { access_token, refresh_token, expires_in, scope } = await (
-      await fetch('https://api.pinterest.com/v5/oauth/token', {
+      await fetch(`${pinterestApi()}/v5/oauth/token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -210,7 +216,7 @@ export class PinterestProvider
     this.checkScopes(this.scopes, scope);
 
     const { id, profile_image, username } = await (
-      await fetch('https://api.pinterest.com/v5/user_account', {
+      await fetch(`${pinterestApi()}/v5/user_account`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${access_token}`,
@@ -232,7 +238,7 @@ export class PinterestProvider
   @Tool({ description: 'List of boards', dataSchema: [] })
   async boards(accessToken: string) {
     const { items } = await (
-      await fetch('https://api.pinterest.com/v5/boards?page_size=250', {
+      await fetch(`${pinterestApi()}/v5/boards?page_size=250`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -263,7 +269,7 @@ export class PinterestProvider
 
     if (findMp4) {
       const { upload_url, media_id, upload_parameters } = await (
-        await this.fetch('https://api.pinterest.com/v5/media', {
+        await this.fetch(`${pinterestApi()}/v5/media`, {
           method: 'POST',
           body: JSON.stringify({
             media_type: 'video',
@@ -296,7 +302,7 @@ export class PinterestProvider
       while (statusCode !== 'succeeded') {
         const mediafile = await (
           await this.fetch(
-            'https://api.pinterest.com/v5/media/' + media_id,
+            `${pinterestApi()}/v5/media/` + media_id,
             {
               method: 'GET',
               headers: {
@@ -330,7 +336,7 @@ export class PinterestProvider
     }));
 
     const { id: pId } = await (
-      await this.fetch('https://api.pinterest.com/v5/pins', {
+      await this.fetch(`${pinterestApi()}/v5/pins`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -391,7 +397,7 @@ export class PinterestProvider
       all: { daily_metrics },
     } = await (
       await fetch(
-        `https://api.pinterest.com/v5/user_account/analytics?start_date=${since}&end_date=${until}`,
+        `${pinterestApi()}/v5/user_account/analytics?start_date=${since}&end_date=${until}`,
         {
           method: 'GET',
           headers: {
@@ -456,7 +462,7 @@ export class PinterestProvider
     try {
       // Fetch pin analytics from Pinterest API
       const response = await this.fetch(
-        `https://api.pinterest.com/v5/pins/${postId}/analytics?start_date=${since}&end_date=${today}&metric_types=IMPRESSION,PIN_CLICK,OUTBOUND_CLICK,SAVE`,
+        `${pinterestApi()}/v5/pins/${postId}/analytics?start_date=${since}&end_date=${today}&metric_types=IMPRESSION,PIN_CLICK,OUTBOUND_CLICK,SAVE`,
         {
           method: 'GET',
           headers: {

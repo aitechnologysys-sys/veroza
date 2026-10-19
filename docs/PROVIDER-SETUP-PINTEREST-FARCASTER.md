@@ -27,51 +27,62 @@ The two most common rejection reasons:
 - "Demo did not show the full OAuth flow"
 - "Demo did not show Pinterest integration"
 
-Record **one continuous video** showing these steps:
+We record all three steps inside Postaryx, using Pinterest's **sandbox**:
+- Trial apps can only create Pins on the sandbox API (`api-sandbox.pinterest.com`).
+- Sandbox Pins are only visible to their creator, and sandbox has its own boards.
 
-1. **OAuth flow, in Postaryx:**
-   - Add channel → Pinterest.
-   - Pinterest's consent screen → Allow.
-   - The channel appears in Postaryx.
+### The sandbox switch: `PINTEREST_API_BASE`
+Every Pinterest API call in `pinterest.provider.ts` goes through `pinterestApi()`:
+- It defaults to `https://api.pinterest.com`. With the var unset, nothing changes.
+- With `PINTEREST_API_BASE="https://api-sandbox.pinterest.com"`, everything uses the sandbox: token exchange and refresh, profile, boards, media upload, Pin creation and analytics.
+- Pinterest's consent page (`www.pinterest.com/oauth`) is the same for both.
 
-   Postaryx can already do this under Trial access.
-2. **Board selection, in Postaryx:** open the post editor and pick a board. The board list comes from Pinterest's API.
-3. **Pin creation, via terminal or Postman.** Postaryx can't do this step under Trial access because it calls the real API. Pinterest accepts terminal and Postman recordings for this part, so call the sandbox directly:
+Why everything has to switch together: **tokens only work on the host that issued them**. A production token fails on the sandbox, and a sandbox token fails in production, typically with `401 code 3: consumer type is not supported`.
 
-   ```bash
-   # create a sandbox board (sandbox has its own boards, separate from the real ones)
-   curl -X POST https://api-sandbox.pinterest.com/v5/boards \
-     -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-     -d '{"name":"Postaryx demo"}'
+This is a fork-only divergence; upstream Postiz always uses `api.pinterest.com`.
 
-   # create a Pin on it, using the board id returned above
-   curl -X POST https://api-sandbox.pinterest.com/v5/pins \
-     -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-     -d '{"board_id":"<id>","title":"Scheduled from Postaryx","description":"Demo pin",
-          "media_source":{"source_type":"image_url","url":"https://<public-image>.jpg"}}'
-   ```
+### Recording steps
+**Record on prod, not locally.** Pinterest downloads the Pin image from its public URL, which a localhost upload URL isn't. Switching prod to sandbox for a while is low-risk: under Trial access nobody can post real Pins anyway. Existing Pinterest channels will fail until they're reconnected.
 
-   For `$TOKEN`, use a token generated in the Pinterest developer portal for the app. If the sandbox rejects it, generate a sandbox-specific token there.
+1. **Turn the sandbox on.**
+   - Set `PINTEREST_API_BASE="https://api-sandbox.pinterest.com"` on **both the backend and the orchestrator**. The orchestrator does the actual posting.
+   - Restart both.
+2. **Create a sandbox board (off camera).** The sandbox starts with no boards, and Postaryx has no "create board" button.
+   - Get a sandbox token: Pinterest developer portal → your app → **Configure** → environment **Sandbox** → generate token. It is valid for 30 days.
+   - Create the board:
+     ```bash
+     curl -X POST https://api-sandbox.pinterest.com/v5/boards \
+       -H "Authorization: Bearer $SANDBOX_TOKEN" -H "Content-Type: application/json" \
+       -d '{"name":"Postaryx demo"}'
+     ```
+   - Create it on the **same Pinterest account** you will connect in Postaryx.
+3. **Remove the existing Pinterest channel** in Postaryx (off camera). Its token is a production token.
+4. **Record one continuous video:**
+   1. **OAuth flow:** Add channel → Pinterest → Pinterest's consent screen → Allow → the channel appears in Postaryx.
+   2. **Board selection:** create a post, select the Pinterest channel, add an image, open its settings and pick the "Postaryx demo" board. The list is loaded from Pinterest's API.
+   3. **Pin creation:** publish the post and show it succeed in Postaryx.
 
-Narrate or caption the video, for example: "Postaryx schedules Pins for the user's own boards. It only posts content the user creates and schedules."
+   Narrate or caption it, for example: "Postaryx schedules Pins for the user's own boards. It only posts content the user creates and schedules."
+5. **Turn the sandbox off.**
+   - Remove `PINTEREST_API_BASE` from the backend and the orchestrator, and restart both.
+   - Remove and reconnect the Pinterest channel, so it gets a production token again.
+
+If the "Publish" step fails, check the post's error in Postaryx:
+- `consumer type is not supported` means the channel still has a production token, or the orchestrator didn't get the env var.
+- `Board not found` means the board was created on a different account or on the production API.
 
 ### Text for the use-case field
 > Postaryx is a social media scheduling tool. Users connect their own Pinterest account via OAuth, choose one of their boards, and schedule Pins (image or video, with title, description and link) to be published at a chosen time. We read the user's boards and basic profile to show where they can post, and read Pin analytics to show performance. We don't store passwords, and users can disconnect at any time.
 
-### Optional: sandbox switch in code
-If Pinterest rejects the terminal-based demo, we could add an env switch (e.g. `PINTEREST_API_BASE`) that points the `boards`, `media` and `pins` calls at the sandbox while recording.
-- Boards must also come from the sandbox, because sandbox has its own boards. Switching only pin creation would fail with "Board not found".
-- Upstream Postiz has no such switch, so it would be a fork divergence.
-- Skip it unless it's actually needed.
-
 ### After approval
-Retry the failed "Hi Pin" post. The notification should show a `https://www.pinterest.com/pin/<id>` link.
+Make sure `PINTEREST_API_BASE` is unset and the Pinterest channel has been reconnected with a production token. Then retry the failed "Hi Pin" post. The notification should show a `https://www.pinterest.com/pin/<id>` link.
 
 ### Sources
 - [Access tiers – Pinterest Developers](https://developers.pinterest.com/docs/key-concepts/access-tiers/)
 - [Pinterest API FAQs](https://community.pinterest.biz/t/frequently-asked-questions-pinterest-api/2083)
 - [Upgrading from trial to standard API access](https://community.pinterest.biz/t/upgrading-from-trial-to-standard-api-access/30014)
 - [Upgrading from trial to standard](https://community.pinterest.biz/t/upgrading-from-trial-to-standard/39171)
+- [Sandbox – Pinterest Developers](https://dev.pinterest.com/docs/developer-tools/sandbox/)
 
 ---
 

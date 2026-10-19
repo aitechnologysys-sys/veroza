@@ -84,6 +84,16 @@
     --cal-chip: rgba(244, 241, 234, 0.14);
     --cal-chip-text: #f4f1ea;
     --cal-tile-shadow: none;
+    /* Create Post modal (docs/CREATE-POST-MODAL-REDESIGN-PLAN.md §5) */
+    --cal-modal-bg: #191712;
+    --cal-modal-cell: #2a2620;
+    --cal-surface: #141210;
+    --cal-ok-bg: #16291b;
+    --cal-ok-fg: #8fd19e;
+    --cal-ok-line: #24452c;
+    --cal-warn-bg: #3a2a12;
+    --cal-warn-fg: #e3b56b;
+    --cal-warn-line: #5a4218;
     --radius-control: 8px;
     --radius-button: 10px;
     --radius-card: 12px;
@@ -174,6 +184,16 @@
     --cal-chip: rgba(25, 23, 18, 0.8);
     --cal-chip-text: #ffffff;
     --cal-tile-shadow: 0 1px 2px rgba(25, 23, 18, 0.08);
+    /* Create Post modal (docs/CREATE-POST-MODAL-REDESIGN-PLAN.md §5) */
+    --cal-modal-bg: #f7f6f3;
+    --cal-modal-cell: #efece6;
+    --cal-surface: #fbfaf8;
+    --cal-ok-bg: #e6f0e8;
+    --cal-ok-fg: #2f5f3b;
+    --cal-ok-line: #c5dccb;
+    --cal-warn-bg: #f6ecd9;
+    --cal-warn-fg: #7a4f12;
+    --cal-warn-line: #e3cfa6;
     --radius-control: 8px;
     --radius-button: 10px;
     --radius-card: 12px;

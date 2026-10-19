@@ -6,7 +6,7 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useClickOutside } from '@mantine/hooks';
 import { isUSCitizen } from '@gitroom/frontend/components/launches/helpers/isuscitizen.utils';
 import clsx from 'clsx';
-import { RepeatIcon, DropdownArrowIcon } from '@gitroom/frontend/components/ui/icons';
+import { DropdownArrowIcon } from '@gitroom/frontend/components/ui/icons';
 const getList = (t: (key: string, fallback: string) => string) => [
   {
     value: 1,
@@ -52,8 +52,10 @@ const getList = (t: (key: string, fallback: string) => string) => [
 export const RepeatComponent: FC<{
   repeat: number | null;
   onChange: (newVal: number) => void;
+  // 'top' opens the list above the trigger (original); 'bottom' below it.
+  placement?: 'top' | 'bottom';
 }> = (props) => {
-  const { repeat } = props;
+  const { repeat, placement = 'top' } = props;
   const t = useT();
   const list = getList(t);
   const [isOpen, setIsOpen] = useState(false);
@@ -76,18 +78,20 @@ export const RepeatComponent: FC<{
     <div
       ref={ref}
       className={clsx(
-        'border rounded-[10px] justify-center flex items-center relative h-[44px] text-[14px] font-[600] select-none',
-        isOpen ? 'border-[#c2410c]' : 'border-newTextColor/10',
+        'border-b-2 flex items-center relative h-[48px] italic select-none',
+        isOpen
+          ? 'border-btnPrimary'
+          : repeat
+          ? 'border-calInk'
+          : 'border-calLineStrong',
+        repeat ? 'text-calInk' : 'text-calMuted'
       )}
     >
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className="px-[16px] justify-center flex gap-[8px] items-center h-full select-none flex-1"
+        className="px-[4px] flex gap-[8px] items-center h-full select-none flex-1"
       >
-        <div className="cursor-pointer">
-          <RepeatIcon />
-        </div>
-        <div className="cursor-pointer">
+        <div className="cursor-pointer whitespace-nowrap">
           {repeat
             ? `${t('repeat_post_every_label', 'Repeat Post Every')} ${everyLabel}`
             : t('repeat_post_every', 'Repeat Post Every...')}
@@ -97,7 +101,14 @@ export const RepeatComponent: FC<{
         </div>
       </div>
       {isOpen && (
-        <div className="z-[300] absolute start-0 bottom-[100%] w-[240px] bg-newBgColorInner p-[12px] menu-shadow -translate-y-[10px] flex flex-col">
+        <div
+          className={clsx(
+            'z-[300] absolute start-0 w-[240px] bg-calCard border border-calLine rounded-[14px] p-[6px] shadow-[0_18px_40px_-18px_rgba(0,0,0,0.35)] flex flex-col font-sans not-italic text-[14px] font-[500] text-calInk',
+            placement === 'bottom'
+              ? 'top-[100%] translate-y-[10px]'
+              : 'bottom-[100%] -translate-y-[10px]'
+          )}
+        >
           {list.map((p) => (
             <div
               onClick={() => {
@@ -105,7 +116,12 @@ export const RepeatComponent: FC<{
                 setIsOpen(false);
               }}
               key={p.label}
-              className="h-[40px] py-[8px] px-[20px] -mx-[12px] hover:bg-newBgColor"
+              className={clsx(
+                'h-[38px] px-[12px] rounded-[10px] flex items-center cursor-pointer hover:bg-calModalCell',
+                !!repeat &&
+                  repeat === p.value &&
+                  'bg-calEmberSoft text-calEmberText'
+              )}
             >
               {p.label}
             </div>

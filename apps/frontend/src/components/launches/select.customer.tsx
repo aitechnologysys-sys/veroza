@@ -15,9 +15,10 @@ export const SelectCustomer: FC<{
   onChange: (value: string) => void;
   integrations: Integrations[];
   customer?: string;
-  // 'pill' is the calendar masthead trigger; the default keeps the original
-  // trigger used by the Create Post modal.
-  variant?: 'default' | 'pill';
+  // 'pill' is the calendar masthead trigger; 'icon-pill' is the Create Post
+  // modal header trigger (icon + chevron, dropdown aligned to its end edge so
+  // it stays on screen at the modal's right edge); 'default' is the original.
+  variant?: 'default' | 'pill' | 'icon-pill';
 }> = (props) => {
   const {
     onChange,
@@ -48,9 +49,13 @@ export const SelectCustomer: FC<{
     }
 
     const { x, y, width, height } = ref.current?.getBoundingClientRect();
-    setPos({ top: y + height, left: x });
+    setPos(
+      variant === 'icon-pill'
+        ? { top: y + height + 6, right: window.innerWidth - (x + width) }
+        : { top: y + height, left: x }
+    );
     setOpen(true);
-  }, [open]);
+  }, [open, variant]);
 
   const totalCustomers = useMemo(() => {
     return uniqBy(integrations, (i) => i?.customer?.id).length;
@@ -72,16 +77,22 @@ export const SelectCustomer: FC<{
         className={clsx(
           variant === 'pill'
             ? 'relative z-[20] cursor-pointer h-[40px] rounded-full ps-[14px] pe-[12px] gap-[8px] border flex items-center text-calInk text-[14px] whitespace-nowrap'
+            : variant === 'icon-pill'
+            ? 'relative z-[20] cursor-pointer h-[36px] rounded-full px-[12px] gap-[6px] border flex items-center text-calInk'
             : 'relative z-[20] cursor-pointer h-[42px] rounded-[8px] pl-[16px] pr-[12px] gap-[8px] border flex items-center',
           open
             ? 'border-[#c2410c]'
-            : variant === 'pill'
+            : variant === 'pill' || variant === 'icon-pill'
             ? 'border-calInk'
             : 'border-newColColor'
         )}
       >
         <div>
-          <UserIcon size={variant === 'pill' ? 16 : undefined} />
+          <UserIcon
+            size={
+              variant === 'pill' ? 16 : variant === 'icon-pill' ? 14 : undefined
+            }
+          />
         </div>
         {variant === 'pill' && (
           <div className="max-w-[160px] overflow-hidden text-ellipsis">

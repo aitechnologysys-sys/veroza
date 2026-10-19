@@ -10,6 +10,7 @@ import SafeImage from '@gitroom/react/helpers/safe.image';
 import { useShallow } from 'zustand/react/shallow';
 import { GlobalIcon } from '@gitroom/frontend/components/ui/icons';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { capitalize } from 'lodash';
 import { Integrations } from '@gitroom/frontend/components/launches/calendar.context';
 import {
   useDecisionModal,
@@ -51,6 +52,7 @@ export function useHasScroll(ref: RefObject<HTMLElement | null>): boolean {
 }
 
 export const SelectCurrent: FC = () => {
+  const t = useT();
   const modals = useDecisionModal();
   const {
     selectedIntegrations,
@@ -92,95 +94,115 @@ export const SelectCurrent: FC = () => {
     []
   );
 
+  const tabClass = (active: boolean) =>
+    clsx(
+      'flex-none flex items-center gap-[6px] pb-[9px] border-b-2 -mb-[1px] whitespace-nowrap transition-colors',
+      active
+        ? 'border-btnPrimary text-calInk font-[600]'
+        : 'border-transparent text-calMuted hover:text-calInk'
+    );
+
   return (
-    <>
-      <div className="select-none left-0 absolute w-full z-[100] px-[20px]">
+    <div
+      ref={contentRef}
+      role="tablist"
+      className={clsx(
+        'select-none flex-none flex items-end gap-[22px] border-b border-calLine font-serif text-[17px] w-full overflow-x-auto overflow-y-hidden scrollbar scrollbar-thumb-tableBorder scrollbar-track-secondary',
+        hasScroll && 'pb-[4px]',
+        locked && 'opacity-50 pointer-events-none'
+      )}
+    >
+      <button
+        type="button"
+        role="tab"
+        aria-selected={current === 'global'}
+        onClick={() => {
+          setHide(true);
+          setCurrent('global');
+        }}
+        className={clsx(tabClass(current === 'global'), 'cursor-pointer')}
+      >
+        <GlobalIcon size={15} />
+        {t('global', 'Global')}
+      </button>
+      {selectedIntegrations.map(({ integration }) => (
         <div
-          ref={contentRef}
-          className={clsx(
-            'flex gap-[6px] w-full overflow-x-auto scrollbar scrollbar-thumb-tableBorder scrollbar-track-secondary',
-            locked && 'opacity-50 pointer-events-none'
-          )}
+          key={integration.id}
+          className={clsx(tabClass(current === integration.id), 'relative')}
         >
-          <div
+          <button
+            type="button"
+            role="tab"
+            aria-selected={current === integration.id}
             onClick={() => {
               setHide(true);
-              setCurrent('global');
+              setCurrent(integration.id);
             }}
-            className={clsx(
-              'cursor-pointer flex gap-[8px] rounded-[8px] w-[40px] h-[40px] justify-center items-center bg-newBgLineColor',
-              current !== 'global'
-                ? 'text-textItemBlur'
-                : 'border border-[#c2410c] text-[#c2410c]'
-            )}
+            {...{
+              'data-tooltip-id': 'tooltip',
+              'data-tooltip-content': `${integration.name} · ${capitalize(
+                integration.identifier.split('-')[0]
+              )}`,
+            }}
+            className="flex items-center gap-[6px] cursor-pointer"
           >
-            <div>
-              <GlobalIcon />
-            </div>
-          </div>
-          {selectedIntegrations.map(({ integration }) => (
-            <div
-              onClick={() => {
-                setHide(true);
-                setCurrent(integration.id);
-              }}
-              key={integration.id}
-              className={clsx(
-                'border cursor-pointer relative flex gap-[8px] w-[40px] h-[40px] rounded-[8px] items-center bg-newBgLineColor justify-center',
-                current === integration.id
-                  ? 'border-[#c2410c] text-[#c2410c]'
-                  : 'border-transparent'
-              )}
-            >
-              <div
-                onClick={removeSocial(integration)}
-                className="absolute justify-center items-center flex w-[8px] h-[8px] -top-[1px] -start-[3px] bg-red-500 rounded-full text-white text-[8px]"
-              >
-                X
-              </div>
-              <IsGlobal id={integration.id} />
-              <div
-                {...{
-                  'data-tooltip-id': 'tooltip',
-                  'data-tooltip-content': integration.name,
+            <span className="relative flex-none w-[18px] h-[18px]">
+              <SafeImage
+                src={integration.picture || '/no-picture.jpg'}
+                className="rounded-full w-[18px] h-[18px] min-w-[18px] object-cover"
+                alt={integration.identifier}
+                width={18}
+                height={18}
+                onError={(e) => {
+                  e.currentTarget.src = '/no-picture.jpg';
+                  e.currentTarget.srcset = '/no-picture.jpg';
                 }}
-                className={clsx(
-                  'relative w-full h-full rounded-full flex justify-center items-center filter transition-all duration-500'
-                )}
-              >
-                <SafeImage
-                  src={integration.picture || '/no-picture.jpg'}
-                  className="rounded-full min-w-[26px]"
-                  alt={integration.identifier}
-                  width={26}
-                  height={26}
-                  onError={(e) => {
-                    e.currentTarget.src = '/no-picture.jpg';
-                    e.currentTarget.srcset = '/no-picture.jpg';
-                  }}
+              />
+              {integration.identifier === 'youtube' ? (
+                <img
+                  src="/icons/platforms/youtube.svg"
+                  className="absolute z-10 -bottom-[3px] -end-[4px] min-w-[10px]"
+                  width={10}
                 />
-                {integration.identifier === 'youtube' ? (
-                  <img
-                    src="/icons/platforms/youtube.svg"
-                    className="absolute z-10 bottom-[2px] end-[2px] min-w-[12px]"
-                    width={12}
-                  />
-                ) : (
-                  <SafeImage
-                    src={`/icons/platforms/${integration.identifier}.png`}
-                    className="min-w-[12px] min-h-[12px] rounded-[3px] absolute z-10 bottom-[6px] end-[6px]"
-                    alt={integration.identifier}
-                    width={12}
-                    height={12}
-                  />
-                )}
-              </div>
-            </div>
-          ))}
+              ) : (
+                <SafeImage
+                  src={`/icons/platforms/${integration.identifier}.png`}
+                  className="min-w-[10px] min-h-[10px] rounded-full absolute z-10 -bottom-[3px] -end-[3px]"
+                  alt={integration.identifier}
+                  width={10}
+                  height={10}
+                />
+              )}
+            </span>
+            <span className="max-w-[160px] overflow-hidden text-ellipsis">
+              {integration.name}
+            </span>
+          </button>
+          <IsGlobal id={integration.id} />
+          <button
+            type="button"
+            onClick={removeSocial(integration)}
+            aria-label={`${t('remove', 'Remove')} ${integration.name}`}
+            className="w-[18px] h-[18px] rounded-full bg-calModalCell text-calMuted hover:text-calInk flex items-center justify-center cursor-pointer"
+          >
+            <svg
+              width="8"
+              height="8"
+              viewBox="0 0 16 16"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M4 4l8 8M12 4l-8 8"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
         </div>
-      </div>
-      <div className={clsx(hasScroll ? 'h-[55px]' : 'h-[40px]')} />
-    </>
+      ))}
+    </div>
   );
 };
 
@@ -203,7 +225,7 @@ export const IsGlobal: FC<{ id: string }> = ({ id }) => {
         'no_longer_global_mode',
         'No longer in global mode'
       )}
-      className="w-[8px] h-[8px] bg-[#c2410c] -top-[1px] -end-[3px] absolute rounded-full"
+      className="flex-none w-[7px] h-[7px] bg-btnPrimary rounded-full"
     />
   );
 };

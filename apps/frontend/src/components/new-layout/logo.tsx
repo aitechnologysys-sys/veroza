@@ -26,3 +26,27 @@ export const Logo = () => {
     </div>
   );
 };
+
+// Full Postaryx lockup for the top bar, 361:68 native ratio at 28px high.
+// Theme-matched like Logo above: the dark wordmark on the light theme and the
+// light wordmark on the dark theme.
+export const LogoLockup = () => {
+  return (
+    <div className="flex-none h-[28px] w-[149px]">
+      <img
+        src="/logos/02_Postaryx_Main_Logo_Light.svg"
+        alt="Postaryx"
+        width={149}
+        height={28}
+        className="w-full h-full dark:hidden"
+      />
+      <img
+        src="/logos/01_Postaryx_Main_Logo_Dark.svg"
+        alt="Postaryx"
+        width={149}
+        height={28}
+        className="w-full h-full hidden dark:block"
+      />
+    </div>
+  );
+};

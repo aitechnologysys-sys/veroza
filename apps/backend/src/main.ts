@@ -72,14 +72,18 @@ async function start() {
 
   try {
     await app.listen(port);
-    console.log('Backend started successfully on port ' + port);
-
-    checkConfiguration(); // Do this last, so that users will see obvious issues at the end of the startup log without having to scroll up.
-
-    Logger.log(`🚀 Backend is running on: http://localhost:${port}`);
   } catch (e) {
+    // A failed listen is fatal: the process would otherwise stay alive with no
+    // HTTP server, which a process manager reads as healthy. Exit so it restarts.
     Logger.error(`Backend failed to start on port ${port}`, e);
+    process.exit(1);
   }
+
+  console.log('Backend started successfully on port ' + port);
+
+  checkConfiguration(); // Do this last, so that users will see obvious issues at the end of the startup log without having to scroll up.
+
+  Logger.log(`🚀 Backend is running on: http://localhost:${port}`);
 }
 
 function checkConfiguration() {
@@ -98,4 +102,8 @@ function checkConfiguration() {
   }
 }
 
-start();
+start().catch((e) => {
+  // Anything thrown before listen() (module init, DB/Temporal wiring) is fatal too.
+  Logger.error('Backend failed to bootstrap', e);
+  process.exit(1);
+});

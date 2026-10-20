@@ -17,6 +17,47 @@ import { Integration } from '@prisma/client';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 
+/**
+ * Pull the numeric error identity out of a Graph response body.
+ *
+ * Only `code`/`error_subcode` are read, and only when they are numbers. The
+ * free-text `message` is deliberately ignored: it is attacker/echo influenced
+ * and can carry back values we sent, including credentials.
+ */
+const parseGraphError = (
+  body: string
+): { code: number; subcode?: number } | undefined => {
+  try {
+    const parsed = JSON.parse(body);
+    const code = parsed?.error?.code;
+    if (typeof code !== 'number') {
+      return undefined;
+    }
+
+    const subcode = parsed?.error?.error_subcode;
+    return {
+      code,
+      subcode: typeof subcode === 'number' ? subcode : undefined,
+    };
+  } catch {
+    return undefined;
+  }
+};
+
+/** Bounded, numbers-only description of a Graph error, safe to surface. */
+const graphErrorSuffix = (response: any) => {
+  const parsed = response?.error;
+  const code = parsed?.code;
+  if (typeof code !== 'number') {
+    return '';
+  }
+
+  const subcode = parsed?.error_subcode;
+  return ` (Facebook error code ${code}${
+    typeof subcode === 'number' ? `, subcode ${subcode}` : ''
+  })`;
+};
+
 @Rules(
   "Instagram should have at least one attachment, if it's a story, it can have only one picture"
 )
@@ -297,12 +338,32 @@ export class InstagramProvider
       };
     }
 
-    if (body.indexOf('190,') > -1) {
-      return {
-        type: 'bad-body' as const,
-        value:
-          'The account is missing some permissions to perform this action, please re-add the account and allow all permissions',
-      };
+    const oauthError = parseGraphError(body);
+    if (oauthError?.code === 190) {
+      // 463 = expired, 467 = invalidated (password change, logout). Those are
+      // real tokens that went stale, so a refresh can recover them.
+      //
+      // Anything else under 190 — notably "Cannot parse access token" — means
+      // the stored value is not a usable token at all. Refreshing or retrying
+      // that cannot succeed, so it is classified bad-body to stop the loop and
+      // tell the user to reconnect. The previous substring test for `'190,'`
+      // reported every one of these as a missing *permission*, which sent
+      // people to re-check scopes that were never the problem, and also
+      // matched unrelated subcodes such as 2207190.
+      const expired =
+        oauthError.subcode === 463 || oauthError.subcode === 467;
+
+      return expired
+        ? {
+            type: 'refresh-token' as const,
+            value:
+              'The Instagram access token has expired, please reconnect the channel',
+          }
+        : {
+            type: 'bad-body' as const,
+            value:
+              'The stored Instagram access token is invalid or malformed, please remove the channel and connect it again',
+          };
     }
 
     if (body.indexOf('36001') > -1) {
@@ -530,11 +591,29 @@ export class InstagramProvider
     data: { pageId: string; id: string }
   ) {
     const [accessToken, userToken] = token.split('___');
-    const { access_token, ...all } = await (
+    const pageResponse = await (
       await fetch(
         `https://graph.facebook.com/v20.0/${data.pageId}?fields=access_token,name,picture.type(large)&access_token=${accessToken}`
       )
     ).json();
+
+    const { access_token, ...all } = pageResponse || {};
+
+    // Graph omits `access_token` whenever the user cannot manage the Page:
+    // the asset was not granted during login, the user holds no task on it, or
+    // the user token itself is rejected. Without this guard the value below was
+    // string-concatenated anyway, storing the literal `undefined___<user token>`
+    // as the credential. The connect then reported success, and the damage only
+    // surfaced hours later when publishing failed with Meta code 190,
+    // "Cannot parse access token".
+    if (typeof access_token !== 'string' || !access_token) {
+      throw new Error(
+        `Facebook did not return an access token for page ${data.pageId}. ` +
+          'Confirm the page is selected during login and that you have a role ' +
+          'on it, then connect the channel again.' +
+          graphErrorSuffix(pageResponse)
+      );
+    }
 
     const { id, name, profile_picture_url, username } = await (
       await fetch(

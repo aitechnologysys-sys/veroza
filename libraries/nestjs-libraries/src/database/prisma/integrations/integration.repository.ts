@@ -275,16 +275,20 @@ export class IntegrationRepository {
           : {}),
         ...(customInstanceDetails ? { customInstanceDetails } : {}),
         type: type as any,
-        ...(!refresh
-          ? {
-              inBetweenSteps: isBetweenSteps,
-            }
-          : {}),
+        // Always persist the caller's computed value. Callers pass
+        // `refresh ? false : provider.isBetweenSteps`, so a reconnect clears
+        // the flag and a first-time connect sets it. Skipping the write on a
+        // reconnect used to leave a row that was already mid-page-selection
+        // stuck at true, so the picker reappeared after a successful reconnect.
+        inBetweenSteps: isBetweenSteps,
         ...(picture ? { picture } : {}),
         profile: username,
         providerIdentifier: provider,
         token,
-        refreshToken,
+        // Only overwrite when we actually received one. Providers that issue
+        // no new refresh token (and reConnect results, which carry none of
+        // their own) must not blank out a valid stored value.
+        ...(refreshToken ? { refreshToken } : {}),
         ...(expiresIn
           ? { tokenExpiration: new Date(Date.now() + expiresIn * 1000) }
           : {}),

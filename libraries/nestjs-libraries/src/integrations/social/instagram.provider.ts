@@ -106,6 +106,16 @@ export class InstagramProvider
     return true;
   }
 
+  /**
+   * Instagram-via-Facebook has no refresh grant: the stored credential is a
+   * page token derived from a long-lived user token, and only a fresh
+   * authorization can replace it.
+   *
+   * Returning an empty `accessToken` is load-bearing. refresh.integration
+   * .service.ts treats a falsy `accessToken` as "cannot refresh" and flags the
+   * channel `refreshNeeded` so the user is asked to reauthorize. It must never
+   * return a truthy token, or that value would overwrite a working credential.
+   */
   async refreshToken(refresh_token: string): Promise<AuthTokenDetails> {
     return {
       refreshToken: '',
@@ -415,9 +425,21 @@ export class InstagramProvider
       (p) => p.id === requiredId
     );
 
+    // Without this the non-null assertion below sent `undefined` as the page
+    // id, producing a request to `/undefined` whose failure read as a generic
+    // Graph error. The real condition is that the account being reconnected is
+    // no longer reachable through any page this user manages.
+    if (!findPage?.pageId) {
+      throw new Error(
+        `Instagram account ${requiredId} is no longer available through any ` +
+          'Facebook page you manage. Confirm the page is still linked to the ' +
+          'account and that you have a role on it, then connect it again.'
+      );
+    }
+
     const information = await this.fetchPageInformation(accessToken, {
       id: requiredId,
-      pageId: findPage?.pageId!,
+      pageId: findPage.pageId,
     });
 
     return {
@@ -435,14 +457,27 @@ export class InstagramProvider
       url:
         'https://www.facebook.com/v20.0/dialog/oauth' +
         `?client_id=${process.env.FACEBOOK_APP_ID}` +
-        `&redirect_uri=${encodeURIComponent(
-          `${process.env.FRONTEND_URL}/integrations/social/instagram`
-        )}` +
+        `&redirect_uri=${encodeURIComponent(this.redirectUri())}` +
         `&state=${state}` +
         `&scope=${encodeURIComponent(this.scopes.join(','))}`,
       codeVerifier: makeId(10),
       state,
     };
+  }
+
+  /**
+   * The exact redirect URI handed to Meta. The authorization dialog and the
+   * token exchange must present byte-identical values or Meta rejects the
+   * exchange, so this is the single source for both.
+   *
+   * It deliberately carries no query string. The reconnect target travels in
+   * the server-side state entry (`refresh:<state>` in Redis, written by
+   * integrations.controller.ts and read back in the callback), which is the
+   * validated channel for it. Appending `?refresh=<id>` here instead made the
+   * exchange URI differ from the authorize URI and broke every reconnect.
+   */
+  private redirectUri() {
+    return `${process.env.FRONTEND_URL}/integrations/social/instagram`;
   }
 
   async authenticate(params: {
@@ -454,11 +489,7 @@ export class InstagramProvider
       await fetch(
         'https://graph.facebook.com/v20.0/oauth/access_token' +
           `?client_id=${process.env.FACEBOOK_APP_ID}` +
-          `&redirect_uri=${encodeURIComponent(
-            `${process.env.FRONTEND_URL}/integrations/social/instagram${
-              params.refresh ? `?refresh=${params.refresh}` : ''
-            }`
-          )}` +
+          `&redirect_uri=${encodeURIComponent(this.redirectUri())}` +
           `&client_secret=${process.env.FACEBOOK_APP_SECRET}` +
           `&code=${params.code}`
       )

@@ -136,7 +136,12 @@ export class NoAuthIntegrationsController {
               refresh,
               auth.accessToken
             );
-            return res({ ...newAuth, refreshToken: body.refresh });
+            // `newAuth` comes from reConnect, whose type omits refreshToken.
+            // This used to be filled with body.refresh — the integration's
+            // internalId — storing an account identifier in the refresh-token
+            // column. Carry the provider's real refresh token instead, so
+            // providers that genuinely refresh keep working.
+            return res({ ...newAuth, refreshToken: auth.refreshToken });
           } catch (err: any) {
             return res({
               error: err.message,
@@ -225,7 +230,11 @@ export class NoAuthIntegrationsController {
         expiresIn,
         username,
         refresh ? false : integrationProvider.isBetweenSteps,
-        body.refresh,
+        // Server-side state, not the callback query string: `refresh` was
+        // written under refresh:<state> when the reconnect was started and is
+        // read back above. body.refresh is client-supplied and is absent
+        // entirely for providers that do not echo it through the redirect.
+        refresh ?? undefined,
         +body.timezone,
         details
           ? AuthService.fixedEncryption(details)

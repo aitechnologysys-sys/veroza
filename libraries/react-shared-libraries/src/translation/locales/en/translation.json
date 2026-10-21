@@ -688,5 +688,6 @@
   "continue_without_channels": "Continue without channels",
   "back": "Back",
   "get_started": "Get Started",
-  "kick_select_channel": "Select Channel"
+  "kick_select_channel": "Select Channel",
+  "please_close_this_dialog_and_reconnect_the_existing_channel": "Please close this dialog and use Reconnect on the existing channel. Deleting it and adding a new one would detach your post history."
 }

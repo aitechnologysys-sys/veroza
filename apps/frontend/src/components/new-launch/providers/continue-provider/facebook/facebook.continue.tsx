@@ -28,8 +28,13 @@ export const FacebookContinue = withContinueProvider<FacebookItem, string>({
       text: 'We recommend you to connect all the pages and all the businesses.',
     },
     {
-      key: 'please_close_this_dialog_delete_your_integration_and_add_a_new_channel_again',
-      text: 'Please close this dialog, delete your integration and add a new channel again.',
+      // Deliberately not "delete and add again". Deleting randomises the old
+      // row's internalId (checkForDeletedOnceAndUpdate), so the replacement is
+      // a different integration and the previous post history, scheduled
+      // posts and analytics stay attached to the deleted one. Reconnecting
+      // keeps internalId, and therefore the same row.
+      key: 'please_close_this_dialog_and_reconnect_the_existing_channel',
+      text: 'Please close this dialog and use Reconnect on the existing channel. Deleting it and adding a new one would detach your post history.',
     },
   ],
   getItemId: (item) => item.id,

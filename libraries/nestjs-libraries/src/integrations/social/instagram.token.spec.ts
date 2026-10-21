@@ -128,7 +128,7 @@ describe('InstagramProvider.handleErrors — code 190 classification', () => {
   const provider = new InstagramProvider();
   const graph = (error: Record<string, unknown>) => JSON.stringify({ error });
 
-  it('treats a malformed token as bad-body, never refresh-token', () => {
+  it('routes a malformed token to reauthorization, not a silent failure', () => {
     const result = provider.handleErrors(
       graph({
         message: 'Invalid OAuth access token - Cannot parse access token',
@@ -138,9 +138,14 @@ describe('InstagramProvider.handleErrors — code 190 classification', () => {
       400
     );
 
-    // refresh-token would make the worker retry a value that is not a token.
-    expect(result?.type).toBe('bad-body');
-    expect(result?.value).toMatch(/invalid or malformed/i);
+    // This provider sets canRefreshToken = false, so refresh.integration
+    // .service skips the exchange entirely and flags the channel instead —
+    // no request is spent retrying a value that is not a token. Classifying
+    // this as bad-body left refreshNeeded unset, so the UI offered no
+    // reconnect and users were pushed into delete-and-re-add.
+    expect(provider.canRefreshToken).toBe(false);
+    expect(result?.type).toBe('refresh-token');
+    expect(result?.value).toMatch(/reconnect the channel/i);
   });
 
   it.each([463, 467])(
@@ -171,7 +176,7 @@ describe('InstagramProvider.handleErrors — code 190 classification', () => {
     );
 
     // Falling through (undefined) is correct: it is not a 190 at all.
-    expect(result?.value ?? '').not.toMatch(/invalid or malformed/i);
+    expect(result?.value ?? '').not.toMatch(/reconnect the channel/i);
     expect(result?.value ?? '').not.toMatch(/expired/i);
   });
 
@@ -181,7 +186,7 @@ describe('InstagramProvider.handleErrors — code 190 classification', () => {
       400
     );
 
-    expect(result?.value ?? '').not.toMatch(/invalid or malformed/i);
+    expect(result?.value ?? '').not.toMatch(/reconnect the channel/i);
   });
 
   it('falls through safely on a non-JSON body', () => {

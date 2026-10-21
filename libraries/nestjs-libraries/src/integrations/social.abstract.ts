@@ -57,6 +57,18 @@ export abstract class SocialAbstract {
   abstract identifier: string;
   maxConcurrentJob = 1;
 
+  /**
+   * Whether the provider can exchange a stored credential for a fresh one
+   * without the user present.
+   *
+   * False means no refresh grant exists, so only an interactive
+   * reauthorization can produce a working credential. Keeping this explicit is
+   * what separates "refresh it automatically" from "ask the user to
+   * reconnect": a provider that cannot refresh must never be asked to, and the
+   * channel must be flagged for reconnection instead.
+   */
+  canRefreshToken = true;
+
   public handleErrors(
     body: string,
     status: number

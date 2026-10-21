@@ -79,6 +79,9 @@ export class InstagramProvider
     'instagram_manage_insights',
   ];
   override maxConcurrentJob = 400;
+  // Instagram via Facebook has no refresh grant: the stored page token can
+  // only be replaced by a fresh authorization. See refreshToken below.
+  override canRefreshToken = false;
   editor = 'normal' as const;
   dto = InstagramDto;
   maxLength() {
@@ -360,20 +363,24 @@ export class InstagramProvider
       // reported every one of these as a missing *permission*, which sent
       // people to re-check scopes that were never the problem, and also
       // matched unrelated subcodes such as 2207190.
+      // Both outcomes need the same remedy, because this provider cannot
+      // refresh (canRefreshToken = false): refresh.integration.service flags
+      // the channel for reconnection without spending a request on an
+      // exchange that has no chance of working.
+      //
+      // Classifying the malformed case as bad-body instead left refreshNeeded
+      // unset, so the UI never offered a reconnect and the only visible route
+      // was delete-and-re-add — which randomises the old row's internalId,
+      // detaching its post history and analytics.
       const expired =
         oauthError.subcode === 463 || oauthError.subcode === 467;
 
-      return expired
-        ? {
-            type: 'refresh-token' as const,
-            value:
-              'The Instagram access token has expired, please reconnect the channel',
-          }
-        : {
-            type: 'bad-body' as const,
-            value:
-              'The stored Instagram access token is invalid or malformed, please remove the channel and connect it again',
-          };
+      return {
+        type: 'refresh-token' as const,
+        value: expired
+          ? 'The Instagram access token has expired, please reconnect the channel'
+          : 'The stored Instagram access token is invalid, please reconnect the channel',
+      };
     }
 
     if (body.indexOf('36001') > -1) {

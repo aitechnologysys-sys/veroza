@@ -1,6 +1,7 @@
 'use client';
 
 import { withContinueProvider } from '../with-continue-provider';
+import { ProviderAvatar } from '../provider.avatar';
 
 interface FacebookItem {
   id: string;
@@ -44,7 +45,7 @@ export const FacebookContinue = withContinueProvider<FacebookItem, string>({
   renderItem: (item) => (
     <>
       <div>
-        <img className="w-full" src={item.picture.data.url} alt="profile" />
+        <ProviderAvatar url={item.picture?.data?.url} name={item.name} />
       </div>
       <div>{item.name}</div>
     </>

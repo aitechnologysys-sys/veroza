@@ -620,7 +620,10 @@ export class InstagramProvider
       pageId: p.pageId,
       id: p.id,
       name: p.name,
-      picture: { data: { url: p.profile_picture_url } },
+      // Graph omits profile_picture_url for some accounts; keep the shape
+      // stable so the selection dialog can fall back instead of rendering a
+      // broken image.
+      picture: { data: { url: p.profile_picture_url || '' } },
     }));
   }
 

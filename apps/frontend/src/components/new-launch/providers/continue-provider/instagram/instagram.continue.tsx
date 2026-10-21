@@ -1,6 +1,7 @@
 'use client';
 
 import { withContinueProvider } from '../with-continue-provider';
+import { ProviderAvatar } from '../provider.avatar';
 
 interface InstagramItem {
   id: string;
@@ -53,10 +54,10 @@ export const InstagramContinue = withContinueProvider<
   renderItem: (item) => (
     <>
       <div>
-        <img
+        <ProviderAvatar
           className="w-full max-w-[156px]"
-          src={item.picture.data.url}
-          alt="profile"
+          url={item.picture?.data?.url}
+          name={item.name}
         />
       </div>
       <div>{item.name}</div>

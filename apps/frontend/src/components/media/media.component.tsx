@@ -1,8 +1,8 @@
 'use client';
 
 import {
-  MAX_UPLOAD_SIZE,
-  MAX_UPLOAD_SIZE_LABEL,
+  isOverUploadLimit,
+  UPLOAD_SIZE_LIMITS_LABEL,
 } from '@gitroom/helpers/utils/max.upload.size';
 import React, {
   ChangeEvent,
@@ -282,11 +282,11 @@ export const MediaBox: FC<{
   const addToUpload = useCallback(
     async (e: ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(e.target.files || []);
-      if (files.some((file) => file.size > MAX_UPLOAD_SIZE)) {
+      if (files.some((file) => isOverUploadLimit(file))) {
         toaster.show(
           t(
             'file_size_limit_exceeded',
-            `Each file must be ${MAX_UPLOAD_SIZE_LABEL} or smaller.`
+            `File is too large. Maximum ${UPLOAD_SIZE_LIMITS_LABEL}.`
           ),
           'warning'
         );
@@ -323,11 +323,11 @@ export const MediaBox: FC<{
         }
       }
 
-      if (files.some((file) => file.size > MAX_UPLOAD_SIZE)) {
+      if (files.some((file) => isOverUploadLimit(file))) {
         toaster.show(
           t(
             'file_size_limit_exceeded',
-            `Each file must be ${MAX_UPLOAD_SIZE_LABEL} or smaller.`
+            `File is too large. Maximum ${UPLOAD_SIZE_LIMITS_LABEL}.`
           ),
           'warning'
         );
@@ -494,7 +494,7 @@ export const MediaBox: FC<{
                 <div className="whitespace-pre-line text-newTextColor/[0.6] text-center">
                   {t(
                     'select_or_upload_pictures_max_size',
-                    `Select or upload pictures (maximum ${MAX_UPLOAD_SIZE_LABEL} per file).`
+                    `Select or upload pictures (maximum ${UPLOAD_SIZE_LIMITS_LABEL}).`
                   )}{' '}
                   {'\n'}
                   {t(

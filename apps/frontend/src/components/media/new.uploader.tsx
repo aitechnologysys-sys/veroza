@@ -14,8 +14,9 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { uniqBy } from 'lodash';
 import {
+  isOverUploadLimit,
   MAX_UPLOAD_SIZE,
-  MAX_UPLOAD_SIZE_LABEL,
+  maxUploadSizeLabelFor,
 } from '@gitroom/helpers/utils/max.upload.size';
 
 export class CompressionWrapper<M = any, B = any> extends Compressor<any, any> {
@@ -133,14 +134,15 @@ export function useUppyUploader(props: {
 
         for (const file of files) {
           if (fileIDs.includes(file.id)) {
-            if (file.size > MAX_UPLOAD_SIZE) {
+            if (isOverUploadLimit(file)) {
+              const label = maxUploadSizeLabelFor(file.type);
               const error = new Error(
-                `File "${file.name}" is too large. Maximum size allowed is ${MAX_UPLOAD_SIZE_LABEL}.`
+                `File "${file.name}" is too large. Maximum size allowed is ${label}.`
               );
               uppy2.log(error.message, 'error');
               uppy2.info(error.message, 'error', 5000);
               toast.show(
-                `File is too large. Maximum size allowed is ${MAX_UPLOAD_SIZE_LABEL}.`
+                `File is too large. Maximum size allowed is ${label}.`
               );
               uppy2.removeFile(file.id); // Remove file from queue
               return reject(error);

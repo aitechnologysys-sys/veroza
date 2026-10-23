@@ -1,8 +1,8 @@
 'use client';
 
 import {
-  MAX_UPLOAD_SIZE,
-  MAX_UPLOAD_SIZE_LABEL,
+  isOverUploadLimit,
+  UPLOAD_SIZE_LIMITS_LABEL,
 } from '@gitroom/helpers/utils/max.upload.size';
 import React, {
   FC,
@@ -580,11 +580,11 @@ export const Editor: FC<{
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
-      if (acceptedFiles.some((file) => file.size > MAX_UPLOAD_SIZE)) {
+      if (acceptedFiles.some((file) => isOverUploadLimit(file))) {
         toaster.show(
           t(
             'file_size_limit_exceeded',
-            `Each file must be ${MAX_UPLOAD_SIZE_LABEL} or smaller.`
+            `File is too large. Maximum ${UPLOAD_SIZE_LIMITS_LABEL}.`
           ),
           'warning'
         );
@@ -622,11 +622,11 @@ export const Editor: FC<{
         }
       }
 
-      if (files.some((file) => file.size > MAX_UPLOAD_SIZE)) {
+      if (files.some((file) => isOverUploadLimit(file))) {
         toaster.show(
           t(
             'file_size_limit_exceeded',
-            `Each file must be ${MAX_UPLOAD_SIZE_LABEL} or smaller.`
+            `File is too large. Maximum ${UPLOAD_SIZE_LIMITS_LABEL}.`
           ),
           'warning'
         );

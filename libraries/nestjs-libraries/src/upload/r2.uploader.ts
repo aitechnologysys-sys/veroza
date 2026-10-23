@@ -16,8 +16,8 @@ import crypto from 'crypto';
 import path from 'path';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import {
-  MAX_UPLOAD_SIZE,
-  MAX_UPLOAD_SIZE_LABEL,
+  maxUploadSizeFor,
+  maxUploadSizeLabelFor,
 } from '@gitroom/helpers/utils/max.upload.size';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { fromBuffer } = require('file-type');
@@ -116,13 +116,16 @@ export async function createMultipartUpload(req: Request, res: Response) {
   if (!safeExt) {
     return res.status(400).json({ message: 'Unsupported file type.' });
   }
+  const safeContentType = ALLOWED_EXT_TO_MIME[safeExt];
   const declaredSize = Number(file?.size);
-  if (!Number.isFinite(declaredSize) || declaredSize > MAX_UPLOAD_SIZE) {
+  if (
+    !Number.isFinite(declaredSize) ||
+    declaredSize > maxUploadSizeFor(safeContentType)
+  ) {
     return res.status(400).json({
-      message: `File is too large. The maximum size is ${MAX_UPLOAD_SIZE_LABEL}.`,
+      message: `File is too large. The maximum size is ${maxUploadSizeLabelFor(safeContentType)}.`,
     });
   }
-  const safeContentType = ALLOWED_EXT_TO_MIME[safeExt];
   const randomFilename = generateRandomString() + safeExt;
 
   try {
@@ -223,12 +226,12 @@ export async function completeMultipartUpload(req: Request, res: Response) {
     const { ContentLength } = await R2.send(
       new HeadObjectCommand({ Bucket: CLOUDFLARE_BUCKETNAME, Key: key })
     );
-    if (!ContentLength || ContentLength > MAX_UPLOAD_SIZE) {
+    if (!ContentLength || ContentLength > maxUploadSizeFor(expectedMime)) {
       await R2.send(
         new DeleteObjectCommand({ Bucket: CLOUDFLARE_BUCKETNAME, Key: key })
       );
       return res.status(400).json({
-        message: `File is too large. The maximum size is ${MAX_UPLOAD_SIZE_LABEL}.`,
+        message: `File is too large. The maximum size is ${maxUploadSizeLabelFor(expectedMime)}.`,
       });
     }
 

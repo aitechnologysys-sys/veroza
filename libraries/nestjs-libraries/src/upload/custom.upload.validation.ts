@@ -5,7 +5,8 @@ import {
 } from '@nestjs/common';
 import {
   MAX_UPLOAD_SIZE,
-  MAX_UPLOAD_SIZE_LABEL,
+  maxUploadSizeFor,
+  maxUploadSizeLabelFor,
 } from '@gitroom/helpers/utils/max.upload.size';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { fromBuffer } = require('file-type');
@@ -22,7 +23,7 @@ const ALLOWED_MIME_TYPES = new Set<string>([
 ]);
 
 // multer (busboy) rejects a file that reaches `fileSize`, so allow one extra byte
-// to accept files of exactly MAX_UPLOAD_SIZE, matching the check below.
+// to accept files of exactly MAX_UPLOAD_SIZE. The pipe below applies the per-type limit.
 export const UPLOAD_LIMITS = { fileSize: MAX_UPLOAD_SIZE + 1 };
 
 @Injectable()
@@ -46,9 +47,9 @@ export class CustomFileValidationPipe implements PipeTransform {
       throw new BadRequestException('Unsupported file type.');
     }
 
-    if (value.size > MAX_UPLOAD_SIZE) {
+    if (value.size > maxUploadSizeFor(detected.mime)) {
       throw new BadRequestException(
-        `File is too large. The maximum size is ${MAX_UPLOAD_SIZE_LABEL}.`
+        `File is too large. The maximum size is ${maxUploadSizeLabelFor(detected.mime)}.`
       );
     }
 

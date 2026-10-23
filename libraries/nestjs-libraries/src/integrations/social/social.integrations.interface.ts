@@ -110,6 +110,10 @@ export type PostResponse = {
   postId: string; // The ID of the scheduled post returned by the platform
   releaseURL: string; // The URL of the post on the platform
   status: string; // Status of the operation or initial post status
+  // Set when the post went live but a follow-up step on it did not (e.g. a
+  // YouTube thumbnail). The post is still recorded as published; the workflow
+  // sends this text instead of the usual success notification.
+  warning?: { subject: string; message: string };
 };
 
 export type PostDetails<T = any> = {

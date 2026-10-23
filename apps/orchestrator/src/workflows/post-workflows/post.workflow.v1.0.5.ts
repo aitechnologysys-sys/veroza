@@ -7,11 +7,13 @@ import {
   sleep,
   defineSignal,
   setHandler,
+  patched,
 } from '@temporalio/workflow';
 import dayjs from 'dayjs';
 import { Integration } from '@prisma/client';
 import { capitalize, sortBy } from 'lodash';
 import { PostResponse } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
+import { publishedNotification } from './published.notification';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { TypedSearchAttributes } from '@temporalio/common';
 import { postId as postIdSearchParam } from '@gitroom/nestjs-libraries/temporal/temporal.search.attribute';
@@ -46,6 +48,14 @@ const {
 });
 
 const poke = defineSignal('poke');
+
+// Patch marker: a live post is recorded outside the publish retry loop, so a
+// failure while recording can no longer publish it a second time.
+const RECORD_WITHOUT_REPUBLISH = 'record-published-without-republish';
+// Must outlast the missing-post sweeper's 2-day look-back (see
+// recordPublished).
+const RECORD_RETRY_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
+const RECORD_RETRY_INTERVAL = '10 minutes';
 
 const iterate = Array.from({ length: 5 });
 
@@ -160,9 +170,66 @@ export async function postWorkflowV105({
   // list of all the saved results
   const postsResults: PostResponse[] = [];
 
+  // send notification on a sucessful post. Same activity call whatever the
+  // result (only the text differs: published, pending verification, or
+  // published with a warning such as a YouTube thumbnail that was not
+  // applied), so running workflows replay fine.
+  const notifyPublished = () => {
+    const notice = publishedNotification(
+      capitalize(post.integration.providerIdentifier),
+      postsResults[0]
+    );
+    return inAppNotification(
+      post.integration.organizationId,
+      notice.subject,
+      notice.message,
+      true,
+      true,
+      notice.type
+    );
+  };
+
+  // Records a post or comment that is already live. Runs outside the publish
+  // retry loop: inside it, any failure here (even of this database write)
+  // re-ran postSocial/postComment and published a second copy. updatePost is
+  // idempotent, so it is retried for longer than the missing-post sweeper
+  // looks back (QUEUE posts with a publishDate in the last 2 days): while
+  // this workflow is open the sweeper only pokes it, whereas a closed run
+  // would be started again and publish again.
+  const recordPublished = async (index: number) => {
+    const deadline = Date.now() + RECORD_RETRY_WINDOW_MS;
+    while (true) {
+      try {
+        await updatePost(
+          postsList[index].id,
+          postsResults[index].postId,
+          postsResults[index].releaseURL
+        );
+        break;
+      } catch (err) {
+        if (Date.now() >= deadline) {
+          // Outside the sweeper window by now, so no new run will publish it
+          // again; the post stays QUEUE although it is live.
+          return;
+        }
+        await sleep(RECORD_RETRY_INTERVAL);
+      }
+    }
+
+    if (index === 0) {
+      try {
+        await notifyPublished();
+      } catch (err) {
+        // Already retried by Temporal; a missing notification is never worth
+        // a second publication.
+      }
+    }
+  };
+
   // iterate over the posts
   for (let i = 0; i < postsList.length; i++) {
     const before = postsResults.length;
+    let published = false;
     // this is a small trick to repeat an action in case of token refresh
     for (const _ of iterate) {
       try {
@@ -192,6 +259,15 @@ export async function postWorkflowV105({
           );
         }
 
+        // It is live: leave the retry loop before anything else can fail in
+        // it. Checked here, not at the top of the workflow, so runs that were
+        // sleeping until their publish date when this shipped get it too;
+        // histories that already went past this point replay the old path.
+        if (patched(RECORD_WITHOUT_REPUBLISH)) {
+          published = true;
+          break;
+        }
+
         // mark post as successful
         await updatePost(
           postsList[i].id,
@@ -200,23 +276,7 @@ export async function postWorkflowV105({
         );
 
         if (i === 0) {
-          const provider = capitalize(post.integration.providerIdentifier);
-          // send notification on a sucessful post. Same activity call either
-          // way (only the text differs), so running workflows replay fine.
-          const pendingVerification =
-            postsResults[0].status === 'pending_verification';
-          await inAppNotification(
-            post.integration.organizationId,
-            pendingVerification
-              ? `Your post on ${provider} is waiting for verification`
-              : `Your post has been published on ${provider}`,
-            pendingVerification
-              ? `${provider} created your post at ${postsResults[0].releaseURL} but keeps it hidden from feeds until its verification challenge is solved. ${provider} only sends that challenge to the posting app, so the post will stay hidden for now.`
-              : `Your post has been published on ${provider} at ${postsResults[0].releaseURL}`,
-            true,
-            true,
-            pendingVerification ? 'info' : 'success'
-          );
+          await notifyPublished();
         }
 
         // break the current while to move to the next post
@@ -270,6 +330,10 @@ export async function postWorkflowV105({
     if (postsResults.length === before) {
       // all retries exhausted without success
       return false;
+    }
+
+    if (published) {
+      await recordPublished(i);
     }
   }
 

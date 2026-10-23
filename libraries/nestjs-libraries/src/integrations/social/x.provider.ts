@@ -22,6 +22,7 @@ import { stripLinks as removeLinks } from '@gitroom/helpers/utils/strip.links';
 import { XDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/x.dto';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
+import { logProviderError } from '@gitroom/nestjs-libraries/helpers/redact';
 
 @Rules(
   `X can have maximum 4 pictures, or maximum one video, it can also be without attachments ${
@@ -699,7 +700,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
         ],
       }));
     } catch (err) {
-      console.log(err);
+      logProviderError('x', 'analytics', err);
     }
     return [];
   }
@@ -820,7 +821,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
         },
       ];
     } catch (err) {
-      console.log(err);
+      logProviderError('x', 'mentions', err);
     }
     return [];
   }

@@ -40,7 +40,6 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
         value: string;
       }
     | undefined {
-    console.log(body);
     if (body.includes('Error validating access token')) {
       return { type: 'refresh-token', value: 'Threads access token expired' };
     }

@@ -1,6 +1,7 @@
 'use client';
 
 import { withContinueProvider } from '../with-continue-provider';
+import { ProviderAvatar } from '../provider.avatar';
 
 interface InstagramItem {
   id: string;
@@ -37,8 +38,13 @@ export const InstagramContinue = withContinueProvider<
       text: 'We recommend you to connect all the pages and all the businesses.',
     },
     {
-      key: 'please_close_this_dialog_delete_your_integration_and_add_a_new_channel_again',
-      text: 'Please close this dialog, delete your integration and add a new channel again.',
+      // Deliberately not "delete and add again". Deleting randomises the old
+      // row's internalId (checkForDeletedOnceAndUpdate), so the replacement is
+      // a different integration and the previous post history, scheduled
+      // posts and analytics stay attached to the deleted one. Reconnecting
+      // keeps internalId, and therefore the same row.
+      key: 'please_close_this_dialog_and_reconnect_the_existing_channel',
+      text: 'Please close this dialog and use Reconnect on the existing channel. Deleting it and adding a new one would detach your post history.',
     },
   ],
   getItemId: (item) => item.id,
@@ -48,10 +54,10 @@ export const InstagramContinue = withContinueProvider<
   renderItem: (item) => (
     <>
       <div>
-        <img
+        <ProviderAvatar
           className="w-full max-w-[156px]"
-          src={item.picture.data.url}
-          alt="profile"
+          url={item.picture?.data?.url}
+          name={item.name}
         />
       </div>
       <div>{item.name}</div>

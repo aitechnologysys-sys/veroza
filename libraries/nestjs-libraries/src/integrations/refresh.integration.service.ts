@@ -73,9 +73,18 @@ export class RefreshIntegrationService {
     socialProvider: SocialProvider,
     cause = ''
   ): Promise<AuthTokenDetails | false> {
-    const refresh: false | AuthTokenDetails = await socialProvider
-      .refreshToken(integration.refreshToken)
-      .catch((err) => false);
+    // A provider with no refresh grant (Instagram via Facebook: the stored
+    // page token can only be replaced by a fresh authorization) must not be
+    // asked to refresh. Calling it would spend a request to fail, and would
+    // blur the line between an automatic refresh and the interactive
+    // reauthorization the user actually has to perform. Fall through to the
+    // branch below, which flags the channel so the UI offers "reconnect".
+    const refresh: false | AuthTokenDetails =
+      socialProvider.canRefreshToken === false
+        ? false
+        : await socialProvider
+            .refreshToken(integration.refreshToken)
+            .catch((err) => false);
 
     if (!refresh || !refresh.accessToken) {
       await this._integrationService.refreshNeeded(

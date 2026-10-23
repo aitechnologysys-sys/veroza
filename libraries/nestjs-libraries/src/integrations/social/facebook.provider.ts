@@ -200,10 +200,24 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
    * log rather than treated as fatal.
    */
   async revokeToken(token: string): Promise<void> {
-    await fetch(
+    const response = await fetch(
       `https://graph.facebook.com/v20.0/me/permissions?access_token=${token}`,
       { method: 'DELETE' }
     );
+
+    if (!response.ok) {
+      // The status and nothing else. The request URL carries the token in
+      // its query string and the response body can echo it back, so neither
+      // may reach the error message.
+      const error = new Error(
+        `Facebook token revocation failed with status ${response.status}`
+      ) as Error & { status: number };
+      // Exposed as a field so a caller can report the status without parsing
+      // message text — see helpers/revocation.log.ts, which allowlists the
+      // values it emits and never reads a message.
+      error.status = response.status;
+      throw error;
+    }
   }
 
   async refreshToken(refresh_token: string): Promise<AuthTokenDetails> {

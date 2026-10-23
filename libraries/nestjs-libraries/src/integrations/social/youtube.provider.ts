@@ -11,7 +11,6 @@ import { OAuth2Client } from 'google-auth-library/build/src/auth/oauth2client';
 import axios from 'axios';
 import { YoutubeSettingsDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/youtube.settings.dto';
 import {
-  BadBody,
   SocialAbstract,
   ValidityMedia,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
@@ -20,6 +19,10 @@ import dayjs from 'dayjs';
 import { GaxiosResponse } from 'gaxios/build/src/common';
 import Schema$Video = youtube_v3.Schema$Video;
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
+import {
+  logThumbnailFailure,
+  thumbnailWarning,
+} from '@gitroom/nestjs-libraries/integrations/social/youtube.thumbnail.warning';
 
 const clientAndYoutube = () => {
   const client = new google.auth.OAuth2({
@@ -231,14 +234,6 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
         type: 'bad-body',
         value:
           'You have to link your youtube account to your google account first.',
-      };
-    }
-
-    if (body.includes('youtube.thumbnail')) {
-      return {
-        type: 'bad-body',
-        value:
-          'Your account is not verified, we have uploaded your video but we could not set the thumbnail. Please verify your account and try again.',
       };
     }
 
@@ -487,47 +482,44 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       true
     );
 
-    const videoUrl = `https://www.youtube.com/watch?v=${all?.data?.id}`;
+    const videoId = all?.data?.id!;
+    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const published: PostResponse = {
+      id: firstPost.id,
+      releaseURL: videoUrl,
+      postId: videoId,
+      status: 'success',
+    };
 
-    if (settings?.thumbnail?.path) {
-      try {
-        await this.runInConcurrent(async () =>
-          youtubeClient.thumbnails.set({
-            videoId: all?.data?.id!,
-            media: {
-              body: (
-                await axios({
-                  url: settings?.thumbnail?.path,
-                  method: 'GET',
-                  responseType: 'stream',
-                })
-              ).data,
-            },
-          })
-        );
-      } catch (err) {
-        // videos.insert already succeeded, so the video is live whatever
-        // happens here. Carry its URL into the failure: without it the user is
-        // told the post failed and has no way to reach the video they just
-        // published.
-        const reason = (err as any)?.message || 'Could not set the thumbnail.';
-        throw new BadBody(
-          'youtube',
-          (err as any)?.details?.[0]?.json || '{}',
-          {} as any,
-          `${reason} The video itself was published and is available at ${videoUrl}`
-        );
-      }
+    if (!settings?.thumbnail?.path) {
+      return [published];
     }
 
-    return [
-      {
-        id: firstPost.id,
-        releaseURL: videoUrl,
-        postId: all?.data?.id!,
-        status: 'success',
-      },
-    ];
+    // videos.insert already succeeded, so the video is live whatever happens
+    // here. Nothing below may throw: a thrown error marks the post ERROR,
+    // loses the video ID, and invites a retry that uploads the video again
+    // (a 401 here would even be retried as a token refresh). Called directly
+    // rather than through runInConcurrent so Google's structured error
+    // survives for classification.
+    try {
+      await youtubeClient.thumbnails.set({
+        videoId,
+        media: {
+          body: (
+            await axios({
+              url: settings?.thumbnail?.path,
+              method: 'GET',
+              responseType: 'stream',
+            })
+          ).data,
+        },
+      });
+    } catch (err) {
+      logThumbnailFailure(videoId, err);
+      return [{ ...published, warning: thumbnailWarning(err, videoUrl) }];
+    }
+
+    return [published];
   }
 
   async analytics(

@@ -56,14 +56,18 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
   name = 'YouTube';
   isBetweenSteps = true;
   dto = YoutubeSettingsDto;
+  // Narrowest set that covers the implemented calls; this list is both what
+  // generateAuthUrl requests and what authenticate requires via checkScopes.
+  // youtube.upload: videos.insert, thumbnails.set. youtube.readonly:
+  // channels.list, videos.list, and reports.query (Google now requires it
+  // there too). yt-analytics.readonly: reports.query. The broader youtube,
+  // youtube.force-ssl and youtubepartner scopes were dropped because no
+  // implemented call needs them. Upstream still requests all eight.
   scopes = [
     'https://www.googleapis.com/auth/userinfo.profile',
     'https://www.googleapis.com/auth/userinfo.email',
-    'https://www.googleapis.com/auth/youtube',
-    'https://www.googleapis.com/auth/youtube.force-ssl',
     'https://www.googleapis.com/auth/youtube.readonly',
     'https://www.googleapis.com/auth/youtube.upload',
-    'https://www.googleapis.com/auth/youtubepartner',
     'https://www.googleapis.com/auth/yt-analytics.readonly',
   ];
 

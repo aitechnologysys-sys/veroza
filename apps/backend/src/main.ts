@@ -12,6 +12,7 @@ process.env.TZ = 'UTC';
 import cookieParser from 'cookie-parser';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { armStartupWatchdog } from '@gitroom/nestjs-libraries/helpers/startup.watchdog';
 import { AppModule } from './app.module';
 
 import { SubscriptionExceptionFilter } from '@gitroom/backend/services/auth/permissions/subscription.exception';
@@ -19,6 +20,10 @@ import { PostValidationExceptionFilter } from '@gitroom/backend/api/routes/posts
 import { HttpExceptionFilter } from '@gitroom/nestjs-libraries/services/exception.filter';
 import { ConfigurationChecker } from '@gitroom/helpers/configuration/configuration.checker';
 import { startMcp } from '@gitroom/nestjs-libraries/chat/start.mcp';
+
+// Same failure mode as the orchestrator: the backend hung twice on
+// 2026-10-20, alive and `online` but never binding :3000.
+const disarmWatchdog = armStartupWatchdog('backend');
 
 async function start() {
   const app = await NestFactory.create(AppModule, {
@@ -72,14 +77,19 @@ async function start() {
 
   try {
     await app.listen(port);
-    console.log('Backend started successfully on port ' + port);
-
-    checkConfiguration(); // Do this last, so that users will see obvious issues at the end of the startup log without having to scroll up.
-
-    Logger.log(`🚀 Backend is running on: http://localhost:${port}`);
+    disarmWatchdog();
   } catch (e) {
+    // A failed listen is fatal: the process would otherwise stay alive with no
+    // HTTP server, which a process manager reads as healthy. Exit so it restarts.
     Logger.error(`Backend failed to start on port ${port}`, e);
+    process.exit(1);
   }
+
+  console.log('Backend started successfully on port ' + port);
+
+  checkConfiguration(); // Do this last, so that users will see obvious issues at the end of the startup log without having to scroll up.
+
+  Logger.log(`🚀 Backend is running on: http://localhost:${port}`);
 }
 
 function checkConfiguration() {
@@ -98,4 +108,9 @@ function checkConfiguration() {
   }
 }
 
-start();
+start().catch((e) => {
+  // Anything thrown before listen() (module init, DB/Temporal wiring) is fatal too.
+  disarmWatchdog();
+  Logger.error('Backend failed to bootstrap', e);
+  process.exit(1);
+});

@@ -275,16 +275,20 @@ export class IntegrationRepository {
           : {}),
         ...(customInstanceDetails ? { customInstanceDetails } : {}),
         type: type as any,
-        ...(!refresh
-          ? {
-              inBetweenSteps: isBetweenSteps,
-            }
-          : {}),
+        // Always persist the caller's computed value. Callers pass
+        // `refresh ? false : provider.isBetweenSteps`, so a reconnect clears
+        // the flag and a first-time connect sets it. Skipping the write on a
+        // reconnect used to leave a row that was already mid-page-selection
+        // stuck at true, so the picker reappeared after a successful reconnect.
+        inBetweenSteps: isBetweenSteps,
         ...(picture ? { picture } : {}),
         profile: username,
         providerIdentifier: provider,
         token,
-        refreshToken,
+        // Only overwrite when we actually received one. Providers that issue
+        // no new refresh token (and reConnect results, which carry none of
+        // their own) must not blank out a valid stored value.
+        ...(refreshToken ? { refreshToken } : {}),
         ...(expiresIn
           ? { tokenExpiration: new Date(Date.now() + expiresIn * 1000) }
           : {}),
@@ -705,6 +709,116 @@ export class IntegrationRepository {
       },
       select: {
         postingTimes: true,
+      },
+    });
+  }
+
+  /**
+   * Integrations belonging to one Meta identity, scoped to the providers that
+   * share the app the callback was signed with.
+   *
+   * `rootInternalId` is the ID returned by the provider's `authenticate()` —
+   * the Meta *user* ID. For `facebook` and `instagram` the page-selection step
+   * overwrites `internalId` with the Page / IG account ID but leaves
+   * `rootInternalId` alone, so this is the only column that still holds the
+   * identity Meta signs its callbacks with.
+   *
+   * Rows created before `rootInternalId` existed have it null and will not
+   * match; that is deliberate, since deleting on a guess is worse than
+   * reporting the request as unmatched.
+   */
+  findMetaIntegrationsByUserId(providers: string[], metaUserId: string) {
+    if (!providers.length || !metaUserId) {
+      return Promise.resolve([]);
+    }
+
+    return this._integration.model.integration.findMany({
+      where: {
+        providerIdentifier: { in: providers },
+        rootInternalId: metaUserId,
+      },
+      select: {
+        id: true,
+        organizationId: true,
+        providerIdentifier: true,
+        // Needed to attempt upstream revocation before the scrub clears it.
+        token: true,
+      },
+    });
+  }
+
+  /**
+   * Fetch integrations by explicit IDs, for the retry path of a Meta deletion.
+   * Already-scrubbed rows are included on purpose: the retry still has to
+   * finish their cache cleanup.
+   */
+  findMetaIntegrationsByIds(ids: string[]) {
+    if (!ids.length) {
+      return Promise.resolve([]);
+    }
+
+    return this._integration.model.integration.findMany({
+      where: { id: { in: ids } },
+      select: {
+        id: true,
+        organizationId: true,
+        providerIdentifier: true,
+        token: true,
+      },
+    });
+  }
+
+  /**
+   * Post IDs for one integration, used to build the cached-analytics keys.
+   * posts.service.ts caches per post (`integration:{org}:{postId}:{date}`),
+   * so the integration ID alone does not reach them.
+   */
+  async getPostIdsForIntegration(integrationId: string) {
+    const posts = await this._posts.model.post.findMany({
+      where: { integrationId },
+      select: { id: true },
+    });
+
+    return posts.map((p: { id: string }) => p.id);
+  }
+
+  /**
+   * Remove the Meta-derived data held against one integration.
+   *
+   * Scope is deliberately narrow. Credentials and anything Meta gave us about
+   * the account go; the customer's own post content stays, because they
+   * authored it inside Postaryx and it is not Meta's to delete. Only the
+   * publish receipts tying a post to Meta (`releaseId`, `releaseURL`) are
+   * cleared.
+   *
+   * `OrderItems` and `Media` are untouched: the first is a financial record,
+   * the second is org-scoped and shared with other integrations.
+   */
+  async scrubMetaIntegration(id: string) {
+    await this._posts.model.post.updateMany({
+      where: { integrationId: id },
+      data: { releaseId: null, releaseURL: null },
+    });
+
+    await this._integration.model.integration.update({
+      where: { id },
+      data: {
+        // Credentials first, so a later failure cannot leave them live.
+        token: '',
+        refreshToken: null,
+        tokenExpiration: null,
+        refreshNeeded: false,
+        inBetweenSteps: false,
+        disabled: true,
+        deletedAt: new Date(),
+        // Cached Meta profile data.
+        picture: null,
+        profile: null,
+        name: 'Deleted channel',
+        // Keep the row unique while dropping the Meta identifiers, mirroring
+        // the tombstone shape updateIntegration already uses.
+        internalId: `deleted_${makeId(10)}`,
+        rootInternalId: null,
       },
     });
   }

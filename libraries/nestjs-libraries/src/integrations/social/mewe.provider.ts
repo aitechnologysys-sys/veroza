@@ -11,6 +11,7 @@ import { Integration } from '@prisma/client';
 import { MeweDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/mewe.dto';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
+import { logProviderError } from '@gitroom/nestjs-libraries/helpers/redact';
 
 export class MeweProvider extends SocialAbstract implements SocialProvider {
   identifier = 'mewe';
@@ -162,7 +163,7 @@ export class MeweProvider extends SocialAbstract implements SocialProvider {
         username: profile.handle || '',
       };
     } catch (e) {
-      console.log(e);
+      logProviderError('mewe', 'authenticate', e);
       return 'MeWe authentication failed. Please try again.';
     }
   }

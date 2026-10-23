@@ -12,6 +12,7 @@ import { getPublicKey, Relay, finalizeEvent, SimplePool } from 'nostr-tools';
 import WebSocket from 'ws';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { Integration } from '@prisma/client';
+import { logProviderError } from '@gitroom/nestjs-libraries/helpers/redact';
 
 // @ts-ignore
 global.WebSocket = WebSocket;
@@ -159,7 +160,7 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
         username: user.name || 'nousername',
       };
     } catch (e) {
-      console.log(e);
+      logProviderError('nostr', 'authenticate', e);
       return 'Invalid credentials';
     }
   }

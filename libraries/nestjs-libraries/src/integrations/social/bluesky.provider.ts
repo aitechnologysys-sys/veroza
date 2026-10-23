@@ -29,6 +29,7 @@ import axios from 'axios';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
+import { logProviderError } from '@gitroom/nestjs-libraries/helpers/redact';
 
 async function reduceImageBySize(url: string, maxSizeKB = 976) {
   try {
@@ -256,7 +257,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
         username: profile.data.handle!,
       };
     } catch (e) {
-      console.log(e);
+      logProviderError('bluesky', 'authenticate', e);
       return 'Invalid credentials';
     }
   }

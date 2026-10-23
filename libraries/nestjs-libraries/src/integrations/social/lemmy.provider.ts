@@ -14,6 +14,7 @@ import { Integration } from '@prisma/client';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { LemmySettingsDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/lemmy.dto';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
+import { logProviderError } from '@gitroom/nestjs-libraries/helpers/redact';
 
 export class LemmyProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 3; // Lemmy instances typically have moderate limits
@@ -134,7 +135,7 @@ export class LemmyProvider extends SocialAbstract implements SocialProvider {
         username: body.identifier || '',
       };
     } catch (e) {
-      console.log(e);
+      logProviderError('lemmy', 'authenticate', e);
       return 'Invalid credentials';
     }
   }

@@ -15,6 +15,12 @@ export interface IAuthenticator {
     clientInformation?: ClientInformation
   ): Promise<AuthTokenDetails | string>;
   refreshToken(refreshToken: string): Promise<AuthTokenDetails>;
+  /**
+   * False when the provider has no refresh grant, so only an interactive
+   * reauthorization can produce a working credential. Optional: absent means
+   * refreshable, matching SocialAbstract's default.
+   */
+  canRefreshToken?: boolean;
   reConnect?(
     id: string,
     requiredId: string,

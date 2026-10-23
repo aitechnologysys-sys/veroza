@@ -18,9 +18,15 @@ export class ThrottlerBehindProxyGuard extends ThrottlerGuard {
   protected override async getTracker(
     req: Record<string, any>
   ): Promise<string> {
-    return (
-      req.org.id + '_' + (req.url.indexOf('/posts') > -1 ? 'posts' : 'other')
-    );
+    // Only `POST /public/v1/posts` reaches this today, and that route is
+    // authenticated, so `req.org` is always set and the bucket is unchanged.
+    // The fallback matters if the allowlist above is ever widened to an
+    // unauthenticated route — the Meta callbacks have no `req.org`, and
+    // reading `.id` off undefined would turn every callback into a 500 that
+    // Meta then retries. Falling back to the client address keeps such a
+    // route rate-limited rather than broken.
+    const scope = req.url.indexOf('/posts') > -1 ? 'posts' : 'other';
+    return `${req.org?.id ?? req.ip}_${scope}`;
   }
 }
 

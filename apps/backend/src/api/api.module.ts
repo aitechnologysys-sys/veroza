@@ -4,6 +4,7 @@ import { AuthService } from '@gitroom/backend/services/auth/auth.service';
 import { UsersController } from '@gitroom/backend/api/routes/users.controller';
 import { AuthMiddleware } from '@gitroom/backend/services/auth/auth.middleware';
 import { StripeController } from '@gitroom/backend/api/routes/stripe.controller';
+import { MetaController } from '@gitroom/backend/api/routes/meta.controller';
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 import { PolarController } from '@gitroom/backend/api/routes/polar.controller';
 import { PolarService } from '@gitroom/nestjs-libraries/services/polar.service';
@@ -78,6 +79,9 @@ const authenticatedController = [
     MonitorController,
     EnterpriseController,
     NoAuthIntegrationsController,
+    // Meta calls these server to server with no session; authenticity comes
+    // from the signed_request HMAC, so they stay outside AuthMiddleware.
+    MetaController,
     OAuthController,
     ...authenticatedController,
   ],

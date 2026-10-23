@@ -17,6 +17,47 @@ import { Integration } from '@prisma/client';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 
+/**
+ * Pull the numeric error identity out of a Graph response body.
+ *
+ * Only `code`/`error_subcode` are read, and only when they are numbers. The
+ * free-text `message` is deliberately ignored: it is attacker/echo influenced
+ * and can carry back values we sent, including credentials.
+ */
+const parseGraphError = (
+  body: string
+): { code: number; subcode?: number } | undefined => {
+  try {
+    const parsed = JSON.parse(body);
+    const code = parsed?.error?.code;
+    if (typeof code !== 'number') {
+      return undefined;
+    }
+
+    const subcode = parsed?.error?.error_subcode;
+    return {
+      code,
+      subcode: typeof subcode === 'number' ? subcode : undefined,
+    };
+  } catch {
+    return undefined;
+  }
+};
+
+/** Bounded, numbers-only description of a Graph error, safe to surface. */
+const graphErrorSuffix = (response: any) => {
+  const parsed = response?.error;
+  const code = parsed?.code;
+  if (typeof code !== 'number') {
+    return '';
+  }
+
+  const subcode = parsed?.error_subcode;
+  return ` (Facebook error code ${code}${
+    typeof subcode === 'number' ? `, subcode ${subcode}` : ''
+  })`;
+};
+
 @Rules(
   "Instagram should have at least one attachment, if it's a story, it can have only one picture"
 )
@@ -38,6 +79,9 @@ export class InstagramProvider
     'instagram_manage_insights',
   ];
   override maxConcurrentJob = 400;
+  // Instagram via Facebook has no refresh grant: the stored page token can
+  // only be replaced by a fresh authorization. See refreshToken below.
+  override canRefreshToken = false;
   editor = 'normal' as const;
   dto = InstagramDto;
   maxLength() {
@@ -65,6 +109,16 @@ export class InstagramProvider
     return true;
   }
 
+  /**
+   * Instagram-via-Facebook has no refresh grant: the stored credential is a
+   * page token derived from a long-lived user token, and only a fresh
+   * authorization can replace it.
+   *
+   * Returning an empty `accessToken` is load-bearing. refresh.integration
+   * .service.ts treats a falsy `accessToken` as "cannot refresh" and flags the
+   * channel `refreshNeeded` so the user is asked to reauthorize. It must never
+   * return a truthy token, or that value would overwrite a working credential.
+   */
   async refreshToken(refresh_token: string): Promise<AuthTokenDetails> {
     return {
       refreshToken: '',
@@ -297,11 +351,35 @@ export class InstagramProvider
       };
     }
 
-    if (body.indexOf('190,') > -1) {
+    const oauthError = parseGraphError(body);
+    if (oauthError?.code === 190) {
+      // 463 = expired, 467 = invalidated (password change, logout). Those are
+      // real tokens that went stale, so a refresh can recover them.
+      //
+      // Anything else under 190 — notably "Cannot parse access token" — means
+      // the stored value is not a usable token at all. Refreshing or retrying
+      // that cannot succeed, so it is classified bad-body to stop the loop and
+      // tell the user to reconnect. The previous substring test for `'190,'`
+      // reported every one of these as a missing *permission*, which sent
+      // people to re-check scopes that were never the problem, and also
+      // matched unrelated subcodes such as 2207190.
+      // Both outcomes need the same remedy, because this provider cannot
+      // refresh (canRefreshToken = false): refresh.integration.service flags
+      // the channel for reconnection without spending a request on an
+      // exchange that has no chance of working.
+      //
+      // Classifying the malformed case as bad-body instead left refreshNeeded
+      // unset, so the UI never offered a reconnect and the only visible route
+      // was delete-and-re-add — which randomises the old row's internalId,
+      // detaching its post history and analytics.
+      const expired =
+        oauthError.subcode === 463 || oauthError.subcode === 467;
+
       return {
-        type: 'bad-body' as const,
-        value:
-          'The account is missing some permissions to perform this action, please re-add the account and allow all permissions',
+        type: 'refresh-token' as const,
+        value: expired
+          ? 'The Instagram access token has expired, please reconnect the channel'
+          : 'The stored Instagram access token is invalid, please reconnect the channel',
       };
     }
 
@@ -354,9 +432,21 @@ export class InstagramProvider
       (p) => p.id === requiredId
     );
 
+    // Without this the non-null assertion below sent `undefined` as the page
+    // id, producing a request to `/undefined` whose failure read as a generic
+    // Graph error. The real condition is that the account being reconnected is
+    // no longer reachable through any page this user manages.
+    if (!findPage?.pageId) {
+      throw new Error(
+        `Instagram account ${requiredId} is no longer available through any ` +
+          'Facebook page you manage. Confirm the page is still linked to the ' +
+          'account and that you have a role on it, then connect it again.'
+      );
+    }
+
     const information = await this.fetchPageInformation(accessToken, {
       id: requiredId,
-      pageId: findPage?.pageId!,
+      pageId: findPage.pageId,
     });
 
     return {
@@ -374,14 +464,27 @@ export class InstagramProvider
       url:
         'https://www.facebook.com/v20.0/dialog/oauth' +
         `?client_id=${process.env.FACEBOOK_APP_ID}` +
-        `&redirect_uri=${encodeURIComponent(
-          `${process.env.FRONTEND_URL}/integrations/social/instagram`
-        )}` +
+        `&redirect_uri=${encodeURIComponent(this.redirectUri())}` +
         `&state=${state}` +
         `&scope=${encodeURIComponent(this.scopes.join(','))}`,
       codeVerifier: makeId(10),
       state,
     };
+  }
+
+  /**
+   * The exact redirect URI handed to Meta. The authorization dialog and the
+   * token exchange must present byte-identical values or Meta rejects the
+   * exchange, so this is the single source for both.
+   *
+   * It deliberately carries no query string. The reconnect target travels in
+   * the server-side state entry (`refresh:<state>` in Redis, written by
+   * integrations.controller.ts and read back in the callback), which is the
+   * validated channel for it. Appending `?refresh=<id>` here instead made the
+   * exchange URI differ from the authorize URI and broke every reconnect.
+   */
+  private redirectUri() {
+    return `${process.env.FRONTEND_URL}/integrations/social/instagram`;
   }
 
   async authenticate(params: {
@@ -393,11 +496,7 @@ export class InstagramProvider
       await fetch(
         'https://graph.facebook.com/v20.0/oauth/access_token' +
           `?client_id=${process.env.FACEBOOK_APP_ID}` +
-          `&redirect_uri=${encodeURIComponent(
-            `${process.env.FRONTEND_URL}/integrations/social/instagram${
-              params.refresh ? `?refresh=${params.refresh}` : ''
-            }`
-          )}` +
+          `&redirect_uri=${encodeURIComponent(this.redirectUri())}` +
           `&client_secret=${process.env.FACEBOOK_APP_SECRET}` +
           `&code=${params.code}`
       )
@@ -521,7 +620,10 @@ export class InstagramProvider
       pageId: p.pageId,
       id: p.id,
       name: p.name,
-      picture: { data: { url: p.profile_picture_url } },
+      // Graph omits profile_picture_url for some accounts; keep the shape
+      // stable so the selection dialog can fall back instead of rendering a
+      // broken image.
+      picture: { data: { url: p.profile_picture_url || '' } },
     }));
   }
 
@@ -530,11 +632,29 @@ export class InstagramProvider
     data: { pageId: string; id: string }
   ) {
     const [accessToken, userToken] = token.split('___');
-    const { access_token, ...all } = await (
+    const pageResponse = await (
       await fetch(
         `https://graph.facebook.com/v20.0/${data.pageId}?fields=access_token,name,picture.type(large)&access_token=${accessToken}`
       )
     ).json();
+
+    const { access_token, ...all } = pageResponse || {};
+
+    // Graph omits `access_token` whenever the user cannot manage the Page:
+    // the asset was not granted during login, the user holds no task on it, or
+    // the user token itself is rejected. Without this guard the value below was
+    // string-concatenated anyway, storing the literal `undefined___<user token>`
+    // as the credential. The connect then reported success, and the damage only
+    // surfaced hours later when publishing failed with Meta code 190,
+    // "Cannot parse access token".
+    if (typeof access_token !== 'string' || !access_token) {
+      throw new Error(
+        `Facebook did not return an access token for page ${data.pageId}. ` +
+          'Confirm the page is selected during login and that you have a role ' +
+          'on it, then connect the channel again.' +
+          graphErrorSuffix(pageResponse)
+      );
+    }
 
     const { id, name, profile_picture_url, username } = await (
       await fetch(

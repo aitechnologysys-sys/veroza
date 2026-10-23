@@ -45,6 +45,11 @@ import { AnnouncementsService } from '@gitroom/nestjs-libraries/database/prisma/
 import { ErrorsRepository } from '@gitroom/nestjs-libraries/database/prisma/errors/errors.repository';
 import { ErrorsService } from '@gitroom/nestjs-libraries/database/prisma/errors/errors.service';
 import { BillingEventsRepository } from '@gitroom/nestjs-libraries/database/prisma/billing-events/billing.events.repository';
+import { MetaDeletionRepository } from '@gitroom/nestjs-libraries/database/prisma/meta/meta.deletion.repository';
+import { MetaDeletionService } from '@gitroom/nestjs-libraries/database/prisma/meta/meta.deletion.service';
+import { MetaSignedRequestService } from '@gitroom/nestjs-libraries/services/meta.signed.request.service';
+import { MetaComplianceAlertService } from '@gitroom/nestjs-libraries/services/meta.compliance.alert.service';
+import { AnalyticsCacheService } from '@gitroom/nestjs-libraries/redis/analytics.cache.service';
 import { BillingEventsService } from '@gitroom/nestjs-libraries/database/prisma/billing-events/billing.events.service';
 import { AdminStatsRepository } from '@gitroom/nestjs-libraries/database/prisma/admin-stats/admin-stats.repository';
 import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/admin-stats/admin-stats.service';
@@ -110,6 +115,11 @@ import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/adm
     AdminStatsRepository,
     AdminStatsService,
     BillingEventsRepository,
+    MetaDeletionRepository,
+    MetaDeletionService,
+    MetaSignedRequestService,
+    MetaComplianceAlertService,
+    AnalyticsCacheService,
     BillingEventsService,
   ],
   get exports() {

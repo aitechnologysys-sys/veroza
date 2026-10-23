@@ -265,11 +265,22 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
    * transport failure is worth surfacing.
    */
   async revokeToken(token: string): Promise<void> {
-    await fetch('https://oauth2.googleapis.com/revoke', {
+    const response = await fetch('https://oauth2.googleapis.com/revoke', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ token }).toString(),
     });
+
+    if (!response.ok) {
+      // Status only — the token is in the request body and Google's error
+      // payload can quote it back, so neither reaches the message. `status`
+      // is a field so callers never have to parse message text.
+      const error = new Error(
+        `Google token revocation failed with status ${response.status}`
+      ) as Error & { status: number };
+      error.status = response.status;
+      throw error;
+    }
   }
 
   async refreshToken(refresh_token: string): Promise<AuthTokenDetails> {
@@ -472,27 +483,43 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       true
     );
 
+    const videoUrl = `https://www.youtube.com/watch?v=${all?.data?.id}`;
+
     if (settings?.thumbnail?.path) {
-      await this.runInConcurrent(async () =>
-        youtubeClient.thumbnails.set({
-          videoId: all?.data?.id!,
-          media: {
-            body: (
-              await axios({
-                url: settings?.thumbnail?.path,
-                method: 'GET',
-                responseType: 'stream',
-              })
-            ).data,
-          },
-        })
-      );
+      try {
+        await this.runInConcurrent(async () =>
+          youtubeClient.thumbnails.set({
+            videoId: all?.data?.id!,
+            media: {
+              body: (
+                await axios({
+                  url: settings?.thumbnail?.path,
+                  method: 'GET',
+                  responseType: 'stream',
+                })
+              ).data,
+            },
+          })
+        );
+      } catch (err) {
+        // videos.insert already succeeded, so the video is live whatever
+        // happens here. Carry its URL into the failure: without it the user is
+        // told the post failed and has no way to reach the video they just
+        // published.
+        const reason = (err as any)?.message || 'Could not set the thumbnail.';
+        throw new BadBody(
+          'youtube',
+          (err as any)?.details?.[0]?.json || '{}',
+          {} as any,
+          `${reason} The video itself was published and is available at ${videoUrl}`
+        );
+      }
     }
 
     return [
       {
         id: firstPost.id,
-        releaseURL: `https://www.youtube.com/watch?v=${all?.data?.id}`,
+        releaseURL: videoUrl,
         postId: all?.data?.id!,
         status: 'success',
       },

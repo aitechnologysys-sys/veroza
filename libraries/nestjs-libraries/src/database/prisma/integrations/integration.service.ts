@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { IntegrationRepository } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.repository';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
+import { logRevocationFailure } from '@gitroom/nestjs-libraries/helpers/revocation.log';
 import {
   AnalyticsData,
   SocialProvider,
@@ -304,10 +305,7 @@ export class IntegrationService {
 
       await provider.revokeToken(integration.token);
     } catch (err) {
-      console.error(
-        `Upstream revocation failed for integration ${integration.id}:`,
-        err
-      );
+      logRevocationFailure(integration, err);
     }
   }
 
@@ -371,6 +369,13 @@ export class IntegrationService {
     forceRefresh = false
   ): Promise<AnalyticsData[]> {
     const getIntegration = await this.getIntegrationById(org.id, integration);
+
+    // A deleted integration must not refill the analytics cache: deletion
+    // clears the cached entries, and a concurrent or later read would
+    // otherwise write Meta-derived data straight back under the same keys.
+    if (getIntegration?.deletedAt) {
+      return [];
+    }
 
     if (!getIntegration) {
       throw new Error('Invalid integration');

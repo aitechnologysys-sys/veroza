@@ -1,0 +1,42 @@
+name: Test
+
+# Postaryx-only workflow (upstream has no test job), kept in its own file so
+# upstream merges never conflict with it. Same triggers as build.yml.
+on:
+  push:
+    branches: [main]
+  merge_group:
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 22.12.0
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+          run_install: false
+
+      # postinstall also generates the Prisma client the specs import.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # *.e2e.spec.ts files skip themselves unless META_E2E_* env vars are set.
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit
+          path: reports/junit.xml

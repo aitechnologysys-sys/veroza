@@ -15,6 +15,7 @@ import dayjs from 'dayjs';
 import { Integration } from '@prisma/client';
 import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
+import { DashboardFunction } from '@gitroom/nestjs-libraries/integrations/dashboard.function.decorator';
 
 // Hashnode's GraphQL endpoint. `gql.hashnode.com` started returning a 301 to
 // an announcement page in 2026; `gql-beta.hashnode.com` is the host their own
@@ -149,6 +150,7 @@ export class HashnodeProvider extends SocialAbstract implements SocialProvider {
     }
   }
 
+  @DashboardFunction()
   async tags() {
     return tags.map((tag) => ({ value: tag.objectID, label: tag.name }));
   }

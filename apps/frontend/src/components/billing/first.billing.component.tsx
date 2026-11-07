@@ -26,6 +26,7 @@ import { useDubClickId } from '@gitroom/frontend/components/layout/dubAnalytics'
 import useCookie from 'react-use-cookie';
 import { LogoutComponent } from '@gitroom/frontend/components/layout/logout.component';
 import { DeveloperIconComponent } from '@gitroom/frontend/components/developer/developer.icon.component';
+import { InvoicesComponent } from '@gitroom/frontend/components/layout/invoices.component';
 
 const ModeComponent = dynamic(
   () => import('@gitroom/frontend/components/layout/mode.component'),
@@ -57,6 +58,8 @@ export const FirstBillingComponent = () => {
   const t = useT();
   const [datafast_visitor_id] = useCookie('datafast_visitor_id', '');
   const [datafast_session_id] = useCookie('datafast_session_id', '');
+  const [fbc] = useCookie('_fbc', '');
+  const [fbp] = useCookie('_fbp', '');
 
   useEffect(() => {
     if (stripeClient) {
@@ -77,6 +80,8 @@ export const FirstBillingComponent = () => {
             ? { datafast_visitor_id, datafast_session_id }
             : {}),
           ...(dub ? { dub } : {}),
+          ...(fbc ? { fbc } : {}),
+          ...(fbp ? { fbp } : {}),
         }),
       })
     ).json();
@@ -167,6 +172,7 @@ export const FirstBillingComponent = () => {
         <div className="flex items-center">
           <div className="flex gap-[20px] text-textItemBlur">
             <OrganizationSelector />
+            <InvoicesComponent />
             <div className="hover:text-newTextColor">
               <ModeComponent />
             </div>

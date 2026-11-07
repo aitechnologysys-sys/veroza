@@ -164,6 +164,11 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
           mediaUrl = onDisk;
         }
       }
+      // node-telegram-bot-api uploads any existing local path it is given, so
+      // everything that isn't a url has to be a file of the upload directory
+      if (mediaUrl.indexOf('http') !== 0) {
+        mediaUrl = this.localMediaPath(mediaUrl, 'telegram-error');
+      }
       //get mime type to pass contentType to telegram api.
       //some photos and videos might not pass telegram api restrictions, so they are sent as documents instead of returning errors
       const mimeType = mime.getType(mediaUrl); // Detect MIME type

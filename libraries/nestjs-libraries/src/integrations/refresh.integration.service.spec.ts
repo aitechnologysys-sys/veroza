@@ -29,7 +29,10 @@ const INTEGRATION = {
 
 const buildService = (provider: any) => {
   const integrationService = {
-    refreshNeeded: jest.fn(async () => undefined),
+    // true = this attempt flagged the channel (see integration.repository)
+    refreshNeeded: jest.fn(async () => true),
+    // no concurrent refresh stored newer tokens
+    getIntegrationById: jest.fn(async () => INTEGRATION),
     informAboutRefreshError: jest.fn(async () => undefined),
     disconnectChannel: jest.fn(async () => undefined),
     createOrUpdateIntegration: jest.fn(async () => ({ id: 'row-1' })),

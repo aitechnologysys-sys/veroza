@@ -104,7 +104,7 @@ export const SettingsPopup: FC<{
       isGeneral &&
       showLogout
     ) {
-      arr.push({ tab: 'agents', label: t('agents', 'Agents') });
+      arr.push({ tab: 'agents', label: t('agents_dev', 'Agents / Dev') });
     }
     if (user?.tier?.team_members && isGeneral && user?.role !== 'USER') {
       arr.push({ tab: 'teams', label: t('teams', 'Teams') });

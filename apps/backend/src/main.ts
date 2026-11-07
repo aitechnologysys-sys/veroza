@@ -89,6 +89,13 @@ async function start() {
   try {
     await app.listen(port);
     disarmWatchdog();
+
+    // Keep idle connections open longer than the load balancer does (AWS ALB
+    // idle timeout is 900s). Node's default of 5s lets the backend close a
+    // connection the ALB is about to reuse, which the ALB returns as a 502.
+    const server = app.getHttpServer();
+    server.keepAliveTimeout = 905_000;
+    server.headersTimeout = 906_000;
   } catch (e) {
     // A failed listen is fatal: the process would otherwise stay alive with no
     // HTTP server, which a process manager reads as healthy. Exit so it restarts.

@@ -179,7 +179,9 @@ export class LocalStorage implements IUploadProvider {
     }
   }
 
-  // Accepts either the public URL or the filesystem path
+  // Accepts either the public URL or the filesystem path. Callers can pass a
+  // stored media name or path, so only a file inside the upload directory is
+  // ever deleted: resolve() collapses any `..` segments before the comparison
   async removeFile(filePath: string): Promise<void> {
     const target = this.resolveLocalPath(filePath);
     if (!target) {

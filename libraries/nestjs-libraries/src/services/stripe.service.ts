@@ -286,7 +286,7 @@ export class StripeService extends PaymentProviderAbstract {
       },
     });
 
-    return this._subscriptionService.createOrUpdateSubscription(
+    const result = await this._subscriptionService.createOrUpdateSubscription(
       STRIPE_PROVIDER,
       event.data.object.status !== 'active',
       uniqueId,
@@ -297,6 +297,22 @@ export class StripeService extends PaymentProviderAbstract {
       event.data.object.cancel_at,
       toSubscriptionStatus(event.data.object)
     );
+
+    if (event.data.object.status === 'trialing') {
+      this.trackSubscription(
+        event.data.object.metadata,
+        event.data.object.id,
+        TrackEnum.StartTrial,
+        {
+          value:
+            pricing[billing][
+              period === 'YEARLY' ? 'year_price' : 'month_price'
+            ],
+        }
+      ).catch((err) => {});
+    }
+
+    return result;
   }
   async updateSubscription(event: Stripe.CustomerSubscriptionUpdatedEvent) {
     const { uniqueId, billing, period } = event.data.object.metadata as {
@@ -1162,6 +1178,18 @@ export class StripeService extends PaymentProviderAbstract {
     return this.createBillingPortalLink(customer);
   }
 
+  async getRenewalDate(organizationId: string) {
+    const customer = await this.getCustomerByOrganizationId(organizationId);
+    const [sub] = await this.getLiveSubscriptions(customer);
+    const trialing = sub?.status === 'trialing';
+    return {
+      renewsAt:
+        (trialing ? sub.trial_end : sub?.items.data[0]?.current_period_end) ||
+        null,
+      trialing,
+    };
+  }
+
   async getInvoices(organizationId: string): Promise<PaymentInvoice[]> {
     const customer = await this.getCustomerByOrganizationId(organizationId);
     if (!customer || !customer.startsWith('cus_')) {
@@ -1211,9 +1239,21 @@ export class StripeService extends PaymentProviderAbstract {
       await stripe.subscriptions.list({
         customer: organization.paymentId,
       })
-    ).data.filter((f) => f.status === 'trialing');
+    ).data;
 
-    const updated = await stripe.subscriptions.update(list[0].id, {
+    const trialing = list.find((f) => f.status === 'trialing');
+    if (!trialing) {
+      const subscription = await stripe.subscriptions.retrieve(list[0].id, {
+        expand: ['latest_invoice'],
+      });
+      const invoice = subscription.latest_invoice as Stripe.Invoice | null;
+      if (invoice?.status === 'open' && invoice.id) {
+        await stripe.invoices.pay(invoice.id).catch(() => {});
+      }
+      return this.getRequiredActionFromSubscription(list[0].id);
+    }
+
+    const updated = await stripe.subscriptions.update(trialing.id, {
       trial_end: 'now',
     });
 
@@ -1225,7 +1265,48 @@ export class StripeService extends PaymentProviderAbstract {
       description: 'Trial ended early at the customer\'s request — charged now',
     });
 
-    return updated;
+    return this.getRequiredActionFromSubscription(trialing.id);
+  }
+
+  private async getRequiredActionFromSubscription(subscriptionId: string) {
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+      expand: ['latest_invoice'],
+    });
+
+    const latestInvoice = subscription.latest_invoice as Stripe.Invoice | null;
+    const invoice = latestInvoice?.id
+      ? await stripe.invoices.retrieve(latestInvoice.id, {
+          expand: ['payments.data.payment.payment_intent'],
+        })
+      : null;
+    const paymentIntent = invoice?.payments?.data
+      .map((p) => p.payment.payment_intent)
+      .find((p): p is Stripe.PaymentIntent => typeof p === 'object' && !!p);
+
+    if (
+      invoice?.status === 'open' &&
+      paymentIntent &&
+      (paymentIntent.status === 'requires_action' ||
+        paymentIntent.status === 'requires_confirmation')
+    ) {
+      return {
+        requiresAction: true,
+        // Returning the client_secret to the paying customer's browser is Stripe's
+        // intended flow: https://docs.stripe.com/api/payment_intents/object#payment_intent_object-client_secret
+        clientSecret: paymentIntent.client_secret,
+      };
+    }
+
+    // The update itself succeeds on a declined card, the subscription just
+    // moves to past_due, so the failure is only visible here
+    if (
+      invoice?.status === 'open' &&
+      paymentIntent?.status === 'requires_payment_method'
+    ) {
+      throw new Error('The subscription payment failed');
+    }
+
+    return { requiresAction: false };
   }
 
   async checkDiscount(organization: Organization) {
@@ -1527,6 +1608,13 @@ export class StripeService extends PaymentProviderAbstract {
         },
       });
 
+      const action = await this.getRequiredActionFromSubscription(
+        currentUserSubscription.data[0].id
+      );
+      if (action.requiresAction) {
+        return { id, ...action };
+      }
+
       return { id };
     } catch (err) {
       const { url } = await this.createBillingPortalLink(customer);
@@ -1546,14 +1634,6 @@ export class StripeService extends PaymentProviderAbstract {
     const subscription = await stripe.subscriptions.retrieve(
       typeof subscriptionId === 'string' ? subscriptionId : subscriptionId.id
     );
-
-    const { userId, ud } = subscription.metadata;
-    const user = await this._userService.getUserById(userId);
-    if (user && user.ip && user.agent) {
-      this._trackService.track(ud, user.ip, user.agent, TrackEnum.Purchase, {
-        value: event.data.object.amount_paid / 100,
-      });
-    }
 
     const customer =
       typeof subscription.customer === 'string'
@@ -1581,7 +1661,107 @@ export class StripeService extends PaymentProviderAbstract {
       );
     }
 
+    // only feeds the Facebook pixel, it runs in the background so it can
+    // never fail or slow down the webhook
+    this.trackConversion(event.data.object).catch((err) => {});
     return { ok: true };
+  }
+
+  // The first charge of a subscription is the conversion: a trial that turned
+  // into a paid plan, or a plan paid upfront. The $0 invoice that starts a
+  // trial and the renewals are not tracked.
+  private async trackConversion(invoice: Stripe.Invoice) {
+    try {
+      // webhook payloads follow the API version of the endpoint: parent is the
+      // 2025-03-31+ shape, subscription the older one
+      const subscriptionId =
+        invoice.parent?.subscription_details?.subscription ||
+        (invoice as any).subscription;
+      if (!subscriptionId || invoice.amount_paid <= 0) {
+        return;
+      }
+
+      // invoices of other services sharing the Stripe account stop here
+      const subscription = await stripe.subscriptions.retrieve(
+        typeof subscriptionId === 'string' ? subscriptionId : subscriptionId.id
+      );
+      if (
+        subscription.metadata?.service !== 'postaryx' ||
+        !subscription.metadata?.userId
+      ) {
+        return;
+      }
+
+      const paidInvoices = await stripe.invoices.list({
+        subscription: subscription.id,
+        status: 'paid',
+        limit: 100,
+      });
+      const paidBefore = paidInvoices.data.some(
+        (f) =>
+          f.id !== invoice.id &&
+          f.amount_paid > 0 &&
+          (f.created < invoice.created ||
+            (f.created === invoice.created && f.id < invoice.id))
+      );
+      if (paidBefore) {
+        return;
+      }
+
+      await this.trackSubscription(
+        subscription.metadata,
+        invoice.id,
+        TrackEnum.Purchase,
+        {
+          value: invoice.amount_paid / 100,
+          currency: invoice.currency,
+        }
+      );
+    } catch (err) {
+      console.error(
+        'stripe_pixel_conversion_failed',
+        { stripe_invoice_id: invoice.id },
+        err
+      );
+    }
+  }
+
+  // Facebook pixel event for the user who checked out the subscription.
+  // Never throws, tracking must not affect billing.
+  private async trackSubscription(
+    metadata: Stripe.Metadata,
+    eventId: string,
+    tt: TrackEnum,
+    additional: Record<string, any>
+  ) {
+    try {
+      const { userId, fbc, fbp } = metadata || {};
+      if (!userId) {
+        return;
+      }
+
+      const user = await this._userService.getUserById(userId);
+      if (!user) {
+        return;
+      }
+
+      await this._trackService.track(
+        eventId,
+        user.ip,
+        user.agent,
+        tt,
+        additional,
+        fbc,
+        user,
+        fbp
+      );
+    } catch (err) {
+      console.error(
+        'stripe_pixel_event_failed',
+        { stripe_object_id: eventId, event: TrackEnum[tt] },
+        err
+      );
+    }
   }
 
   async getCharges(organizationId: string) {

@@ -153,7 +153,7 @@ export class MediaService {
   // Streams the remote body straight into storage: only the sniffing prefix
   // and a few upload parts are ever in memory, so a 1 GB video does not cost
   // 1 GB of heap
-  async uploadFromUrl(org: string, url: string) {
+  async uploadFromUrl(org: string, url: string, adjust?: boolean) {
     let response: globalThis.Response;
     try {
       response = await fetch(url, {
@@ -184,7 +184,9 @@ export class MediaService {
       response.body,
       declaredSize
     );
-    return this.saveFile(org, uploaded.originalname, uploaded.path);
+    return adjust
+      ? this.saveUploadedFile(org, uploaded.originalname, uploaded.path)
+      : this.saveFile(org, uploaded.originalname, uploaded.path);
   }
 
   saveFile(
@@ -300,15 +302,13 @@ export class MediaService {
     sessionId: string,
     fileName: string,
     filePath: string,
-    originalName?: string
+    originalName?: string,
+    adjust?: boolean
   ) {
     await this.checkUploadSession(org, sessionId);
-    const media = await this.saveUploadedFile(
-      org,
-      fileName,
-      filePath,
-      originalName
-    );
+    const media = adjust
+      ? await this.saveUploadedFile(org, fileName, filePath, originalName)
+      : await this.saveFile(org, fileName, filePath, originalName);
     // a list, so parallel uploads of the same session can't overwrite each other
     await ioRedis.rpush(`uploadSessionMedia:${sessionId}`, media.id);
     await ioRedis.expire(`uploadSessionMedia:${sessionId}`, 3600);
@@ -332,6 +332,39 @@ export class MediaService {
     }
 
     return media;
+  }
+
+  // What API and MCP callers see: a failed adjustment of a file the
+  // platforms accept as-is is not a failed upload, the original stays in
+  // place and is what gets published
+  toUploadStatus(media: {
+    id: string;
+    name: string;
+    path: string;
+    status: string;
+  }) {
+    if (media.status !== 'failed') {
+      return { id: media.id, path: media.path, status: media.status };
+    }
+
+    return USABLE_AS_IS.has(extname(media.name).toLowerCase())
+      ? {
+          id: media.id,
+          path: media.path,
+          status: 'ready',
+          warning:
+            'Adjustment failed, the original file was kept and will be used for publishing',
+        }
+      : {
+          id: media.id,
+          path: media.path,
+          status: 'failed',
+          error: 'Processing failed and the original file cannot be used',
+        };
+  }
+
+  async getMediaUploadStatus(org: string, id: string) {
+    return this.toUploadStatus(await this.getMediaStatus(org, id));
   }
 
   // The normalized file overwrites the original in place; only a container
@@ -501,7 +534,10 @@ export class MediaService {
     }
 
     if (!video.trial && org.isTrailing) {
-      throw new HttpException('This video is not available in trial mode', 406);
+      throw new HttpException(
+        `This video is not available in trial mode. To use it now, open ${process.env.FRONTEND_URL}/billing and click "Finish trial" (this charges the plan immediately)`,
+        406
+      );
     }
 
     return true;
@@ -526,7 +562,10 @@ export class MediaService {
     }
 
     if (!video.trial && org.isTrailing) {
-      throw new HttpException('This video is not available in trial mode', 406);
+      throw new HttpException(
+        `This video is not available in trial mode. To use it now, open ${process.env.FRONTEND_URL}/billing and click "Finish trial" (this charges the plan immediately)`,
+        406
+      );
     }
 
     await video.instance.processAndValidate(body.customParams);

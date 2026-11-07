@@ -63,3 +63,13 @@ export class CustomFileValidationPipe implements PipeTransform {
     return value;
   }
 }
+
+// Upstream's name for the per-type limit (used by upload-from-URL paths).
+// Kept as a thin wrapper so the limit itself has one source of truth:
+// maxUploadSizeFor in @gitroom/helpers/utils/max.upload.size.
+export function getMaxSize(mimeType: string): number {
+  if (!mimeType?.startsWith('image/') && !mimeType?.startsWith('video/')) {
+    throw new BadRequestException('Unsupported file type.');
+  }
+  return maxUploadSizeFor(mimeType);
+}

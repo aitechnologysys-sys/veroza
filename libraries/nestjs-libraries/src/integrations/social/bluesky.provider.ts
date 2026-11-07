@@ -22,6 +22,8 @@ import {
 import dayjs from 'dayjs';
 import { Integration } from '@prisma/client';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
+import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
+import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import sharp from 'sharp';
 import { Plug } from '@gitroom/helpers/decorators/plug.decorator';
 import { timer } from '@gitroom/helpers/utils/timer';
@@ -74,22 +76,35 @@ async function uploadVideo(
     exp: Date.now() / 1000 + 60 * 30, // 30 minutes
   });
 
-  async function downloadVideo(
-    url: string
-  ): Promise<{ video: Buffer; size: number }> {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch video: ${response.statusText}`);
-    }
-    const arrayBuffer = await response.arrayBuffer();
-    const video = Buffer.from(arrayBuffer);
-    const size = video.length;
-    return { video, size };
+  // The video is never buffered in memory: the size comes from a HEAD request
+  // and the bytes are streamed straight from the source into the upload.
+  const headResponse = await fetch(videoPath, {
+    method: 'HEAD',
+    // identity encoding so content-length matches the bytes the GET streams
+    headers: { 'accept-encoding': 'identity' },
+    // @ts-ignore - undici-only option; blocks SSRF to internal IPs
+    dispatcher: getSsrfSafeDispatcher(),
+  });
+  const videoSize = Number(headResponse.headers.get('content-length') || 0);
+  if (!headResponse.ok || !videoSize) {
+    throw new BadBody(
+      'bluesky',
+      '{}',
+      {} as any,
+      'Could not determine the video size for Bluesky upload'
+    );
   }
 
-  const video = await downloadVideo(videoPath);
+  const videoResponse = await fetch(videoPath, {
+    headers: { 'accept-encoding': 'identity' },
+    // @ts-ignore - undici-only option; blocks SSRF to internal IPs
+    dispatcher: getSsrfSafeDispatcher(),
+  });
+  if (!videoResponse.ok || !videoResponse.body) {
+    throw new Error(`Failed to fetch video: ${videoResponse.statusText}`);
+  }
 
-  console.log('Downloaded video', videoPath, video.size);
+  console.log('Uploading video', videoPath, videoSize);
 
   const uploadUrl = new URL(
     'https://video.bsky.app/xrpc/app.bsky.video.uploadVideo'
@@ -102,17 +117,30 @@ async function uploadVideo(
     headers: {
       Authorization: `Bearer ${serviceAuth.token}`,
       'Content-Type': 'video/mp4',
-      'Content-Length': video.size.toString(),
+      'Content-Length': videoSize.toString(),
     },
-    body: video.video,
-  });
+    body: videoResponse.body,
+    // Required by undici when streaming a request body.
+    duplex: 'half',
+  } as any);
 
   const jobStatus = (await uploadResponse.json()) as AppBskyVideoDefs.JobStatus;
   console.log('JobId:', jobStatus.jobId);
   let blob: BlobRef | undefined = jobStatus.blob;
   const videoAgent = new AtpAgent({ service: 'https://video.bsky.app' });
 
+  let attempts = 0;
+  const maxAttempts = 18; // ~9 minutes at 30s interval
   while (!blob) {
+    if (attempts++ >= maxAttempts) {
+      throw new BadBody(
+        'bluesky',
+        JSON.stringify({}),
+        {} as any,
+        'Video upload timed out, job did not complete'
+      );
+    }
+
     const { data: status } = await videoAgent.app.bsky.video.getJobStatus({
       jobId: jobStatus.jobId,
     });
@@ -230,6 +258,17 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     refresh?: string;
   }) {
     const body = JSON.parse(Buffer.from(params.code, 'base64').toString());
+
+    // Bluesky talks to a user-supplied service URL via BskyAgent (not our
+    // `this.fetch`), so the undici SSRF dispatcher can't intercept it. Validate
+    // the URL here — the connection chokepoint — so an internal/private address
+    // can never be saved as an integration. Opt-out matches the dispatcher env.
+    if (
+      process.env.DISABLE_SSRF_PROTECTION !== 'true' &&
+      !(await isSafePublicHttpsUrl(body.service))
+    ) {
+      return 'Invalid service URL: must be a public HTTPS address';
+    }
 
     try {
       const agent = new BskyAgent({

@@ -6,8 +6,12 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import dayjs from 'dayjs';
 import { Integration } from '@prisma/client';
+import { number, string } from 'yup';
+import FormDataUpload from 'form-data';
+import { PassThrough, Readable } from 'stream';
 
 export class MastodonProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 5; // Mastodon instances typically have generous limits
@@ -18,6 +22,22 @@ export class MastodonProvider extends SocialAbstract implements SocialProvider {
   editor = 'normal' as const;
   maxLength() {
     return 500;
+  }
+
+  override handleErrors(
+    body: string,
+    status: number
+  ):
+    | { type: 'refresh-token' | 'bad-body' | 'retry'; value: string }
+    | undefined {
+    if (body.includes('Your login is currently disabled')) {
+      return {
+        type: 'refresh-token',
+        value: 'Your login is currently disabled',
+      };
+    }
+
+    return undefined;
   }
 
   async refreshToken(refreshToken: string): Promise<AuthTokenDetails> {
@@ -113,18 +133,76 @@ export class MastodonProvider extends SocialAbstract implements SocialProvider {
     );
   }
 
-  async uploadFile(instanceUrl: string, fileUrl: string, accessToken: string) {
-    const form = new FormData();
-    form.append('file', await fetch(fileUrl).then((r) => r.blob()));
-    const media = await (
-      await this.fetch(`${instanceUrl}/api/v1/media`, {
+  async uploadFile(
+    instanceUrl: string,
+    fileUrl: string,
+    accessToken: string,
+    alt?: string
+  ) {
+    // The file is streamed straight from storage into the Mastodon upload
+    // request instead of being buffered in memory. Both requests keep the
+    // SSRF-safe dispatcher because the URLs are not fully under our control,
+    // and the whole request is rebuilt per attempt by runStreamedUpload since
+    // a consumed stream can't be replayed.
+    const media = await this.runStreamedUpload<{ id: string }>(async () => {
+      const fileResponse = await fetch(fileUrl, {
+        // identity encoding so content-length matches the streamed bytes
+        headers: { 'accept-encoding': 'identity' },
+        // @ts-ignore - undici-only option; blocks SSRF to internal IPs
+        dispatcher: getSsrfSafeDispatcher(),
+      });
+      if (!fileResponse.ok || !fileResponse.body) {
+        throw new Error(`Failed to fetch media: ${fileResponse.statusText}`);
+      }
+      const contentLength = Number(
+        fileResponse.headers.get('content-length') || 0
+      );
+
+      const form = new FormDataUpload();
+      form.append('file', Readable.fromWeb(fileResponse.body as any), {
+        filename: fileUrl.split('/').pop()?.split('?')[0] || 'file',
+        ...(contentLength ? { knownLength: contentLength } : {}),
+      });
+      if (alt) {
+        form.append('description', alt);
+      }
+
+      const mediaResponse = await fetch(`${instanceUrl}/api/v1/media`, {
         method: 'POST',
         headers: {
+          ...form.getHeaders(),
+          // Some Mastodon front-ends reject chunked multipart, so send an
+          // exact Content-Length whenever the source size is known.
+          ...(contentLength
+            ? { 'Content-Length': String(form.getLengthSync()) }
+            : {}),
           Authorization: `Bearer ${accessToken}`,
         },
-        body: form,
-      })
-    ).json();
+        // form-data is an old-style stream undici can't consume directly;
+        // piping through a PassThrough turns it into a proper Readable.
+        body: form.pipe(new PassThrough()),
+        // Required by undici when streaming a request body.
+        duplex: 'half',
+        // @ts-ignore - undici-only option; blocks SSRF to internal IPs
+        dispatcher: getSsrfSafeDispatcher(),
+      } as any);
+
+      if (
+        mediaResponse.status !== 200 &&
+        mediaResponse.status !== 201 &&
+        mediaResponse.status !== 202
+      ) {
+        throw {
+          response: {
+            status: mediaResponse.status,
+            data: await mediaResponse.text().catch(() => '{}'),
+          },
+        };
+      }
+
+      return (await mediaResponse.json()) as { id: string };
+    }, this.identifier);
+
     return media.id;
   }
 
@@ -138,7 +216,7 @@ export class MastodonProvider extends SocialAbstract implements SocialProvider {
 
     const uploadFiles = await Promise.all(
       firstPost?.media?.map((media) =>
-        this.uploadFile(url, media.path, accessToken)
+        this.uploadFile(url, media.path, accessToken, media.alt)
       ) || []
     );
 
@@ -184,7 +262,7 @@ export class MastodonProvider extends SocialAbstract implements SocialProvider {
 
     const uploadFiles = await Promise.all(
       commentPost?.media?.map((media) =>
-        this.uploadFile(url, media.path, accessToken)
+        this.uploadFile(url, media.path, accessToken, media.alt)
       ) || []
     );
 

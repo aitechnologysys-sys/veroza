@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import {
   CustomFileValidationPipe,
+  getMaxSize,
   UPLOAD_LIMITS,
 } from '@gitroom/nestjs-libraries/upload/custom.upload.validation';
 import { ApiTags } from '@nestjs/swagger';
@@ -103,18 +104,41 @@ export class PublicIntegrationsController {
     @Body() body: UploadDto
   ) {
     Sentry.metrics.count('public_api-request', 1);
-    const response = await fetch(body.url, {
-      // @ts-ignore — undici option, not in lib.dom fetch types
-      dispatcher: ssrfSafeDispatcher,
-    });
+    let response: globalThis.Response;
+    try {
+      response = await fetch(body.url, {
+        // @ts-ignore — undici option, not in lib.dom fetch types
+        dispatcher: ssrfSafeDispatcher,
+      });
+    } catch {
+      // Network-level failure (DNS, connection refused, SSRF block, etc.) —
+      // fetch rejects rather than returning a non-ok response.
+      throw new HttpException({ msg: 'Failed to fetch URL' }, 400);
+    }
     if (!response.ok) {
       throw new HttpException({ msg: 'Failed to fetch URL' }, 400);
     }
+
+    // Guard against OOM: bail out before buffering the whole body into memory.
+    // Content-Length may be absent or wrong, so we re-check the real size after
+    // download too. The type isn't known yet (sniffed below), so the pre-check
+    // uses the largest allowed cap (video).
+    const maxDownloadSize = getMaxSize('video/mp4');
+    const declaredSize = Number(response.headers.get('content-length'));
+    if (declaredSize && declaredSize > maxDownloadSize) {
+      throw new HttpException({ msg: 'File is too large.' }, 400);
+    }
+
     const buffer = Buffer.from(await response.arrayBuffer());
     const detected = await fromBuffer(buffer);
     if (!detected || !PUBLIC_API_ALLOWED_MIME.has(detected.mime)) {
       throw new HttpException({ msg: 'Unsupported file type.' }, 400);
     }
+
+    if (buffer.length > getMaxSize(detected.mime)) {
+      throw new HttpException({ msg: 'File is too large.' }, 400);
+    }
+
     const mimetype = detected.mime;
     const ext = detected.ext;
 
@@ -170,7 +194,7 @@ export class PublicIntegrationsController {
     const body = await this._postsService.mapTypeToPost(
       rawBody,
       org.id,
-      rawBody.type === 'draft'
+      rawBody?.type === 'draft' || true
     );
     body.type = rawBody.type;
 
@@ -265,25 +289,39 @@ export class PublicIntegrationsController {
     return { connected: true };
   }
 
-  @Get('/integrations')
-  async listIntegration(@GetOrgFromRequest() org: Organization) {
+  @Get('/groups')
+  async listGroups(@GetOrgFromRequest() org: Organization) {
     Sentry.metrics.count('public_api-request', 1);
-    return (await this._integrationService.getIntegrationsList(org.id)).map(
-      (org) => ({
-        id: org.id,
-        name: org.name,
-        identifier: org.providerIdentifier,
-        picture: org.picture,
-        disabled: org.disabled,
-        profile: org.profile,
-        customer: org.customer
-          ? {
-              id: org.customer.id,
-              name: org.customer.name,
-            }
-          : undefined,
+    return (await this._integrationService.customers(org.id)).map(
+      (customer) => ({
+        id: customer.id,
+        name: customer.name,
       })
     );
+  }
+
+  @Get('/integrations')
+  async listIntegration(
+    @GetOrgFromRequest() org: Organization,
+    @Query('group') group?: string
+  ) {
+    Sentry.metrics.count('public_api-request', 1);
+    return (await this._integrationService.getIntegrationsList(org.id))
+      .filter((integration) => !group || integration.customer?.id === group)
+      .map((integration) => ({
+        id: integration.id,
+        name: integration.name,
+        identifier: integration.providerIdentifier,
+        picture: integration.picture,
+        disabled: integration.disabled,
+        profile: integration.profile,
+        customer: integration.customer
+          ? {
+              id: integration.customer.id,
+              name: integration.customer.name,
+            }
+          : undefined,
+      }));
   }
 
   @Get('/social/:integration')
@@ -391,6 +429,10 @@ export class PublicIntegrationsController {
       org.id,
       id
     );
+
+    if (!loadIntegration) {
+      throw new HttpException({ msg: 'Integration not found' }, 404);
+    }
 
     const verified =
       JSON.parse(loadIntegration.additionalSettings || '[]')?.find(

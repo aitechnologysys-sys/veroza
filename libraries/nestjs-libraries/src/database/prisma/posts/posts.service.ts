@@ -256,9 +256,9 @@ export class PostsService {
 
     const mappedValues = {
       ...body,
-      type: replaceDraft ? 'schedule' : body.type,
+      type: replaceDraft ? 'schedule' : body?.type,
       posts: await Promise.all(
-        body.posts.map(async (post) => {
+        body?.posts?.map(async (post) => {
           const integration = await this._integrationService.getIntegrationById(
             organization,
             post.integration.id
@@ -271,14 +271,14 @@ export class PostsService {
           }
 
           return {
-            type: replaceDraft ? 'schedule' : body.type,
+            type: replaceDraft ? 'schedule' : body?.type,
             ...post,
             settings: {
               ...(post.settings || ({} as any)),
               __type: integration.providerIdentifier,
             },
           };
-        })
+        }) || []
       ),
     };
 
@@ -729,7 +729,7 @@ export class PostsService {
     try {
       await this._temporalService.client
         .getRawClient()
-        ?.workflow.start('postWorkflowV105', {
+        ?.workflow.start('postWorkflowV106', {
           workflowId: `post_${postId}`,
           taskQueue: 'main',
           workflowIdConflictPolicy: 'TERMINATE_EXISTING',
@@ -792,7 +792,9 @@ export class PostsService {
 
         let additionalSettings: any[] = [];
         try {
-          additionalSettings = JSON.parse(integration.additionalSettings || '[]');
+          additionalSettings = JSON.parse(
+            integration.additionalSettings || '[]'
+          );
         } catch {
           additionalSettings = [];
         }
@@ -816,7 +818,7 @@ export class PostsService {
           ).length > 0;
         if (hasValidationRules) {
           const instance = plainToInstance(provider.dto, settings, {
-            enableImplicitConversion: true,
+            enableImplicitConversion: false,
           });
           const validationErrors = await validate(instance as object, {
             skipMissingProperties: false,

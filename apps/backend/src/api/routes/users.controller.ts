@@ -17,6 +17,7 @@ import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service
 import { isBillingEnabled } from '@gitroom/helpers/utils/is.billing.enabled';
 import { Response, Request } from 'express';
 import { AuthService } from '@gitroom/backend/services/auth/auth.service';
+import { AuthService as AuthChecker } from '@gitroom/helpers/auth/auth.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
@@ -31,7 +32,10 @@ import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
-import { AuthorizationActions, Sections } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+import {
+  AuthorizationActions,
+  Sections,
+} from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 
 @ApiTags('User')
 @Controller('/user')
@@ -44,6 +48,38 @@ export class UsersController {
     private _userService: UsersService,
     private _trackService: TrackService
   ) {}
+
+  @Get('/chatbase-token')
+  async getChatbaseToken(
+    @GetUserFromRequest() user: User,
+    @GetOrgFromRequest() organization: Organization
+  ) {
+    if (!process.env.CHATBASE_TOKEN) {
+      throw new HttpException('Chatbase SSO is not configured', 400);
+    }
+
+    const token = sign(
+      {
+        user_id: organization.id,
+        email: user.email,
+        ...(organization.paymentId
+          ? {
+              stripe_accounts: [
+                {
+                  label: organization.name,
+                  stripe_id: organization.paymentId,
+                },
+              ],
+            }
+          : {}),
+      },
+      process.env.CHATBASE_TOKEN,
+      { expiresIn: '1h' }
+    );
+
+    return { token };
+  }
+
   @Get('/agent-media-sso')
   async getAgentMediaSsoUrl(
     @GetUserFromRequest() user: User,
@@ -89,8 +125,13 @@ export class UsersController {
       isTrailing: !isBillingEnabled() ? false : organization?.isTrailing,
       allowTrial: organization?.allowTrial,
       streakSince: organization?.streakSince || null,
-      // @ts-ignore
-      publicApi: organization?.users[0]?.role === 'SUPERADMIN' || organization?.users[0]?.role === 'ADMIN' ? organization?.apiKey : '',
+      publicApi:
+        // @ts-ignore
+        organization?.users[0]?.role === 'SUPERADMIN' ||
+        // @ts-ignore
+        organization?.users[0]?.role === 'ADMIN'
+          ? organization?.apiKey
+          : '',
     };
   }
 
@@ -135,6 +176,51 @@ export class UsersController {
 
     if (process.env.NOT_SECURED) {
       response.header('impersonate', id);
+    }
+  }
+
+  @Post('/switch')
+  async switchUser(
+    @GetUserFromRequest() user: User,
+    @Body('id') id: string,
+    @Req() req: Request
+  ) {
+    if (!user.isSuperAdmin) {
+      throw new HttpException('Unauthorized', 400);
+    }
+
+    // `user` is the impersonated account, so the admin id comes from the token.
+    // Require an active impersonation session and never allow the admin's own
+    // account in the swap — either would trade away the admin's login.
+    const adminId = this.getRequestUserId(req);
+    if (
+      !id ||
+      !adminId ||
+      id === user.id ||
+      adminId === user.id ||
+      adminId === id
+    ) {
+      throw new HttpException('Invalid user to switch to', 400);
+    }
+
+    const { kept, switched } = await this._userService.switchUser(
+      user.id,
+      id,
+      adminId
+    );
+
+    await this._stripeService.syncCustomerEmailsAfterSwitch([kept, switched]);
+
+    return { success: true };
+  }
+
+  private getRequestUserId(req: Request): string | null {
+    try {
+      const auth = (req.headers.auth as string) || req.cookies?.auth;
+      const payload = AuthChecker.verifyJWT(auth) as { id?: string } | null;
+      return payload?.id || null;
+    } catch {
+      return null;
     }
   }
 

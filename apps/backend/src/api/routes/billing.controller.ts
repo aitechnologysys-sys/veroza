@@ -1,9 +1,11 @@
-import { Body, Controller, Get, HttpException, Inject, Param, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpException, Inject, NotFoundException, Param, Post, Query, Req } from '@nestjs/common';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { IBillingProvider } from '@gitroom/nestjs-libraries/services/billing.provider.interface';
+import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization, User } from '@prisma/client';
 import { BillingSubscribeDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.subscribe.dto';
+import { AdminApplyCouponDto } from '@gitroom/nestjs-libraries/dtos/billing/admin.apply.coupon.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
@@ -11,6 +13,7 @@ import { Request } from 'express';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { BillingEventsService } from '@gitroom/nestjs-libraries/database/prisma/billing-events/billing.events.service';
 import { BillingEventType } from '@prisma/client';
+import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 
 @ApiTags('Billing')
 @Controller('/billing')
@@ -19,8 +22,20 @@ export class BillingController {
     private _subscriptionService: SubscriptionService,
     @Inject('BILLING_PROVIDER') private _billingService: IBillingProvider,
     private _notificationService: NotificationService,
-    private _billingEventsService: BillingEventsService
+    private _billingEventsService: BillingEventsService,
+    private _usersService: UsersService,
+    // Stripe-only admin tools from upstream (coupons). They have no Polar
+    // equivalent, so they call Stripe directly instead of IBillingProvider.
+    private _stripeService: StripeService
   ) {}
+
+  private async assertNoOtherSubscribedAccount(user: User) {
+    const other = await this._usersService.getUserWithActiveSubscriptionByEmail(
+      user.email,
+      user.id
+    );
+    return !!other;
+  }
 
   @Get('/check/:id')
   async checkId(
@@ -64,12 +79,16 @@ export class BillingController {
   }
 
   @Post('/embedded')
-  embedded(
+  async embedded(
     @GetOrgFromRequest() org: Organization,
     @GetUserFromRequest() user: User,
     @Body() body: BillingSubscribeDto,
     @Req() req: Request
   ) {
+    if (await this.assertNoOtherSubscribedAccount(user)) {
+      return { blocked: true };
+    }
+
     const uniqueId = req?.cookies?.track;
     return this._billingService.embedded(
       uniqueId,
@@ -81,12 +100,16 @@ export class BillingController {
   }
 
   @Post('/subscribe')
-  subscribe(
+  async subscribe(
     @GetOrgFromRequest() org: Organization,
     @GetUserFromRequest() user: User,
     @Body() body: BillingSubscribeDto,
     @Req() req: Request
   ) {
+    if (await this.assertNoOtherSubscribedAccount(user)) {
+      return { blocked: true };
+    }
+
     const uniqueId = req?.cookies?.track;
     return this._billingService.subscribe(
       uniqueId,
@@ -207,6 +230,77 @@ export class BillingController {
     }
 
     return this._billingService.cancelSubscription(org.id, user.id);
+  }
+
+  @Get('/coupon-info')
+  async couponInfo(
+    @GetUserFromRequest() user: User,
+    @GetOrgFromRequest() org: Organization
+  ) {
+    if (!user.isSuperAdmin) {
+      throw new HttpException('Unauthorized', 400);
+    }
+
+    return this._stripeService.getCouponInfo(org.id);
+  }
+
+  @Post('/apply-coupon')
+  async applyCoupon(
+    @GetUserFromRequest() user: User,
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: AdminApplyCouponDto
+  ) {
+    if (!user.isSuperAdmin) {
+      throw new HttpException('Unauthorized', 400);
+    }
+
+    return this._stripeService.applyCoupon(org.id, body);
+  }
+
+  @Post('/cancel-coupon')
+  async cancelCoupon(
+    @GetUserFromRequest() user: User,
+    @GetOrgFromRequest() org: Organization
+  ) {
+    if (!user.isSuperAdmin) {
+      throw new HttpException('Unauthorized', 400);
+    }
+
+    return this._stripeService.cancelCoupon(org.id);
+  }
+
+  // Postaryx divergence: upstream's self-serve refund for its Chatbase support
+  // bot is disabled. Refunds stay admin-approved with a BillingEvent audit
+  // record (docs/billing-refund-policy.md). The upstream code below is kept
+  // only so future upstream merges stay small.
+  private chatbaseRefundDisabled(): never {
+    throw new NotFoundException();
+  }
+
+  @Get('/chatbase-refund/preview')
+  chatbaseRefundPreview(@GetOrgFromRequest() org: Organization) {
+    this.chatbaseRefundDisabled();
+    return this._stripeService.chatbaseRefundPreview(org.id);
+  }
+
+  @Post('/chatbase-refund')
+  async chatbaseRefund(
+    @GetUserFromRequest() user: User,
+    @GetOrgFromRequest() org: Organization
+  ) {
+    this.chatbaseRefundDisabled();
+    const refund = await this._stripeService.chatbaseRefund(org.id);
+
+    if (refund.refunded) {
+      await this._notificationService.sendEmail(
+        process.env.EMAIL_FROM_ADDRESS,
+        'Refund issued from Chatbase',
+        `Organization ${org.name} received a refund of ${refund.amount} ${refund.currency} and their subscription was cancelled`,
+        user.email
+      );
+    }
+
+    return refund;
   }
 
   @Post('/add-subscription')

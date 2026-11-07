@@ -49,7 +49,7 @@ export class InstagramStandaloneProvider
     if (!firstPost?.length) {
       return 'Should have at least one media';
     }
-    if (settings?.is_trial_reel) {
+    if (this.assetBoolean(settings?.is_trial_reel)) {
       if ((firstPost?.length ?? 0) > 1) {
         return 'Trial Reels can only have one video';
       }
@@ -189,6 +189,42 @@ export class InstagramStandaloneProvider
       integration,
       'graph.instagram.com'
     );
+  }
+
+  async postPending(
+    id: string,
+    accessToken: string,
+    postDetails: PostDetails<InstagramDto>[],
+    integration: Integration
+  ): Promise<PostResponse[]> {
+    return instagramProvider.postPending(
+      id,
+      accessToken,
+      postDetails,
+      integration,
+      'graph.instagram.com'
+    );
+  }
+
+  // the graph domain travels inside pendingData, so these are pure delegations
+  override async checkPostStatus(
+    accessToken: string,
+    pendingData: any,
+    integration: Integration
+  ) {
+    return instagramProvider.checkPostStatus(
+      accessToken,
+      pendingData,
+      integration
+    );
+  }
+
+  override async finalizePost(
+    accessToken: string,
+    pendingData: any,
+    integration: Integration
+  ) {
+    return instagramProvider.finalizePost(accessToken, pendingData, integration);
   }
 
   async comment(

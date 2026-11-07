@@ -1,6 +1,7 @@
 import {
   AnalyticsData,
   AuthTokenDetails,
+  PendingCheckResponse,
   PostDetails,
   PostResponse,
   SocialProvider,
@@ -9,12 +10,14 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { timer } from '@gitroom/helpers/utils/timer';
 import dayjs from 'dayjs';
 import {
+  BadBody,
   SocialAbstract,
   ValidityMedia,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { InstagramDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/instagram.dto';
 import { Integration } from '@prisma/client';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
+import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 
 /**
@@ -95,7 +98,10 @@ export class InstagramProvider
     if (!firstPost?.length) {
       return 'Should have at least one media';
     }
-    if (settings?.is_trial_reel) {
+    if (firstPost.length > 10) {
+      return 'Instagram carousel only supports up to 10 media attachments';
+    }
+    if (this.assetBoolean(settings?.is_trial_reel)) {
       if ((firstPost?.length ?? 0) > 1) {
         return 'Trial Reels can only have one video';
       }
@@ -104,6 +110,20 @@ export class InstagramProvider
       );
       if (!hasVideo) {
         return 'Trial Reels must be a video';
+      }
+    }
+    if (settings?.audio?.id) {
+      if (settings?.post_type === 'story') {
+        return 'Audio can only be added to Reels, not to Stories';
+      }
+      if ((firstPost?.length ?? 0) > 1) {
+        return 'Audio can only be added to a single video Reel';
+      }
+      const hasVideo = firstPost?.some(
+        (f) => (f?.path?.indexOf?.('mp4') ?? -1) > -1
+      );
+      if (!hasVideo) {
+        return 'Audio can only be added to a video Reel';
       }
     }
     return true;
@@ -153,7 +173,10 @@ export class InstagramProvider
       };
     }
 
-    if (body.indexOf('REVOKED_ACCESS_TOKEN') > -1 || body.indexOf('"error_subcode":33') > -1) {
+    if (
+      body.indexOf('REVOKED_ACCESS_TOKEN') > -1 ||
+      body.indexOf('"error_subcode":33') > -1
+    ) {
       return {
         type: 'refresh-token' as const,
         value:
@@ -174,7 +197,8 @@ export class InstagramProvider
     if (body.toLowerCase().indexOf('session has been invalidated') > -1) {
       return {
         type: 'refresh-token' as const,
-        value: 'You session has been invalidated, this can usually happen from frequent posting, please re-authenticate, and wait 1-2 days before posting again',
+        value:
+          'You session has been invalidated, this can usually happen from frequent posting, please re-authenticate, and wait 1-2 days before posting again',
       };
     }
 
@@ -403,6 +427,27 @@ export class InstagramProvider
         value:
           'Instagram detected that your post is spam, please try again with different content',
       };
+    }
+
+    if (body.indexOf('2207082') > -1) {
+      return {
+        type: 'retry' as const,
+        value: 'Could not upload your media',
+      }
+    }
+
+    if (body.indexOf('2207077') > -1) {
+      return {
+        type: 'bad-body' as const,
+        value: 'Instagram Video download failed',
+      };
+    }
+
+    if (body.indexOf('too little or too many attachments') > -1) {
+      return {
+        type: 'bad-body' as const,
+        value: 'Instagram carousel should have between 2 and 10 media attachments',
+      }
     }
 
     if (body.indexOf('2207027') > -1) {
@@ -671,18 +716,66 @@ export class InstagramProvider
     };
   }
 
-  async post(
+  // Single, read-only status check of a media container - the polling loops
+  // that used to live inside post() are now driven by the post workflow.
+  private async igContainerStatus(
+    containerId: string,
+    checkToken: string,
+    type: string
+  ): Promise<string> {
+    const { status_code, status } = await (
+      await this.fetch(
+        `https://${type}/v20.0/${containerId}?access_token=${checkToken}&fields=status_code,status`,
+        undefined,
+        '',
+        0,
+        true
+      )
+    ).json();
+
+    if (status_code === 'ERROR' || status_code === 'EXPIRED') {
+      throw new BadBody(
+        this.identifier,
+        JSON.stringify({ status_code, status }),
+        '{}',
+        status || 'Instagram could not process the media'
+      );
+    }
+
+    return status_code;
+  }
+
+  // The post is live, the permalink is only cosmetic: never fail (and risk
+  // re-publishing) a live post over it.
+  private async igPermalink(
+    mediaId: string,
+    checkToken: string,
+    type: string,
+    integration: Integration
+  ): Promise<string> {
+    try {
+      const { permalink } = await (
+        await this.fetch(
+          `https://${type}/v20.0/${mediaId}?fields=permalink&access_token=${checkToken}`
+        )
+      ).json();
+      return permalink;
+    } catch (err) {
+      return `https://www.instagram.com/${integration.profile}`;
+    }
+  }
+
+  async postPending(
     id: string,
     token: string,
     postDetails: PostDetails<InstagramDto>[],
     integration: Integration,
     type = 'graph.facebook.com'
   ): Promise<PostResponse[]> {
-    const [accessToken, userToken] = token.split('___');
+    const [accessToken] = token.split('___');
     const [firstPost] = postDetails;
-    console.log('in progress', id);
     const isStory = firstPost.settings.post_type === 'story';
-    const isTrialReel = !!firstPost.settings.is_trial_reel;
+    const isTrialReel = this.assetBoolean(firstPost.settings.is_trial_reel);
     const medias = await Promise.all(
       firstPost?.media?.map(async (m) => {
         const caption =
@@ -725,98 +818,196 @@ export class InstagramProvider
               )}`
             : ``;
 
+        // audio_configuration is only supported for Reels (single video, not a story)
+        // and only with Facebook Login (not Instagram Login / graph.instagram.com)
+        const audioConfiguration =
+          firstPost?.settings?.audio?.id &&
+          type === 'graph.facebook.com' &&
+          !isStory &&
+          firstPost?.media?.length === 1 &&
+          hasExtension(m.path, 'mp4')
+            ? `&audio_configuration=${encodeURIComponent(
+                JSON.stringify({
+                  audio_id: firstPost.settings.audio.id,
+                  ...(typeof firstPost.settings.audio.audio_volume !==
+                  'undefined'
+                    ? { audio_volume: +firstPost.settings.audio.audio_volume }
+                    : {}),
+                  ...(typeof firstPost.settings.audio.video_volume !==
+                  'undefined'
+                    ? { video_volume: +firstPost.settings.audio.video_volume }
+                    : {}),
+                })
+              )}`
+            : ``;
+
         const { id: photoId } = await (
           await this.fetch(
-            `https://${type}/v20.0/${id}/media?${mediaType}${isCarousel}${collaborators}${trialParams}&access_token=${accessToken}${caption}`,
+            `https://${type}/v20.0/${id}/media?${mediaType}${isCarousel}${collaborators}${trialParams}${audioConfiguration}&access_token=${accessToken}${caption}`,
             {
               method: 'POST',
             }
           )
         ).json();
-        console.log('in progress2', id);
-
-        let status = 'IN_PROGRESS';
-        while (status === 'IN_PROGRESS') {
-          const { status_code } = await (
-            await this.fetch(
-              `https://${type}/v20.0/${photoId}?access_token=${userToken || accessToken}&fields=status_code`,
-              undefined,
-              '',
-              0,
-              true
-            )
-          ).json();
-          await timer(30000);
-          status = status_code;
-        }
-        console.log('in progress3', id);
 
         return photoId;
       }) || []
     );
 
-    if (isStory && medias.length > 1) {
-      // Stories don't support carousels - publish each media as a separate story
+    // Containers are invisible until media_publish runs: the processing wait
+    // and the publish itself move to checkPostStatus / finalizePost so a
+    // failure there can never re-create (and re-publish) the whole post.
+    return [
+      {
+        id: firstPost.id,
+        postId: '',
+        releaseURL: '',
+        status: 'pending',
+        pendingData: {
+          type,
+          postType:
+            isStory && medias.length > 1
+              ? 'stories'
+              : medias.length === 1
+              ? 'single'
+              : 'carousel',
+          containers: medias,
+          message: firstPost?.message || '',
+        },
+      },
+    ];
+  }
+
+  override async checkPostStatus(
+    token: string,
+    pendingData: {
+      type: string;
+      postType: 'stories' | 'single' | 'carousel';
+      containers: string[];
+      message?: string;
+      carouselId?: string;
+    },
+    integration: Integration
+  ): Promise<PendingCheckResponse> {
+    const [accessToken, userToken] = token.split('___');
+    const checkToken = userToken || accessToken;
+
+    // the carousel container was already created: wait for it
+    if (pendingData.carouselId) {
+      const status = await this.igContainerStatus(
+        pendingData.carouselId,
+        checkToken,
+        pendingData.type
+      );
+
+      if (status === 'IN_PROGRESS') {
+        return { status: 'pending', pendingData };
+      }
+
+      // a previous finalizePost published but died before reporting: the post
+      // is live, never publish again
+      if (status === 'PUBLISHED') {
+        return {
+          status: 'completed',
+          postId: pendingData.carouselId,
+          releaseURL: `https://www.instagram.com/${integration.profile}`,
+        };
+      }
+
+      return { status: 'ready', pendingData };
+    }
+
+    for (const containerId of pendingData.containers) {
+      const status = await this.igContainerStatus(
+        containerId,
+        checkToken,
+        pendingData.type
+      );
+
+      if (status === 'IN_PROGRESS') {
+        return { status: 'pending', pendingData };
+      }
+
+      if (status === 'PUBLISHED') {
+        // a previous finalizePost died mid-way: a single post is fully live,
+        // stories are resumed by finalizePost (it skips published containers)
+        if (pendingData.postType === 'single') {
+          return {
+            status: 'completed',
+            postId: containerId,
+            releaseURL: `https://www.instagram.com/${integration.profile}`,
+          };
+        }
+      }
+    }
+
+    return { status: 'ready', pendingData };
+  }
+
+  override async finalizePost(
+    token: string,
+    pendingData: {
+      type: string;
+      postType: 'stories' | 'single' | 'carousel';
+      containers: string[];
+      message?: string;
+      carouselId?: string;
+    },
+    integration: Integration
+  ): Promise<PendingCheckResponse> {
+    const [accessToken, userToken] = token.split('___');
+    const checkToken = userToken || accessToken;
+    const igId = integration.internalId;
+
+    if (pendingData.postType === 'stories') {
+      // Stories don't support carousels - publish each media as a separate
+      // story, skipping containers a previous (crashed) run already published
       let lastMediaId = '';
-      let lastPermalink = '';
-      for (const mediaCreationId of medias) {
+      for (const mediaCreationId of pendingData.containers) {
+        const status = await this.igContainerStatus(
+          mediaCreationId,
+          checkToken,
+          pendingData.type
+        );
+        if (status === 'PUBLISHED') {
+          continue;
+        }
+
         const { id: mediaId } = await (
           await this.fetch(
-            `https://${type}/v20.0/${id}/media_publish?creation_id=${mediaCreationId}&access_token=${accessToken}&field=id`,
+            `https://${pendingData.type}/v20.0/${igId}/media_publish?creation_id=${mediaCreationId}&access_token=${accessToken}&field=id`,
             {
               method: 'POST',
             }
           )
         ).json();
         lastMediaId = mediaId;
-
-        const { permalink } = await (
-          await this.fetch(
-            `https://${type}/v20.0/${mediaId}?fields=permalink&access_token=${userToken || accessToken}`
-          )
-        ).json();
-        lastPermalink = permalink;
       }
 
-      return [
-        {
-          id: firstPost.id,
-          postId: lastMediaId,
-          releaseURL: lastPermalink,
-          status: 'success',
-        },
-      ];
-    } else if (medias.length === 1) {
-      const { id: mediaId } = await (
-        await this.fetch(
-          `https://${type}/v20.0/${id}/media_publish?creation_id=${medias[0]}&access_token=${accessToken}&field=id`,
-          {
-            method: 'POST',
-          }
-        )
-      ).json();
+      return {
+        status: 'completed',
+        postId: lastMediaId || pendingData.containers.at(-1)!,
+        releaseURL: !lastMediaId
+          ? `https://www.instagram.com/${integration.profile}`
+          : await this.igPermalink(
+              lastMediaId,
+              checkToken,
+              pendingData.type,
+              integration
+            ),
+      };
+    }
 
-      const { permalink } = await (
+    if (pendingData.postType === 'carousel' && !pendingData.carouselId) {
+      // create the carousel container and hand back to the workflow to wait
+      // for it (an orphan container from a crashed run is invisible, so
+      // re-running this is safe)
+      const { id: containerId } = await (
         await this.fetch(
-          `https://${type}/v20.0/${mediaId}?fields=permalink&access_token=${userToken || accessToken}`
-        )
-      ).json();
-
-      return [
-        {
-          id: firstPost.id,
-          postId: mediaId,
-          releaseURL: permalink,
-          status: 'success',
-        },
-      ];
-    } else {
-      const { id: containerId, ...all3 } = await (
-        await this.fetch(
-          `https://${type}/v20.0/${id}/media?caption=${encodeURIComponent(
-            firstPost?.message
+          `https://${pendingData.type}/v20.0/${igId}/media?caption=${encodeURIComponent(
+            pendingData.message || ''
           )}&media_type=CAROUSEL&children=${encodeURIComponent(
-            medias.join(',')
+            pendingData.containers.join(',')
           )}&access_token=${accessToken}`,
           {
             method: 'POST',
@@ -824,44 +1015,99 @@ export class InstagramProvider
         )
       ).json();
 
-      let status = 'IN_PROGRESS';
-      while (status === 'IN_PROGRESS') {
-        const { status_code } = await (
-          await this.fetch(
-            `https://${type}/v20.0/${containerId}?fields=status_code&access_token=${userToken || accessToken}`,
-            undefined,
-            '',
-            0,
-            true
-          )
-        ).json();
-        await timer(30000);
-        status = status_code;
+      return {
+        status: 'pending',
+        pendingData: { ...pendingData, carouselId: containerId },
+      };
+    }
+
+    const creationId =
+      pendingData.postType === 'carousel'
+        ? pendingData.carouselId
+        : pendingData.containers[0];
+
+    const { id: mediaId } = await (
+      await this.fetch(
+        `https://${pendingData.type}/v20.0/${igId}/media_publish?creation_id=${creationId}&access_token=${accessToken}&field=id`,
+        {
+          method: 'POST',
+        }
+      )
+    ).json();
+
+    return {
+      status: 'completed',
+      postId: mediaId,
+      releaseURL: await this.igPermalink(
+        mediaId,
+        checkToken,
+        pendingData.type,
+        integration
+      ),
+    };
+  }
+
+  // Old blocking behavior, kept for workflow versions before v1.0.6 that don't
+  // know how to resolve a `pending` response.
+  async post(
+    id: string,
+    token: string,
+    postDetails: PostDetails<InstagramDto>[],
+    integration: Integration,
+    type = 'graph.facebook.com'
+  ): Promise<PostResponse[]> {
+    const [firstPost] = postDetails;
+    const [response] = await this.postPending(
+      id,
+      token,
+      postDetails,
+      integration,
+      type
+    );
+
+    let pendingData = response.pendingData;
+    const started = Date.now();
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      // Cap below the 10-minute activity timeout of the old workflows using
+      // this method: failing here (non-retryable) is safe, timing the
+      // activity out is not - a retried activity would publish again.
+      if (Date.now() - started > 8 * 60 * 1000) {
+        throw new BadBody(
+          this.identifier,
+          '{}',
+          '{}',
+          'Media processing timed out'
+        );
       }
 
-      const { id: mediaId, ...all4 } = await (
-        await this.fetch(
-          `https://${type}/v20.0/${id}/media_publish?creation_id=${containerId}&access_token=${accessToken}&field=id`,
+      const check = await this.checkPostStatus(token, pendingData, integration);
+
+      if (check.status === 'pending') {
+        pendingData = check.pendingData;
+        await timer(30000);
+        continue;
+      }
+
+      const result =
+        check.status === 'ready'
+          ? await this.finalizePost(token, check.pendingData, integration)
+          : check;
+
+      if (result.status === 'completed') {
+        return [
           {
-            method: 'POST',
-          }
-        )
-      ).json();
+            id: firstPost.id,
+            postId: result.postId,
+            releaseURL: result.releaseURL,
+            status: 'success',
+          },
+        ];
+      }
 
-      const { permalink } = await (
-        await this.fetch(
-          `https://${type}/v20.0/${mediaId}?fields=permalink&access_token=${userToken || accessToken}`
-        )
-      ).json();
-
-      return [
-        {
-          id: firstPost.id,
-          postId: mediaId,
-          releaseURL: permalink,
-          status: 'success',
-        },
-      ];
+      pendingData = result.pendingData;
+      await timer(30000);
     }
   }
 
@@ -891,7 +1137,9 @@ export class InstagramProvider
     // Get the permalink from the parent post
     const { permalink } = await (
       await this.fetch(
-        `https://${type}/v20.0/${postId}?fields=permalink&access_token=${userToken || accessToken}`
+        `https://${type}/v20.0/${postId}?fields=permalink&access_token=${
+          userToken || accessToken
+        }`
       )
     ).json();
 
@@ -990,10 +1238,6 @@ export class InstagramProvider
             total: d.total_value.value,
             date: dayjs().format('YYYY-MM-DD'),
           },
-          {
-            total: d.total_value.value,
-            date: dayjs().add(1, 'day').format('YYYY-MM-DD'),
-          },
         ],
       }))
     );
@@ -1009,6 +1253,55 @@ export class InstagramProvider
     );
   }
 
+  // https://developers.facebook.com/docs/instagram-platform/content-publishing/audio-api/
+  // empty search_query returns trending audio
+  @Tool({
+    description:
+      'Search audio (music or original sounds) to attach to a Reel via the "audio" setting, an empty query returns trending audio',
+    dataSchema: [
+      {
+        key: 'q',
+        type: 'string',
+        description: 'Search query, leave empty for trending audio',
+      },
+      {
+        key: 'type',
+        type: 'string',
+        description: 'Either "music" or "original_sound", defaults to "music"',
+      },
+    ],
+  })
+  async audioSearch(
+    token: string,
+    data: { q?: string; type?: 'music' | 'original_sound' },
+    internalId?: string
+  ) {
+    const [accessToken, userToken] = token.split('___');
+    const audioType =
+      data?.type === 'original_sound' ? 'original_sound' : 'music';
+
+    const { audio } = await (
+      await this.fetch(
+        `https://graph.facebook.com/v22.0/ig_audio?audio_type=${audioType}&user_id=${internalId}${
+          data?.q ? `&search_query=${encodeURIComponent(data.q)}` : ''
+        }&access_token=${userToken || accessToken}`
+      )
+    ).json();
+
+    return (audio || []).map((audio: any) => ({
+      id: audio.audio_id,
+      title: audio.title || '',
+      artist: audio.display_artist || audio.ig_username || '',
+      image:
+        audio.cover_artwork_thumbnail_uri ||
+        audio.cover_artwork_thumbnail_url ||
+        audio.profile_picture_url ||
+        '',
+      duration: audio.duration_in_ms || 0,
+      previewUrl: audio.download_url || '',
+    }));
+  }
+
   async postAnalytics(
     integrationId: string,
     token: string,
@@ -1022,7 +1315,7 @@ export class InstagramProvider
     try {
       // Fetch media insights from Instagram Graph API
       const { data } = await (
-        await this.fetch(
+        await fetch(
           `https://${type}/v21.0/${postId}/insights?metric=views,reach,saved,likes,comments,shares&access_token=${accessToken}`
         )
       ).json();

@@ -40,7 +40,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     'w_organization_social',
     'r_organization_social',
   ];
-  override maxConcurrentJob = 2; // LinkedIn has professional posting limits
+  override maxConcurrentJob = 2;
   refreshWait = true;
   editor = 'normal' as const;
   maxLength() {
@@ -54,7 +54,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     const [firstPost, ...restPosts] = posts ?? [];
 
     if (
-      vals?.post_as_images_carousel &&
+      this.assetBoolean(vals?.post_as_images_carousel) &&
       ((firstPost?.length ?? 0) < 2 ||
         firstPost?.some((p) => (p?.path?.indexOf?.('mp4') ?? -1) > -1))
     ) {
@@ -85,7 +85,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
       };
     }
 
-    if (body.indexOf('resource is forbidden') > -1) {
+    if (body.indexOf('resource is forbidden') > -1 || body.indexOf('Service Unavailable') > -1) {
       return {
         type: 'retry',
         value: 'Resource is forbidden',
@@ -262,12 +262,19 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     fileName: string,
     accessToken: string,
     personId: string,
-    picture: any,
+    // Either the media bytes (images / converted PDFs) or a `{ path }`
+    // descriptor for videos, which are streamed chunk-by-chunk from the source
+    // instead of being held in memory.
+    picture: Buffer | { path: string },
     type = 'personal' as 'company' | 'personal'
   ) {
     // Determine the appropriate endpoint based on file type
     const isVideo = hasExtension(fileName, 'mp4');
     const isPdf = hasExtension(fileName, 'pdf');
+
+    const fileSizeBytes = Buffer.isBuffer(picture)
+      ? picture.length
+      : await this.mediaSize(picture.path, this.identifier);
 
     let endpoint: string;
     if (isVideo) {
@@ -299,7 +306,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
                   : `urn:li:organization:${personId}`,
               ...(isVideo
                 ? {
-                    fileSizeBytes: picture.length,
+                    fileSizeBytes,
                     uploadCaptions: false,
                     uploadThumbnail: false,
                   }
@@ -314,8 +321,47 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     const finalOutput = video || image || document;
 
     const etags = [];
-    for (let i = 0; i < picture.length; i += 1024 * 1024 * 2) {
-      const upload = await this.fetch(
+    if (isVideo) {
+      // Only the Videos API uses multipart chunked uploads. Each 2MB part is
+      // PUT separately and the returned etags are passed to finalizeUpload.
+      // Each part is read on demand (mediaChunk) so only one 2MB chunk is ever
+      // resident in memory instead of the whole video.
+      const chunkSize = 1024 * 1024 * 2;
+      for (let i = 0; i < fileSizeBytes; i += chunkSize) {
+        const body = Buffer.isBuffer(picture)
+          ? picture.slice(i, i + chunkSize)
+          : await this.mediaChunk(
+              picture.path,
+              i,
+              Math.min(i + chunkSize, fileSizeBytes) - 1,
+              this.identifier
+            );
+
+        const upload = await this.fetch(
+          sendUrlRequest,
+          {
+            method: 'PUT',
+            headers: {
+              'X-Restli-Protocol-Version': '2.0.0',
+              'LinkedIn-Version': '202601',
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/octet-stream',
+            },
+            body,
+          },
+          'linkedin',
+          0,
+          true
+        );
+
+        etags.push(upload.headers.get('etag'));
+      }
+    } else {
+      // Images and documents (PDF carousels) use a single-shot upload URL and
+      // must be sent as one PUT of the whole file. Chunking here would send
+      // multiple overwriting PUTs to the same URL, leaving LinkedIn with only
+      // the final chunk and corrupting anything larger than 2MB.
+      await this.fetch(
         sendUrlRequest,
         {
           method: 'PUT',
@@ -323,20 +369,16 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
             'X-Restli-Protocol-Version': '2.0.0',
             'LinkedIn-Version': '202601',
             Authorization: `Bearer ${accessToken}`,
-            ...(isVideo
-              ? { 'Content-Type': 'application/octet-stream' }
-              : isPdf
-              ? { 'Content-Type': 'application/pdf' }
-              : {}),
+            ...(isPdf ? { 'Content-Type': 'application/pdf' } : {}),
           },
-          body: picture.slice(i, i + 1024 * 1024 * 2),
+          // Only videos arrive as a { path } descriptor; images and documents
+          // are always a Buffer.
+          body: picture as Buffer,
         },
         'linkedin',
         0,
         true
       );
-
-      etags.push(upload.headers.get('etag'));
     }
 
     if (isVideo) {
@@ -364,7 +406,20 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
       // wait until it reaches the AVAILABLE status before attaching it to a
       // post, otherwise LinkedIn rejects the post with a processing error.
       await this.waitForMediaToBeReady(video, accessToken, 'videos');
-    } else if (!isPdf) {
+    } else if (isPdf) {
+      // Documents (PDF carousels) are processed asynchronously too and must be
+      // AVAILABLE before being attached to a post, otherwise LinkedIn rejects
+      // the post or publishes a broken carousel.
+      if (type === 'company') {
+        // Organization-owned documents can be polled for their status.
+        await this.waitForMediaToBeReady(document, accessToken, 'documents');
+      } else {
+        // A w_member_social (personal) token is write-only for rest/documents
+        // and can't perform the GET, so polling would always be forbidden.
+        // Give LinkedIn a moment to finish processing before attaching it.
+        await timer(10000);
+      }
+    } else {
       // Images are also processed asynchronously and must be AVAILABLE before
       // being attached to a post.
       if (type === 'company') {
@@ -389,11 +444,12 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
   private async waitForMediaToBeReady(
     urn: string,
     accessToken: string,
-    type: 'videos' | 'images',
+    type: 'videos' | 'images' | 'documents',
     maxAttempts = 20,
     intervalMs = 30000
   ): Promise<void> {
-    const label = type === 'videos' ? 'video' : 'image';
+    const label =
+      type === 'videos' ? 'video' : type === 'documents' ? 'document' : 'image';
 
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       const json = await (
@@ -541,61 +597,80 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     personId: string,
     type: 'company' | 'personal'
   ): Promise<Record<string, string[]>> {
-    const mediaUploads = await Promise.all(
-      postDetails.flatMap(
-        (post) =>
-          post.media?.map(async (media) => {
-            let mediaBuffer: Buffer;
+    // Media is uploaded sequentially on purpose: uploading everything with
+    // Promise.all holds every file in memory at the same time.
+    const mediaUploads: Record<string, string[]> = {};
+    for (const post of postDetails) {
+      for (const media of post.media || []) {
+        let mediaBuffer: Buffer | { path: string };
 
-            // Check if media has a buffer (from PDF conversion)
-            if (
-              media &&
-              typeof media === 'object' &&
-              'buffer' in media &&
-              Buffer.isBuffer(media.buffer)
-            ) {
-              mediaBuffer = (media as any).buffer;
-            } else {
-              mediaBuffer = await this.prepareMediaBuffer(media.path);
-            }
+        // Check if media has a buffer (from PDF conversion)
+        if (
+          media &&
+          typeof media === 'object' &&
+          'buffer' in media &&
+          Buffer.isBuffer(media.buffer)
+        ) {
+          mediaBuffer = (media as any).buffer;
+        } else if (hasExtension(media.path, 'mp4')) {
+          // Videos are never buffered: uploadPicture streams them from the
+          // source chunk-by-chunk.
+          mediaBuffer = { path: media.path };
+        } else {
+          mediaBuffer = await this.prepareMediaBuffer(media.path);
+        }
 
-            const uploadedMediaId = await this.uploadPicture(
-              media.path,
-              accessToken,
-              personId,
-              mediaBuffer,
-              type
-            );
+        const uploadedMediaId = await this.uploadPicture(
+          media.path,
+          accessToken,
+          personId,
+          mediaBuffer,
+          type
+        );
 
-            return {
-              id: uploadedMediaId,
-              postId: post.id,
-            };
-          }) || []
-      )
-    );
+        if (!uploadedMediaId) {
+          continue;
+        }
 
-    return mediaUploads.reduce((acc, upload) => {
-      if (!upload?.id) return acc;
+        mediaUploads[post.id] = mediaUploads[post.id] || [];
+        mediaUploads[post.id].push(uploadedMediaId);
+      }
+    }
 
-      acc[upload.postId] = acc[upload.postId] || [];
-      acc[upload.postId].push(upload.id);
-      return acc;
-    }, {} as Record<string, string[]>);
+    return mediaUploads;
   }
 
   private async prepareMediaBuffer(mediaUrl: string): Promise<Buffer> {
-    const isVideo = hasExtension(mediaUrl, 'mp4');
     const isGif = lookup(mediaUrl) === 'image/gif';
 
-    if (isVideo || isGif) {
+    // GIFs pass through untouched (sharp would break animation). Videos never
+    // reach this function - they are streamed by uploadPicture instead.
+    if (isGif) {
+      // Buffer.from keeps the return type a real Buffer regardless of what
+      // readOrFetch yields - uploadPicture branches on Buffer.isBuffer.
       return Buffer.from(await readOrFetch(mediaUrl));
     }
 
-    return await sharp(await readOrFetch(mediaUrl), { animated: false })
-      .toFormat('jpeg')
-      .resize({ width: 1000 })
-      .toBuffer();
+    const mime = lookup(mediaUrl);
+    // PNG and JPEG (covers both .jpg and .jpeg) keep their original format;
+    // anything else (webp, tiff, ...) is converted to jpeg for compatibility.
+    const keepFormat = mime === 'image/png' || mime === 'image/jpeg';
+
+    // Always downscale to stay under LinkedIn's 36,152,320-pixel cap: fit within
+    // a 6000x6000 box (max 36,000,000 px for any aspect ratio) while preserving
+    // the aspect ratio and never enlarging smaller images (downscale-only).
+    // NOTE: this guard is required for self-hosted instances running with
+    // DISABLE_IMAGE_COMPRESSION=true, where the frontend no longer shrinks
+    // uploads and full-size images reach LinkedIn directly. Do not remove it on
+    // the assumption that the frontend compression already caps dimensions.
+    const pipeline = sharp(await readOrFetch(mediaUrl), { animated: false }).resize({
+      width: 6000,
+      height: 6000,
+      fit: 'inside',
+      withoutEnlargement: true,
+    });
+
+    return await (keepFormat ? pipeline : pipeline.toFormat('jpeg')).toBuffer();
   }
 
   private buildPostContent(isPdf: boolean, mediaIds: string[], pdfTitle?: string) {
@@ -757,7 +832,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     const [firstPost] = postDetails;
 
     // Check if we should convert images to PDF carousel
-    if (firstPost.settings?.post_as_images_carousel) {
+    if (this.assetBoolean(firstPost.settings?.post_as_images_carousel)) {
       processedPostDetails = await this.convertImagesToPdfCarousel(
         postDetails,
         firstPost
@@ -786,7 +861,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
       processedFirstPost,
       mainPostMediaIds,
       type,
-      !!firstPost.settings?.post_as_images_carousel
+      this.assetBoolean(firstPost.settings?.post_as_images_carousel)
     );
 
     // Return response for main post only

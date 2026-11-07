@@ -10,7 +10,10 @@ import {
 import { lookup } from 'mime-types';
 import sharp from 'sharp';
 import { readOrFetch } from '@gitroom/helpers/utils/read.or.fetch';
-import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import {
+  BadBody,
+  SocialAbstract,
+} from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { Plug } from '@gitroom/helpers/decorators/plug.decorator';
 import { Integration } from '@prisma/client';
 import { timer } from '@gitroom/helpers/utils/timer';
@@ -91,10 +94,25 @@ export class XProvider extends SocialAbstract implements SocialProvider {
       };
     }
 
+    if (body.includes('You are not allowed to create a Tweet')) {
+      return {
+        type: 'bad-body',
+        value: 'You are not allowed to create a post with duplicate content',
+      }
+    }
+
     if (body.includes('usage-capped')) {
       return {
         type: 'bad-body',
         value: 'Posting failed - capped reached. Please try again later',
+      };
+    }
+
+    if (body.includes('user-suspended')) {
+      return {
+        type: 'bad-body',
+        value:
+          'Your X account has been suspended, please reconnect with another account',
       };
     }
     if (body.includes('duplicate-rules')) {
@@ -102,6 +120,13 @@ export class XProvider extends SocialAbstract implements SocialProvider {
         type: 'bad-body',
         value:
           'You have already posted this post, please wait before posting again',
+      };
+    }
+    if (body.includes('Your account is not permitted to access this feature')) {
+      return {
+        type: 'bad-body',
+        value:
+          'X blocked your request',
       };
     }
     if (body.includes('The Tweet contains an invalid URL.')) {
@@ -396,49 +421,122 @@ export class XProvider extends SocialAbstract implements SocialProvider {
     );
   }
 
+  // X's v2 chunked upload requires a Buffer per APPEND segment, so we read one
+  // ranged chunk at a time (mediaChunk) instead of buffering the whole video.
+  // 1MB is the exact chunk size client.v2.uploadMedia used in production, so
+  // it is proven against X's APPEND limits; larger chunks are documented but
+  // unproven here.
+  private static readonly X_UPLOAD_CHUNK_SIZE = 1024 * 1024;
+
+  private async uploadVideoInChunks(client: TwitterApi, path: string) {
+    const totalBytes = await this.mediaSize(path, this.identifier);
+    const mediaType = String(lookup(path) || 'video/mp4');
+
+    const init = await client.v2.post<{ data: { id: string } }>(
+      'media/upload/initialize',
+      {
+        media_type: mediaType,
+        total_bytes: totalBytes,
+        media_category: 'tweet_video',
+      }
+    );
+    const mediaId = init.data.id;
+
+    const chunkSize = XProvider.X_UPLOAD_CHUNK_SIZE;
+    const totalChunkCount = Math.ceil(totalBytes / chunkSize);
+    for (let i = 0; i < totalChunkCount; i++) {
+      const start = i * chunkSize;
+      const end = Math.min(start + chunkSize, totalBytes) - 1;
+      await client.v2.post(
+        `media/upload/${mediaId}/append`,
+        {
+          segment_index: i,
+          media: await this.mediaChunk(path, start, end, this.identifier),
+        },
+        { forceBodyMode: 'form-data' }
+      );
+    }
+
+    const finalize = await client.v2.post<{
+      data: {
+        id: string;
+        processing_info?: { state: string; check_after_secs?: number };
+      };
+    }>(`media/upload/${mediaId}/finalize`);
+
+    let processing = finalize.data.processing_info;
+    // X drives the pace via check_after_secs; cap on accumulated wait time
+    // (long videos can legitimately process for many minutes) instead of an
+    // attempt count, but never poll forever.
+    let waitedMs = 0;
+    const maxWaitMs = 30 * 60 * 1000;
+    while (processing && processing.state !== 'succeeded') {
+      if (processing.state === 'failed' || waitedMs >= maxWaitMs) {
+        throw new BadBody(
+          this.identifier,
+          JSON.stringify(processing),
+          Buffer.from('{}'),
+          `X failed to process the uploaded video${
+            (processing as any)?.error?.message
+              ? `: ${(processing as any).error.message}`
+              : ''
+          }`
+        );
+      }
+
+      const waitMs = (processing.check_after_secs || 1) * 1000;
+      await timer(waitMs);
+      waitedMs += waitMs;
+      const status = await client.v2.get<{
+        data: {
+          processing_info?: { state: string; check_after_secs?: number };
+        };
+      }>('media/upload', { command: 'STATUS', media_id: mediaId });
+      processing = status.data.processing_info;
+    }
+
+    return mediaId;
+  }
+
   private async uploadMedia(
     client: TwitterApi,
     postDetails: PostDetails<any>[]
   ) {
-    return (
-      await Promise.all(
-        postDetails.flatMap((p) =>
-          p?.media?.flatMap(async (m) => {
-            return {
-              id: await this.runInConcurrent(
-                async () =>
-                  client.v2.uploadMedia(
-                    hasExtension(m.path, 'mp4')
-                      ? Buffer.from(await readOrFetch(m.path))
-                      : await sharp(await readOrFetch(m.path), {
-                          animated: lookup(m.path) === 'image/gif',
-                        })
-                          .resize({
-                            width: 1000,
-                          })
-                          .gif()
-                          .toBuffer(),
-                    {
-                      media_type: (lookup(m.path) || '') as any,
-                    }
-                  ),
-                true
-              ),
-              postId: p.id,
-            };
-          })
-        )
-      )
-    ).reduce((acc, val) => {
-      if (!val?.id) {
-        return acc;
+    // Media is uploaded sequentially on purpose: uploading everything with
+    // Promise.all holds every file in memory at the same time.
+    const media = {} as Record<string, string[]>;
+    for (const p of postDetails) {
+      for (const m of p?.media || []) {
+        const id = await this.runInConcurrent(
+          async () =>
+            hasExtension(m.path, 'mp4')
+              ? this.uploadVideoInChunks(client, m.path)
+              : client.v2.uploadMedia(
+                  await sharp(await readOrFetch(m.path), {
+                    animated: lookup(m.path) === 'image/gif',
+                  })
+                    .resize({
+                      width: 1000,
+                    })
+                    .gif()
+                    .toBuffer(),
+                  {
+                    media_type: (lookup(m.path) || '') as any,
+                  }
+                ),
+          true
+        );
+
+        if (!id) {
+          continue;
+        }
+
+        media[p.id] = media[p.id] || [];
+        media[p.id].push(id);
       }
+    }
 
-      acc[val.postId] = acc[val.postId] || [];
-      acc[val.postId].push(val.id);
-
-      return acc;
-    }, {} as Record<string, string[]>);
+    return media;
   }
 
   async post(
@@ -488,8 +586,8 @@ export class XProvider extends SocialAbstract implements SocialProvider {
         ? removeLinks(firstPost.message)
         : firstPost.message,
       ...(media_ids.length ? { media: { media_ids } } : {}),
-      made_with_ai: !!firstPost?.settings?.made_with_ai,
-      paid_partnership: !!firstPost?.settings?.paid_partnership,
+      made_with_ai: this.assetBoolean(firstPost?.settings?.made_with_ai),
+      paid_partnership: this.assetBoolean(firstPost?.settings?.paid_partnership),
     };
 
     const tweetResponse = await this.fetch(tweetUrl, {
@@ -550,8 +648,10 @@ export class XProvider extends SocialAbstract implements SocialProvider {
         : commentPost.message,
       ...(media_ids.length ? { media: { media_ids } } : {}),
       reply: { in_reply_to_tweet_id: replyToId },
-      made_with_ai: !!commentPost?.settings?.made_with_ai,
-      paid_partnership: !!commentPost?.settings?.paid_partnership,
+      made_with_ai: this.assetBoolean(commentPost?.settings?.made_with_ai),
+      paid_partnership: this.assetBoolean(
+        commentPost?.settings?.paid_partnership
+      ),
     };
 
     const tweetResponse = await this.fetch(tweetUrl, {

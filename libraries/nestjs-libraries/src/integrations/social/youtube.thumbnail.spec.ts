@@ -15,6 +15,7 @@ import 'reflect-metadata';
 import { google } from 'googleapis';
 import { GaxiosError } from 'gaxios';
 import axios from 'axios';
+import { BadBody } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { YoutubeProvider } from '@gitroom/nestjs-libraries/integrations/social/youtube.provider';
 import {
   readGoogleApiFailure,
@@ -65,18 +66,49 @@ const post = (settings: Record<string, any>) =>
       settings: { title: 'Title', type: 'public', ...settings } as any,
       media: [{ path: 'https://cdn.example.test/video.mp4' } as any],
     },
-  ]);
+  ], {} as any);
+
+// Since upstream v2.23.0 the video goes up through a resumable session:
+// postPending opens it, finalizePost streams the bytes and then sets the
+// thumbnail. These tests start from a session whose upload already completed
+// (pendingData.videoId is known), which is exactly the moment the thumbnail
+// runs: the video is live, so nothing after this point may fail the post.
+const completedSession = (thumbnail: string) => ({
+  uploadUri: 'https://upload.example.test/session',
+  videoSize: 1,
+  path: 'https://cdn.example.test/video.mp4',
+  uploadedBytes: 1,
+  thumbnail,
+  videoId: VIDEO_ID,
+});
 
 describe('YoutubeProvider.post thumbnail handling', () => {
-  let insert: jest.Mock;
+  let postPending: jest.SpyInstance;
+  let probeUploadSession: jest.SpyInstance;
   let setThumbnail: jest.Mock;
   let logged: jest.SpyInstance;
 
   beforeEach(() => {
-    insert = jest.fn().mockResolvedValue({ data: { id: VIDEO_ID } });
+    postPending = jest
+      .spyOn(YoutubeProvider.prototype, 'postPending')
+      .mockImplementation(async (_id, _token, details) => [
+        {
+          id: details[0].id,
+          releaseURL: '',
+          postId: '',
+          status: 'pending',
+          pendingData: completedSession(
+            details[0].settings?.thumbnail?.path || ''
+          ),
+        },
+      ]);
+    // the upload already completed: asking the session again would mean the
+    // provider is about to send video bytes a second time
+    probeUploadSession = jest
+      .spyOn(YoutubeProvider.prototype as any, 'probeUploadSession')
+      .mockRejectedValue(new Error('must not re-probe a completed upload'));
     setThumbnail = jest.fn().mockResolvedValue({ data: {} });
     jest.spyOn(google, 'youtube').mockReturnValue({
-      videos: { insert },
       thumbnails: { set: setThumbnail },
     } as any);
     (axios as unknown as jest.Mock).mockResolvedValue({ data: 'stream' });
@@ -110,7 +142,7 @@ describe('YoutubeProvider.post thumbnail handling', () => {
     });
   });
 
-  describe('when videos.insert succeeds and thumbnails.set fails', () => {
+  describe('when the upload completes and thumbnails.set fails', () => {
     const withThumbnail = () =>
       post({ thumbnail: { path: 'https://cdn.example.test/thumb.png' } });
 
@@ -189,8 +221,10 @@ describe('YoutubeProvider.post thumbnail handling', () => {
           'You do not need to upload the video again.'
         );
         expect(result.warning.message).not.toMatch(/not verified/i);
-        // Only one upload, and post() resolved, so nothing retries it.
-        expect(insert).toHaveBeenCalledTimes(1);
+        // Only one upload session, never re-probed, and post() resolved, so
+        // nothing retries it.
+        expect(postPending).toHaveBeenCalledTimes(1);
+        expect(probeUploadSession).not.toHaveBeenCalled();
       }
     );
 
@@ -229,11 +263,67 @@ describe('YoutubeProvider.post thumbnail handling', () => {
   });
 
   it('still fails the post when the video upload itself fails', async () => {
-    insert.mockRejectedValue(
-      googleError(400, 'invalidTitle', 'invalidTitle', 'youtube.video')
-    );
-    await expect(post({})).rejects.toMatchObject({ type: 'bad_body' });
+    // real postPending: YouTube refuses to open the upload session
+    postPending.mockRestore();
+    jest
+      .spyOn(YoutubeProvider.prototype as any, 'youtubeMediaSize')
+      .mockResolvedValue(1);
+    const refused = new BadBody('youtube', '{}', '{}', 'invalidTitle');
+    jest
+      .spyOn(YoutubeProvider.prototype as any, 'fetch')
+      .mockRejectedValue(refused);
+
+    await expect(post({})).rejects.toBe(refused);
     expect(setThumbnail).not.toHaveBeenCalled();
+  });
+});
+
+describe('YoutubeProvider.finalizePost thumbnail (postWorkflowV106 path)', () => {
+  beforeEach(() => {
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    (axios as unknown as jest.Mock).mockResolvedValue({ data: 'stream' });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    (axios as unknown as jest.Mock).mockReset();
+  });
+
+  it('completes with a warning instead of throwing when the thumbnail fails', async () => {
+    jest.spyOn(google, 'youtube').mockReturnValue({
+      thumbnails: { set: jest.fn().mockRejectedValue(FORBIDDEN) },
+    } as any);
+
+    const result = await new YoutubeProvider().finalizePost(
+      TOKEN,
+      completedSession('https://cdn.example.test/thumb.png'),
+      {} as any
+    );
+
+    expect(result).toMatchObject({
+      status: 'completed',
+      postId: VIDEO_ID,
+      releaseURL: VIDEO_URL,
+      warning: { subject: THUMBNAIL_WARNING_SUBJECT },
+    });
+  });
+
+  it('completes without a warning when the thumbnail is applied', async () => {
+    jest.spyOn(google, 'youtube').mockReturnValue({
+      thumbnails: { set: jest.fn().mockResolvedValue({ data: {} }) },
+    } as any);
+
+    await expect(
+      new YoutubeProvider().finalizePost(
+        TOKEN,
+        completedSession('https://cdn.example.test/thumb.png'),
+        {} as any
+      )
+    ).resolves.toEqual({
+      status: 'completed',
+      postId: VIDEO_ID,
+      releaseURL: VIDEO_URL,
+    });
   });
 });
 

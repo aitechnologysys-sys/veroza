@@ -40,6 +40,7 @@ import {
   getProviderApproval,
   ProviderApproval,
 } from '@gitroom/nestjs-libraries/integrations/provider.approval.status';
+import { TumblrProvider } from '@gitroom/nestjs-libraries/integrations/social/tumblr.provider';
 
 export const socialIntegrationList: Array<SocialAbstract & SocialProvider> = [
   new XProvider(),
@@ -76,6 +77,7 @@ export const socialIntegrationList: Array<SocialAbstract & SocialProvider> = [
   new SkoolProvider(),
   new MeweProvider(),
   new MastodonCustomProvider(),
+  new TumblrProvider(),
 ];
 
 @Injectable()

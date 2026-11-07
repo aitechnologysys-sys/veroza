@@ -10,20 +10,22 @@ Pulling **from** upstream is safe and sends them nothing — see
 
 ## Where we stand right now
 
-Measured 7 Nov 2026 (was 232/21 on 16 Aug and 205/19 on 8 Aug). Re-measure with the
+Measured 7 Nov 2026, on `chore/upstream-sync-2026-11-07` after the four-step
+catch-up (before it: 959 behind, last common commit `f7f1f318` of 29 May 2026).
+These become `main`'s numbers once that branch is merged. Re-measure with the
 commands below, because this drifts every week:
 
 ```
-commits upstream has that we lack:   959   (releases v2.21.9 → v2.25.3, plus 56 after)
-commits we have that upstream lacks:  52
-last common commit:                   f7f1f318  (29 May 2026)
-files that conflict in a test merge: 119
-schema.prisma growth upstream:       ~940 lines, mostly in v2.24.0
+commits upstream has that we lack:     0
+commits we have that upstream lacks:  63   (on the sync branch)
+last common commit:                   5a131eb0  (6 Nov 2026, after v2.25.3)
+pending reviewed SQL:                 docs/migrations/2026-11-07-upstream-*.sql (3 files, in order)
 ```
 
-So we are about **five months behind**. That gap is the biggest reason to do this
-deliberately rather than casually. For the first catch-up, merge **release tag by
-release tag** (see [Step-by-step](#step-by-step-by-release-tag)).
+We are **current with upstream**. Keep it that way with small, frequent merges (see
+[Cadence](#cadence)). If a gap ever grows past ~150 commits again, merge **release tag
+by release tag** (see [Step-by-step](#step-by-step-by-release-tag)). The per-step
+record of the November catch-up is in [UPSTREAM-SYNC-LOG.md](./UPSTREAM-SYNC-LOG.md).
 
 With Claude Code, run the `/upstream-sync` skill
 (`.claude/skills/upstream-sync/SKILL.md`). It follows this document.
@@ -119,12 +121,12 @@ or in a feature branch.
 
 Plan made on 7 Nov 2026, using the per-tag measurement in the skill:
 
-| Step | Target | Upstream commits | Schema change |
-|---|---|---|---|
-| 1 | `v2.23.0` (folds in v2.21.9, v2.21.10, v2.22.1) | 170 | no |
-| 2 | `v2.24.0` | 269 | **yes, about 880 lines; review the SQL alone** |
-| 3 | `v2.25.1` (folds in v2.25.0) | 304 | small |
-| 4 | `v2.25.3` / `upstream/main` | 160 + 56 | tiny |
+| Step | Target | Upstream commits | Schema change | Status |
+|---|---|---|---|---|
+| 1 | `v2.23.0` (folds in v2.21.9, v2.21.10, v2.22.1) | 170 | no | done |
+| 2 | `v2.24.0` | 269 | **yes, about 880 lines; review the SQL alone** | done |
+| 3 | `v2.25.1` (folds in v2.25.0) | 304 | small | done |
+| 4 | `upstream/main` at `5a131eb0` (folds in v2.25.2, v2.25.3) | 216 | tiny (indexes) | done |
 
 ### The 25 conflict hotspots, and how to resolve each
 
@@ -198,6 +200,13 @@ survive every merge:
   refund endpoints are disabled (404).
 - Our refund-policy work (proration preview, portal, BillingEvent audit trail, #12/#17)
   lives in `stripe.service.ts`. Keep it.
+- **Every** `service: 'gitroom'` that upstream writes into subscription metadata or
+  checks on it becomes `'postaryx'`: `setToCancel` (cancel / un-cancel) writes it, and
+  `trackConversion` (Facebook pixel purchase) checks it. Grep new upstream code for
+  `'gitroom'` in `stripe.service.ts` on every sync. The one exception left as is: the
+  admin coupons' `metadata: { service: 'gitroom', organizationId }`, which nothing reads.
+- Upstream's automatic cancel of a duplicate subscription records a
+  `SUBSCRIPTION_CANCELED_IMMEDIATELY` BillingEvent (ours), because it issues no refund.
 
 Also keep our explicit `STRIPE_API_VERSION` pin in `stripe.service.ts`; upstream
 inherits the SDK default. If you bump the SDK, the pinned version must stay in
@@ -214,6 +223,7 @@ silently. Background: [billing-current-state.md](./billing-current-state.md).
 | `.github/workflows/build.yml` | **Keep our `push: branches: [main]`.** Upstream's bare `push:` matches every branch and double-builds each commit once a PR is open |
 | `.github/workflows/eslint.yml` | Ours only. Upstream's copy is the extensionless `eslint` file that never ran — if a merge resurrects it, delete it |
 | `.env.example` | Take theirs for new variables, keep our clarified comments |
+| `.github/workflows/deploy-aws.yml` | **Deleted, keep it deleted.** It dispatches Postiz's own AWS deploy (`gitroomhq/postiz-aws`). It is guarded to their repository, so it would only show as a skipped run here. If a merge brings it back, `git rm` it |
 | `.gitmodules` | **We deleted it, they still ship it.** It declared a `gitroomhq/public-api` submodule at `libraries/plugins/src/list/public-api` — a path that does not exist in this repo and that nothing imports. A merge that restores the file is a delete/modify conflict: `git rm .gitmodules` again |
 
 Why: [CONTAINMENT-DEPLOYMENT-PLAN.md](./CONTAINMENT-DEPLOYMENT-PLAN.md) §6.
@@ -249,6 +259,22 @@ unpublished Docs buttons hidden (#30).
 Rule: **if upstream fixed the same bug, take theirs and drop ours**, because that's
 one less difference to carry. Otherwise keep our behaviour and take their other changes.
 Upload limits are a product decision: keep 10 MB / 1 GB even if upstream changes its defaults.
+
+#### Group 4d — Rebrand and hidden-surface divergences (since Nov 2026)
+
+These came up on almost every file in the November catch-up. Rule: keep ours, take
+their logic and their `mobile:` / responsive classes on top.
+
+| What | Our side |
+|---|---|
+| Brand colour | Orange `#c2410c` (hover `#ea580c`) and the `btnPrimary` / `cardHover` / `textItemBlur` / `newBorder` tokens. Upstream's purple and pink (`#612BD3`, `#622FF6`, `#FC69FF`, `#D82D7E`, `#5520CB`, `#8b5cf6`) are recoloured, **including in files that merge without a conflict**: grep the merged diff for them before committing |
+| Fonts | Geist / Fraunces only. Upstream's Plus Jakarta Sans (now `fonts/plus-jakarta-sans`) is not wired into any layout |
+| Developer portal | `SHOW_DEVELOPER_PORTAL = false` in `settings.component.tsx` and `developer.icon.component.tsx` hides the Agents tab (public API, MCP) and the OAuth-app management under Apps. Upstream's directory connectors ("Add to Claude", "Official connector") stay off via `showPostizDirectoryConnectors` in `public.component.tsx`: they point at Postiz's listings |
+| Onboarding | Single step (connect channels). Upstream's agent and tutorial steps are not taken |
+| Sentry | Console levels from `SENTRY_CONSOLE_LEVELS` (default warn, error) and AI prompts only with `SENTRY_RECORD_AI_IO=true`. Upstream forwards every console level |
+| YouTube thumbnail after upload | `finalizePost` never throws once the video is live; it returns a `warning` (#28). Upstream's `PublishedWithError` path covers only `BadBody` and still throws on token errors |
+| Token refresh | `canRefreshToken === false` providers are never asked to refresh and skip upstream's concurrent-refresh wait |
+| User-facing "Postiz" | Rebranded, including outbound identifiers (WordPress User-Agent, Discord bot error) and the HubSpot install notice. Left alone only behind switched-off features (`MCP_SELF_HOSTED_RELAY`, hidden connectors) |
 
 #### Group 5 — Ordinary code conflicts (just read them)
 

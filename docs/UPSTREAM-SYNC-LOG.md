@@ -14,7 +14,7 @@ Branch `chore/upstream-sync-2026-11-07`, cut from `origin/main` at `45ea7360a`. 
 | – | `chore/fix-test-harness` (our branch, cut from `main`) | – | – | **merged in**: `896422ea` (own PR to `main` too) |
 | 2 | `v2.24.0` | 269 | yes, about 880 lines | **done**: `9902dbad` |
 | 3 | `v2.25.1` (folds in v2.25.0) | 304 | small | **done**: `91db3c53` |
-| 4 | `v2.25.3` / `upstream/main` | 160 + 56 | tiny | pending |
+| 4 | `upstream/main` at `5a131eb0` (folds in v2.25.2, v2.25.3) | 216 | tiny (indexes) | **done**: `2e11b7ee` |
 
 ---
 
@@ -182,3 +182,55 @@ Open, no decision needed to continue:
   - `no.auth.integrations.reconnect.spec.ts`: a missing code verifier is still rejected, now with "This connection link expired or was already used".
   - `refresh.integration.service.spec.ts`: a provider that cannot refresh still gets `refreshNeeded`, but no longer also calls `disconnectChannel` (that sent a second, cause-less email).
 - Next, as planned: unit tests for the Stripe duplicate/survivor paths (the `'postaryx'` tag on cancel, terminal statuses, the new audit record), the `SHOW_DEVELOPER_PORTAL` gating of the Agents tab, and the earlier list (provider selection, Polar no-ops, upload limits, `publishedNotification`, new "Postiz" strings).
+
+---
+
+## Step 4 (`upstream/main` at `5a131eb0`) is merged and verified
+
+Merged and committed on 7 Nov 2026 as `2e11b7ee`. 216 upstream commits (v2.25.2, v2.25.3 and 56 commits after it, mostly fixes); 33 conflicted files (15 of them translations). The sync branch is now **0 commits behind upstream**. No push.
+
+Why `upstream/main` instead of stopping at `v2.25.3`: the 56 later commits are almost all provider and billing fixes (token refresh races, TikTok chunk retries, Instagram, Bluesky, invites, streaks), and the conflict count only grew from 28 to 33.
+
+**Verification**
+
+- Backend, orchestrator and frontend all build.
+- `check-banned-providers` passes (`vk.provider.ts` deleted again). No leftover conflict markers; the only `diff --check` hit is trailing whitespace in upstream's vendored font licence (`fonts/plus-jakarta-sans/OFL.txt`), left as is. The `process.env.STRIPE_*` / `POLAR_*` reads are the same 9 config reads.
+- **`pnpm test`: 277 passed, 0 failed.**
+- **Database change, not applied anywhere:** `docs/migrations/2026-11-07-upstream-main-5a131eb0.sql`. Purely additive: `User.timezoneName` (nullable) and 5 indexes. Apply it after the v2.24.0 and v2.25.1 files. The two new `Post` indexes lock writes while they build, so consider `CREATE INDEX CONCURRENTLY` for those in production.
+
+**How conflicts were resolved**
+
+| Area | Resolution |
+|---|---|
+| Mechanical | VK deleted again; upstream's new `.github/workflows/deploy-aws.yml` (Postiz's own AWS deploy) **removed**, new rule in Group 3. Translations: key-level merge; the new HubSpot notice and the media-settings tooltip were rebranded in all 15 locales and in the code defaults |
+| `.env.example` | Kept ours (`EMAIL_REPLY_TO` etc.) and added upstream's `SES_*`, `HUBSPOT_*` and `RUNPOD_API_URL` |
+| **Stripe** | Took upstream's 3-D Secure handling when a trial is ended early or a plan changes (`getRequiredActionFromSubscription`), the trial-end fix for already-paying subscriptions, and the first-payment-only pixel tracking (`trackConversion`). **Changed its `metadata.service !== 'gitroom'` check to `'postaryx'`**, otherwise no conversion would ever be tracked. Kept our audit records: SUBSCRIPTION_CREATED, TRIAL_FINISHED, PLAN_CHANGED, PAYMENT_SUCCEEDED, plus the PAST_DUE reset on payment |
+| Email | Took upstream's SES provider (opt-in with `EMAIL_PROVIDER="ses"`) and the `List-Unsubscribe` header on every provider; kept our `EMAIL_REPLY_TO` fallback |
+| YouTube | Upstream fixed the same "thumbnail fails after the upload" bug, but only for `BadBody` (`PublishedWithError`); a token error still throws after the video is live. **Kept ours** (#28: never throws, returns a warning) and took their quota message, phone-verification message, `postDbId` and the media-thumbnail fallback |
+| Token refresh | Took upstream's wait for a concurrent refresh and "notify only once per disconnect". Providers with `canRefreshToken === false` skip the wait (nothing can refresh them concurrently) |
+| Layouts and fonts | Kept our fonts (Geist / Fraunces) in all three layouts and the main layout; upstream's Jakarta Sans font module is unused. Took upstream's removal of PostHog (we never configured it) and the user-timezone sync |
+| Settings | Kept the Agents tab behind `SHOW_DEVELOPER_PORTAL`, with upstream's new "Agents / Dev" label |
+| Other | Backend: kept `disarmWatchdog()`, added upstream's ALB keep-alive timeouts. Bluesky: upstream's clearer login errors plus our `logProviderError`. Local storage: kept our `resolveLocalPath` delete, which already covers upstream's path-traversal fix and tolerates missing files. Sentry: kept ours (configurable console levels, AI prompts opt-in). Onboarding: kept single step. Date picker: upstream's timezone-aware "today", our colour. Pre-condition and Discord error texts rebranded |
+| Colours | 3 more upstream purples recoloured (billing, notifications, date picker) |
+| Workflows | No workflow file changed. `post.activity.ts` gained internal `PublishedWithError` handling (no activity parameter change) |
+
+**Questions and your answers**
+
+| Question | Answer |
+|---|---|
+| Commit step 4 and do the finish step? | **Yes.** Committed as `2e11b7ee`, not pushed |
+
+**Unit and integration tests: status**
+
+- 277 passed, 0 failed. `refresh.integration.service.spec.ts` mock updated for upstream's new calls (`getIntegrationById`; `refreshNeeded` now returns whether this attempt flagged the channel).
+- Still to write, as planned: Stripe `'postaryx'` tag checks (`processWebhook`, `setToCancel`, `trackConversion`), the duplicate/survivor paths and their audit records, `SHOW_DEVELOPER_PORTAL` gating, provider selection, Polar no-ops, upload limits, `publishedNotification`, and a check against new "Postiz" strings and upstream purples.
+
+---
+
+## Sync summary (November 2026)
+
+- Four steps, 959 upstream commits, about 200 conflicted files in total. The branch is level with upstream `5a131eb0`.
+- **Before deploying:** apply the three SQL files in order (`upstream-v2.24.0`, `upstream-v2.25.1`, `upstream-main-5a131eb0`) per `docs/database-migrations.md`, then follow `docs/CI-BUILD-CUTOVER.md`.
+- **Open items:** Polar lacks `getInvoices` (billing history errors for a Polar org; Polar is parked). Duplicate Stripe subscriptions are cancelled without a refund (audit record only). Copy upstream's useful `CLAUDE.md` engineering rules into ours.
+- Feature branches should merge `main` **after** this lands; rerere replays the same resolutions.
+- Next sync: in 2–4 weeks.

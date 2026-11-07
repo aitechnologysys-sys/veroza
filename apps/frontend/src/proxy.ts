@@ -55,7 +55,10 @@ export async function proxy(request: NextRequest) {
     // /public, so anything in a subdirectory reaches this point and, with no
     // auth cookie, gets redirected to /auth — which is why the logo broke on
     // sign in and sign up once it moved from /postaryx.svg into /logos/.
-    nextUrl.pathname.startsWith('/logos/')
+    nextUrl.pathname.startsWith('/logos/') ||
+    // the consent screen of MCP / OAuth clients handles signed-out visitors
+    // itself (sign in and come back, or connect a self-hosted instance)
+    nextUrl.pathname.startsWith('/oauth/authorize')
   ) {
     return topResponse;
   }
@@ -130,7 +133,7 @@ export async function proxy(request: NextRequest) {
               domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
             }
           : {}),
-        expires: new Date(Date.now() + 15 * 60 * 1000),
+        expires: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
       });
       return redirect;
     }
@@ -160,7 +163,7 @@ export async function proxy(request: NextRequest) {
                 domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
               }
             : {}),
-          expires: new Date(Date.now() + 15 * 60 * 1000),
+          expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
         });
       }
       return redirect;

@@ -26,6 +26,7 @@ jest.mock('@gitroom/nestjs-libraries/redis/redis.service', () => ({
 }));
 
 import { NoAuthIntegrationsController } from '@gitroom/backend/api/routes/no.auth.integrations.controller';
+import { NotEnoughScopes } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 
 const STATE = 'STATE123';
 const ORG = { id: 'org-1', isTrailing: false };
@@ -49,6 +50,15 @@ const buildController = (provider: any) => {
     {
       createOrUpdateIntegration,
       checkPreviousConnections: jest.fn(async () => false),
+      // Upstream v2.24.0 (MIGRATE_PROVIDERS). With no migration configured the
+      // real migrateIntegration rejects any reconnect whose id differs from the
+      // server-side state, which is the behaviour these tests pin down.
+      migrateIntegration: jest.fn(async () => {
+        throw new NotEnoughScopes(
+          'Please refresh the channel that needs to be refreshed'
+        );
+      }),
+      migrateIntegrationOnConnect: jest.fn(async () => undefined),
     } as any,
     { startRefreshWorkflow: jest.fn(async () => undefined) } as any,
     { getOrgById: jest.fn(async () => ORG) } as any
@@ -267,7 +277,7 @@ describe('OAuth callback — state validation and consumption', () => {
 
     await expect(
       controller.connectSocialMedia('instagram', callbackBody() as any)
-    ).rejects.toThrow(/invalid state/i);
+    ).rejects.toThrow(/link expired or was already used/i);
 
     expect(createOrUpdateIntegration).not.toHaveBeenCalled();
   });

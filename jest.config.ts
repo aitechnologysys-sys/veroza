@@ -26,9 +26,12 @@ export default {
       },
     ],
   },
-  // ESM-only packages pulled in by nostr-tools (Nostr provider) must be
-  // transpiled too, or Jest fails on their `export` syntax.
-  transformIgnorePatterns: ['/node_modules/(?!(@noble|@scure|nostr-tools)/)'],
+  // ESM-only packages must be transpiled too, or Jest fails on their `export`
+  // syntax: nostr-tools (Nostr provider) and file-type (streaming upload
+  // validation, upstream v2.24.0) with their dependencies.
+  transformIgnorePatterns: [
+    '/node_modules/(?!(@noble|@scure|nostr-tools|file-type|strtok3|token-types|@tokenizer|uint8array-extras|@borewit)/)',
+  ],
   moduleNameMapper: {
     '^@gitroom/backend/(.*)$': '<rootDir>/apps/backend/src/$1',
     '^@gitroom/frontend/(.*)$': '<rootDir>/apps/frontend/src/$1',

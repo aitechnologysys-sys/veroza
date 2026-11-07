@@ -72,11 +72,9 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
     };
   }
 
-  // nostr-tools signs with the raw 32-byte key, but we store it as a hex
-  // string, so it has to be decoded before every getPublicKey/finalizeEvent.
-  private hexToBytes(hex: string): Uint8Array {
+  private secretKey(password: string) {
     return Uint8Array.from(
-      hex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
+      (password.match(/.{1,2}/g) || []).map((byte: any) => parseInt(byte, 16))
     );
   }
 
@@ -146,7 +144,7 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
     try {
       const body = JSON.parse(Buffer.from(params.code, 'base64').toString());
 
-      const pubkey = getPublicKey(this.hexToBytes(body.password));
+      const pubkey = getPublicKey(this.secretKey(body.password));
 
       const user = await this.findRelayInformation(pubkey);
 
@@ -187,7 +185,7 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
         tags: [],
         created_at: Math.floor(Date.now() / 1000),
       },
-      this.hexToBytes(password)
+      this.secretKey(password)
     );
 
     const eventId = await this.publish(id, textEvent);
@@ -224,7 +222,7 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
         ],
         created_at: Math.floor(Date.now() / 1000),
       },
-      this.hexToBytes(password)
+      this.secretKey(password)
     );
 
     const eventId = await this.publish(id, textEvent);

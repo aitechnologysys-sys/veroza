@@ -95,8 +95,10 @@ describe('refresh — providers that cannot refresh', () => {
       'org-1',
       'row-1'
     );
-    // disconnectChannel only sets refreshNeeded; nothing is deleted or disabled.
-    expect(integrationService.disconnectChannel).toHaveBeenCalled();
+    // Upstream dropped the extra disconnectChannel call (it only set the same
+    // refreshNeeded flag and sent a second, cause-less email); nothing is
+    // deleted or disabled.
+    expect(integrationService.disconnectChannel).not.toHaveBeenCalled();
   });
 
   it('tells the user, and returns false rather than a broken credential', async () => {

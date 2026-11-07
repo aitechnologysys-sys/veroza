@@ -277,7 +277,7 @@ describe('OAuth callback — state validation and consumption', () => {
 
     await expect(
       controller.connectSocialMedia('instagram', callbackBody() as any)
-    ).rejects.toThrow(/invalid state/i);
+    ).rejects.toThrow(/link expired or was already used/i);
 
     expect(createOrUpdateIntegration).not.toHaveBeenCalled();
   });

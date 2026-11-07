@@ -30,7 +30,7 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
     'threads_manage_insights',
     // 'threads_profile_discovery',
   ];
-  override maxConcurrentJob = 2; // Threads has moderate rate limits
+  override maxConcurrentJob = 20; // Threads limits are per profile
   refreshCron = true;
 
   editor = 'normal' as const;
@@ -40,7 +40,7 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
 
   override handleErrors(body: string):
     | {
-        type: 'refresh-token' | 'bad-body';
+        type: 'refresh-token' | 'bad-body' | 'retry';
         value: string;
       }
     | undefined {
@@ -68,6 +68,13 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
         type: 'bad-body',
         value:
           "One of the media URLs is invalid or inaccessible, make sure it's being uploaded to Postaryx first",
+      };
+    }
+    if (body.includes('4279009')) {
+      return {
+        type: 'retry',
+        value:
+          'Threads could not find the media container yet, please try again in a few seconds',
       };
     }
     if (body.includes('text must be at most 500 characters')) {
@@ -185,7 +192,9 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
         this.identifier,
         JSON.stringify({ status, error_message }),
         '{}',
-        error_message || 'Threads could not process the media'
+        error_message && error_message !== 'UNKNOWN'
+          ? error_message
+          : 'Threads could not process the media, please check the media format and try again'
       );
     }
 
@@ -867,8 +876,11 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
       }
 
       return result;
-    } catch (err) {
-      console.error('Error fetching Threads post analytics:', err);
+    } catch (err: any) {
+      console.error(
+        'Error fetching Threads post analytics:',
+        err?.cause?.code || err?.message || err
+      );
       return [];
     }
   }

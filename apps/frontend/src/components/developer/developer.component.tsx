@@ -5,7 +5,10 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import useSWR from 'swr';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useDecisionModal, useModals } from '@gitroom/frontend/components/layout/new-modal';
-import { MediaBox } from '@gitroom/frontend/components/media/media.component';
+import {
+  MediaBox,
+  mediaLibrarySize,
+} from '@gitroom/frontend/components/media/media.component';
 import copy from 'copy-to-clipboard';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { docsLinks } from '@gitroom/frontend/components/developer/docs.links';
@@ -103,8 +106,8 @@ export const DeveloperComponent: FC = () => {
       askClose: false,
       closeOnEscape: true,
       fullScreen: true,
-      size: 'calc(100% - 80px)',
-      height: 'calc(100% - 80px)',
+      size: mediaLibrarySize(),
+      height: mediaLibrarySize(),
       children: (close: () => void) => (
         <MediaBox
           setMedia={changeMedia}
@@ -230,7 +233,7 @@ export const DeveloperComponent: FC = () => {
           )}
         </div>
         <div className="bg-newBgColorInner rounded-[12px] border border-newBorder overflow-hidden">
-          <div className="bg-newBgColorInner px-[20px] py-[14px] border-b border-newBorder flex items-start justify-between gap-[12px]">
+          <div className="bg-newBgColorInner px-[20px] mobile:px-[14px] py-[14px] border-b border-newBorder flex items-start justify-between gap-[12px] mobile:flex-col">
             <div>
               <div className="text-[16px] font-[600]">
                 {t('oauth_application', 'OAuth Application')}
@@ -243,7 +246,7 @@ export const DeveloperComponent: FC = () => {
               </div>
             </div>
             {docsLinks.oauth.published && (
-              <div className="flex gap-[6px] shrink-0 pt-[2px]">
+              <div className="flex flex-wrap gap-[6px] shrink-0 pt-[2px]">
                 <a
                   className="cursor-pointer px-[16px] h-[36px] bg-btnPrimary hover:opacity-95 text-white transition-colors rounded-[10px] text-[14px] font-[600] flex items-center gap-[6px]"
                   href={docsLinks.oauth.href}
@@ -296,7 +299,7 @@ export const DeveloperComponent: FC = () => {
               )}
             </div>
           </div>
-          <div className="p-[20px] flex flex-col gap-[16px]">
+          <div className="p-[20px] mobile:p-[14px] flex flex-col gap-[16px]">
             <div className="flex flex-col gap-[6px]">
               <label className="text-[14px] font-[600] text-textItemBlur">
                 {t('app_name', 'App Name')} *
@@ -357,7 +360,7 @@ export const DeveloperComponent: FC = () => {
                 placeholder="https://yourapp.com/callback"
               />
             </div>
-            <div className="flex gap-[8px]">
+            <div className="flex flex-wrap gap-[8px]">
               <button
                 type="button"
                 onClick={createApp}
@@ -395,7 +398,7 @@ export const DeveloperComponent: FC = () => {
       </div>
       {/* App details / edit */}
       <div className="bg-newBgColorInner rounded-[12px] border border-newBorder overflow-hidden">
-        <div className="bg-newBgColorInner px-[20px] py-[14px] border-b border-newBorder flex items-start justify-between gap-[12px]">
+        <div className="bg-newBgColorInner px-[20px] mobile:px-[14px] py-[14px] border-b border-newBorder flex items-start justify-between gap-[12px] mobile:flex-col">
           <div>
             <div className="text-[16px] font-[600]">
               {t('oauth_application', 'OAuth Application')}
@@ -408,7 +411,7 @@ export const DeveloperComponent: FC = () => {
             </div>
           </div>
           {docsLinks.oauth.published && (
-            <div className="flex gap-[6px] shrink-0 pt-[2px]">
+            <div className="flex flex-wrap gap-[6px] shrink-0 pt-[2px]">
               <a
                 className="cursor-pointer px-[16px] h-[36px] bg-btnPrimary hover:opacity-95 text-white transition-colors rounded-[10px] text-[14px] font-[600] flex items-center gap-[6px]"
                 href={docsLinks.oauth.href}
@@ -422,7 +425,7 @@ export const DeveloperComponent: FC = () => {
         </div>
 
         {editing ? (
-          <div className="p-[20px] flex flex-col gap-[16px]">
+          <div className="p-[20px] mobile:p-[14px] flex flex-col gap-[16px]">
             <div className="flex flex-col gap-[6px]">
               <label className="text-[14px] font-[600] text-textItemBlur">
                 {t('app_name', 'App Name')} *
@@ -483,7 +486,7 @@ export const DeveloperComponent: FC = () => {
                 placeholder="https://yourapp.com/callback"
               />
             </div>
-            <div className="flex gap-[8px]">
+            <div className="flex flex-wrap gap-[8px]">
               <button
                 type="button"
                 onClick={updateApp}
@@ -501,7 +504,7 @@ export const DeveloperComponent: FC = () => {
             </div>
           </div>
         ) : (
-          <div className="p-[20px] flex flex-col gap-[16px]">
+          <div className="p-[20px] mobile:p-[14px] flex flex-col gap-[16px]">
             <div className="flex items-center gap-[12px]">
               {app.picture?.path ? (
                 <img
@@ -527,9 +530,9 @@ export const DeveloperComponent: FC = () => {
               <div className="text-[14px] font-[600] text-textItemBlur">
                 {t('redirect_url', 'Redirect URL')}
               </div>
-              <div className="text-[14px]">{app.redirectUrl}</div>
+              <div className="text-[14px] break-all">{app.redirectUrl}</div>
             </div>
-            <div className="flex gap-[8px]">
+            <div className="flex flex-wrap gap-[8px]">
               <button
                 type="button"
                 onClick={startEditing}
@@ -550,7 +553,7 @@ export const DeveloperComponent: FC = () => {
             {t('credentials', 'Credentials')}
           </div>
         </div>
-        <div className="p-[20px] flex flex-col gap-[16px]">
+        <div className="p-[20px] mobile:p-[14px] flex flex-col gap-[16px]">
           <div className="flex flex-col gap-[6px]">
             <div className="text-[14px] font-[600] text-textItemBlur">
               {t('client_id', 'Client ID')}
@@ -563,7 +566,7 @@ export const DeveloperComponent: FC = () => {
             <div className="text-[14px] font-[600] text-textItemBlur">
               {t('client_secret', 'Client Secret')}
             </div>
-            <div className="bg-newBgColorInner border border-newBorder rounded-[8px] px-[16px] h-[44px] flex items-center overflow-hidden">
+            <div className="bg-newBgColorInner border border-newBorder rounded-[8px] px-[16px] h-[44px] mobile:h-auto mobile:min-h-[44px] mobile:py-[10px] flex items-center overflow-hidden">
               {plaintextSecret ? (
                 <code className="font-mono text-[14px] flex-1 truncate">
                   {plaintextSecret}
@@ -578,7 +581,7 @@ export const DeveloperComponent: FC = () => {
               )}
             </div>
           </div>
-          <div className="flex gap-[8px]">
+          <div className="flex flex-wrap gap-[8px]">
             <CopyButton text={app.clientId} label={t('copy_id', 'Copy ID')} />
             {plaintextSecret && (
               <CopyButton

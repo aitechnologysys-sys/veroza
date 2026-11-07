@@ -151,6 +151,7 @@ model UserOrganization {
   user           User         @relation(fields: [userId], references: [id])
 
   @@unique([userId, organizationId])
+  @@index([organizationId])
   @@index([disabled])
 }
 
@@ -396,6 +397,7 @@ model Integration {
   internalId            String
   organizationId        String
   name                  String
+  customName            String?
   picture               String?
   providerIdentifier    String
   type                  String
@@ -455,18 +457,28 @@ model Comments {
   content        String
   organizationId String
   postId         String
-  userId         String
+  userId         String?
+  displayName    String?
+  parentId       String?
+  anchorStart    Int?
+  anchorEnd      Int?
+  anchorQuote    String?
+  resolvedAt     DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   deletedAt      DateTime?
   organization   Organization @relation(fields: [organizationId], references: [id])
   post           Post         @relation(fields: [postId], references: [id])
-  user           User         @relation(fields: [userId], references: [id])
+  user           User?        @relation(fields: [userId], references: [id])
+  parent         Comments?    @relation("CommentReplies", fields: [parentId], references: [id])
+  replies        Comments[]   @relation("CommentReplies")
 
   @@index([createdAt])
   @@index([organizationId])
   @@index([userId])
   @@index([postId])
+  @@index([parentId])
+  @@index([resolvedAt])
   @@index([deletedAt])
 }
 
@@ -479,6 +491,7 @@ model Post {
   content                    String
   delay                      Int                       @default(0)
   group                      String
+  batchId                    String?
   title                      String?
   description                String?
   parentPostId               String?
@@ -509,6 +522,7 @@ model Post {
   tags                       TagsPosts[]
 
   @@index([group])
+  @@index([batchId])
   @@index([deletedAt])
   @@index([publishDate])
   @@index([state])
@@ -1696,23 +1710,24 @@ model mastra_workspaces {
 }
 
 model OAuthApp {
-  id                      String               @id @default(uuid())
-  organizationId          String?
-  name                    String
-  description             String?
-  pictureId               String?
-  redirectUrl             String
-  redirectUris            String?
-  clientId                String               @unique
-  clientSecret            String?
-  dynamic                 Boolean              @default(false)
-  tokenEndpointAuthMethod String?
-  createdAt               DateTime             @default(now())
-  updatedAt               DateTime             @updatedAt
-  deletedAt               DateTime?
-  organization            Organization?        @relation(fields: [organizationId], references: [id])
-  picture                 Media?               @relation(fields: [pictureId], references: [id])
-  authorizations          OAuthAuthorization[]
+  id                       String                         @id @default(uuid())
+  organizationId           String?
+  name                     String
+  description              String?
+  pictureId                String?
+  redirectUrl              String
+  redirectUris             String?
+  clientId                 String                         @unique
+  clientSecret             String?
+  dynamic                  Boolean                        @default(false)
+  tokenEndpointAuthMethod  String?
+  createdAt                DateTime                       @default(now())
+  updatedAt                DateTime                       @updatedAt
+  deletedAt                DateTime?
+  organization             Organization?                  @relation(fields: [organizationId], references: [id])
+  picture                  Media?                         @relation(fields: [pictureId], references: [id])
+  authorizations           OAuthAuthorization[]
+  selfHostedAuthorizations OAuthSelfHostedAuthorization[]
 
   @@unique([organizationId, deletedAt])
   @@index([clientId])
@@ -1746,6 +1761,28 @@ model OAuthAuthorization {
   @@index([userId])
   @@index([organizationId])
   @@index([revokedAt])
+}
+
+model OAuthSelfHostedAuthorization {
+  id                  String    @id @default(uuid())
+  oauthAppId          String
+  mcpUrl              String
+  apiKey              String
+  email               String?
+  accessToken         String?
+  authorizationCode   String?
+  codeExpiresAt       DateTime?
+  codeChallenge       String?
+  codeChallengeMethod String?
+  redirectUri         String?
+  revokedAt           DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  oauthApp            OAuthApp  @relation(fields: [oauthAppId], references: [id])
+
+  @@index([accessToken])
+  @@index([authorizationCode])
+  @@index([oauthAppId])
 }
 
 enum OrderStatus {

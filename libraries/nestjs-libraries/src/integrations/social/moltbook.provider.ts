@@ -9,6 +9,7 @@ import {
   BadBody,
   SocialAbstract,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import { MoltbookDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/moltbook.dto';
 import dayjs from 'dayjs';
 import { Integration } from '@prisma/client';
 import { timer } from '@gitroom/helpers/utils/timer';
@@ -26,6 +27,7 @@ export class MoltbookProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 1; // Moltbook: 1 post / 30 min, 1 comment / 20 s
   identifier = 'moltbook';
   name = 'Moltbook';
+  dto = MoltbookDto;
   isBetweenSteps = false;
   scopes = [] as string[];
   isWeb3 = true;

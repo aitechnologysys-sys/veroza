@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
-import useSWR, { useSWRConfig } from 'swr';
+import { useState, useCallback } from 'react';
+import { useSWRConfig } from 'swr';
 import { useUser } from '../layout/user.context';
 import copy from 'copy-to-clipboard';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -9,7 +9,6 @@ import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useDecisionModal } from '@gitroom/frontend/components/layout/new-modal';
-import { DeveloperComponent } from '@gitroom/frontend/components/developer/developer.component';
 import { McpClientIcon } from '@gitroom/frontend/components/public-api/mcp.client.icons';
 import clsx from 'clsx';
 import { docsLinks } from '@gitroom/frontend/components/developer/docs.links';
@@ -64,6 +63,17 @@ export type AnyMcpClient = RemoteMcpClient | ChatOnlyMcpClient | McpClient;
 // oauth: no API key, the client registers itself (DCR) and the user signs in to Postaryx
 // apikey: the organization API key, as a Bearer header (or inside the URL for remote clients)
 export type McpAuth = 'oauth' | 'apikey';
+
+// Only the self-hosted docker images are built with a version
+export const isSelfHosted = !!process.env.NEXT_PUBLIC_VERSION;
+
+// The directory listings behind the "Official connector" tab
+const officialConnectorClients = [
+  'Claude',
+  'ChatGPT',
+  'Cursor',
+  'Grok Bot',
+] as const;
 
 export const getMcpOauthUrl = (mcpBase: string) =>
   `${mcpBase}/mcp-oauth-dynamic`;
@@ -307,9 +317,15 @@ const McpSection = ({
   mcpBase: string;
 }) => {
   const t = useT();
-  const { billingEnabled } = useVariables();
   const [activeClient, setActiveClient] = useState<AnyMcpClient>('Claude');
-  const [auth, setAuth] = useState<McpAuth>('oauth');
+  // Postaryx: the directory listings are Postiz's, never offered here
+  const officialConnectors = showPostizDirectoryConnectors;
+  // the directory connectors come first wherever they work
+  const tabs: Array<'official' | McpAuth> = officialConnectors
+    ? ['official', 'oauth', 'apikey']
+    : ['oauth', 'apikey'];
+  const [tab, setTab] = useState(tabs[0]);
+  const auth: McpAuth = tab === 'apikey' ? 'apikey' : 'oauth';
   const [revealed, setRevealed] = useState(false);
 
   const { config, hint } = getMcpConfig(
@@ -333,7 +349,7 @@ const McpSection = ({
 
   return (
     <div className="bg-newBgColorInner rounded-[12px] border border-newBorder overflow-hidden">
-      <div className="bg-newBgColorInner px-[20px] py-[14px] border-b border-newBorder flex items-start justify-between gap-[12px]">
+      <div className="bg-newBgColorInner px-[20px] mobile:px-[14px] py-[14px] border-b border-newBorder flex items-start justify-between gap-[12px] mobile:flex-col">
         <div>
           <div className="text-[16px] font-[600]">
             {t('mcp_client_configuration', 'MCP Client Configuration')}
@@ -346,7 +362,7 @@ const McpSection = ({
           </div>
         </div>
         {docsLinks.mcp.published && (
-          <div className="flex gap-[6px] shrink-0 pt-[2px]">
+          <div className="flex flex-wrap gap-[6px] shrink-0 pt-[2px]">
             <a
               className="cursor-pointer px-[16px] h-[36px] bg-btnPrimary hover:opacity-95 text-white transition-colors rounded-[10px] text-[14px] font-[600] flex items-center gap-[6px]"
               href={docsLinks.mcp.href}
@@ -358,26 +374,28 @@ const McpSection = ({
           </div>
         )}
       </div>
-      <div className="p-[20px] flex flex-col gap-[16px]">
-        {!chatOnly && (
+      <div className="p-[20px] mobile:p-[14px] flex flex-col gap-[16px]">
+        {(tab === 'official' || !chatOnly) && (
           <div className="flex flex-col gap-[6px]">
             <div className="text-[14px] font-[600] text-textItemBlur">
               {t('auth_method', 'Authentication')}
             </div>
-            <div className="flex gap-[6px]">
-              {(['oauth', 'apikey'] as const).map((m) => (
+            <div className="flex flex-wrap gap-[6px]">
+              {tabs.map((m) => (
                 <button
                   key={m}
                   type="button"
                   className={clsx(
                     'cursor-pointer px-[14px] h-[36px] text-[14px] rounded-[10px] transition-colors',
-                    auth === m
+                    tab === m
                       ? 'bg-btnPrimary text-white font-[600]'
                       : 'bg-btnSimple text-textItemBlur font-[500] hover:bg-boxHover hover:text-textColor'
                   )}
-                  onClick={() => setAuth(m)}
+                  onClick={() => setTab(m)}
                 >
-                  {m === 'oauth'
+                  {m === 'official'
+                    ? t('official_connector', 'Official connector')
+                    : m === 'oauth'
                     ? t('sign_in_no_api_key', 'Sign in with Postaryx (no API key)')
                     : t('api_key', 'API Key')}
                 </button>
@@ -385,6 +403,42 @@ const McpSection = ({
             </div>
           </div>
         )}
+        {tab === 'official' ? (
+          <div className="flex flex-col gap-[8px]">
+            <div className="text-[12px] text-customColor18 font-[500]">
+              {isSelfHosted
+                ? t(
+                    'connector_self_hosted_description',
+                    'The official connector works with self-hosted Postiz too. When asked to sign in, choose "Use self-hosted" and enter {{url}} with your API key.',
+                    { url: mcpBase, interpolation: { escapeValue: false } }
+                  )
+                : t(
+                    'connector_onboarding_description',
+                    'The fastest way: add Postiz with one click, you will be asked to sign in'
+                  )}
+            </div>
+            <div className="flex flex-wrap gap-[8px]">
+              {officialConnectorClients.map((client) => (
+                <a
+                  key={client}
+                  className="cursor-pointer px-[16px] h-[36px] bg-[#c2410c] hover:bg-[#ea580c] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[8px]"
+                  href={mcpConnectorUrls[client]}
+                  target="_blank"
+                >
+                  <McpClientIcon client={client} />
+                  {client === 'Claude'
+                    ? t('add_to_claude', 'Add to Claude')
+                    : client === 'ChatGPT'
+                    ? t('add_to_chatgpt', 'Add to ChatGPT')
+                    : client === 'Cursor'
+                    ? t('add_to_cursor', 'Add to Cursor')
+                    : t('add_to_grok_bot', 'Add to Grok Bot')}
+                </a>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
         <div className="flex flex-col gap-[6px]">
           <div className="text-[14px] font-[600] text-textItemBlur">
             {t('mcp_client', 'Client')}
@@ -427,7 +481,7 @@ const McpSection = ({
           <pre className="font-mono bg-newBgColorInner border border-newBorder rounded-[8px] p-[16px] text-[13px] whitespace-pre-wrap break-all overflow-x-auto leading-[1.6]">
             {maskedConfig}
           </pre>
-          <div className="flex gap-[8px]">
+          <div className="flex flex-wrap gap-[8px]">
             {auth === 'apikey' && !chatOnly && (
               <button
                 type="button"
@@ -464,9 +518,9 @@ const McpSection = ({
             {!isRemoteMcpClient(activeClient) && !chatOnly && (
               <CopyButton text={baseUrl} label={t('copy_url', 'Copy URL')} />
             )}
-            {activeClient === 'Claude' && showPostizDirectoryConnectors && (
+            {activeClient === 'Claude' && officialConnectors && (
               <a
-                className="cursor-pointer px-[16px] h-[36px] bg-[#612BD3] hover:bg-[#5520CB] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
+                className="cursor-pointer px-[16px] h-[36px] bg-[#c2410c] hover:bg-[#ea580c] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
                 href={mcpConnectorUrls.Claude}
                 target="_blank"
               >
@@ -474,9 +528,9 @@ const McpSection = ({
                 {t('add_to_claude', 'Add to Claude')}
               </a>
             )}
-            {activeClient === 'ChatGPT' && showPostizDirectoryConnectors && (
+            {activeClient === 'ChatGPT' && officialConnectors && (
               <a
-                className="cursor-pointer px-[16px] h-[36px] bg-[#612BD3] hover:bg-[#5520CB] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
+                className="cursor-pointer px-[16px] h-[36px] bg-[#c2410c] hover:bg-[#ea580c] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
                 href={mcpConnectorUrls.ChatGPT}
                 target="_blank"
               >
@@ -484,9 +538,9 @@ const McpSection = ({
                 {t('add_to_chatgpt', 'Add to ChatGPT')}
               </a>
             )}
-            {(activeClient as string) === 'Grok Bot' && showPostizDirectoryConnectors && (
+            {(activeClient as string) === 'Grok Bot' && officialConnectors && (
               <a
-                className="cursor-pointer px-[16px] h-[36px] bg-[#612BD3] hover:bg-[#5520CB] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
+                className="cursor-pointer px-[16px] h-[36px] bg-[#c2410c] hover:bg-[#ea580c] text-white transition-colors rounded-[8px] text-[13px] font-[600] flex items-center gap-[6px]"
                 href={mcpConnectorUrls['Grok Bot']}
                 target="_blank"
               >
@@ -496,6 +550,8 @@ const McpSection = ({
             )}
           </div>
         </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -557,7 +613,7 @@ const CliSection = ({ apiKey }: { apiKey: string }) => {
 
   return (
     <div className="bg-newBgColorInner rounded-[12px] border border-newBorder overflow-hidden">
-      <div className="bg-newBgColorInner px-[20px] py-[14px] border-b border-newBorder flex items-start justify-between gap-[12px]">
+      <div className="bg-newBgColorInner px-[20px] mobile:px-[14px] py-[14px] border-b border-newBorder flex items-start justify-between gap-[12px] mobile:flex-col">
         <div>
           <div className="text-[16px] font-[600]">
             {t('cli_and_skills', 'CLI & AI Skills')}
@@ -570,7 +626,7 @@ const CliSection = ({ apiKey }: { apiKey: string }) => {
           </div>
         </div>
         {docsLinks.cli.published && (
-          <div className="flex gap-[6px] shrink-0 pt-[2px]">
+          <div className="flex flex-wrap gap-[6px] shrink-0 pt-[2px]">
             <a
               className="cursor-pointer px-[16px] h-[36px] bg-btnPrimary hover:opacity-95 text-white transition-colors rounded-[10px] text-[14px] font-[600] flex items-center gap-[6px]"
               href={docsLinks.cli.href}
@@ -582,7 +638,7 @@ const CliSection = ({ apiKey }: { apiKey: string }) => {
           </div>
         )}
       </div>
-      <div className="p-[20px] flex flex-col gap-[16px]">
+      <div className="p-[20px] mobile:p-[14px] flex flex-col gap-[16px]">
         <div className="flex gap-[6px]">
           {(['local', 'ci'] as const).map((m) => (
             <button
@@ -612,7 +668,7 @@ const CliSection = ({ apiKey }: { apiKey: string }) => {
             </pre>
           </div>
         ))}
-        <div className="flex gap-[8px]">
+        <div className="flex flex-wrap gap-[8px]">
           {mode === 'ci' && (
             <button
               type="button"
@@ -715,7 +771,7 @@ const PublicApiContent = () => {
         )}
       </div>
       <div className="bg-newBgColorInner rounded-[12px] border border-newBorder overflow-hidden">
-        <div className="bg-newBgColorInner px-[20px] py-[14px] border-b border-newBorder flex items-start justify-between gap-[12px]">
+        <div className="bg-newBgColorInner px-[20px] mobile:px-[14px] py-[14px] border-b border-newBorder flex items-start justify-between gap-[12px] mobile:flex-col">
           <div>
             <div className="text-[16px] font-[600]">
               {t('api_key', 'API Key')}
@@ -728,7 +784,7 @@ const PublicApiContent = () => {
             </div>
           </div>
           {docsLinks.publicApi.published && (
-            <div className="flex gap-[6px] shrink-0 pt-[2px]">
+            <div className="flex flex-wrap gap-[6px] shrink-0 pt-[2px]">
               <a
                 className="cursor-pointer px-[16px] h-[36px] bg-btnPrimary hover:opacity-95 text-white transition-colors rounded-[10px] text-[14px] font-[600] flex items-center gap-[6px]"
                 href={docsLinks.publicApi.href}
@@ -740,7 +796,7 @@ const PublicApiContent = () => {
             </div>
           )}
         </div>
-        <div className="p-[20px] flex flex-col gap-[16px]">
+        <div className="p-[20px] mobile:p-[14px] flex flex-col gap-[16px]">
           <div className="bg-newBgColorInner border border-newBorder rounded-[8px] px-[16px] h-[44px] flex items-center overflow-hidden">
             <code className="font-mono text-[14px] flex-1 truncate">
               {reveal ? (
@@ -755,7 +811,7 @@ const PublicApiContent = () => {
               )}
             </code>
           </div>
-          <div className="flex gap-[8px]">
+          <div className="flex flex-wrap gap-[8px]">
             <button
               type="button"
               onClick={() => setReveal(!reveal)}
@@ -851,50 +907,11 @@ const PublicApiContent = () => {
 
 export const PublicComponent = () => {
   const t = useT();
-  const fetch = useFetch();
-  const user = useUser();
-  const [subTab, setSubTab] = useState<'api' | 'developer'>('api');
-  const loadOrganizations = useCallback(async () => {
-    return await (await fetch('/user/organizations')).json();
-  }, []);
-  const { data: organizations } = useSWR('organizations', loadOrganizations, {
-    revalidateIfStale: false,
-    revalidateOnFocus: false,
-    refreshWhenOffline: false,
-    refreshWhenHidden: false,
-    revalidateOnReconnect: false,
-  });
-  const currentOrg = useMemo(() => {
-    return organizations?.find((org: any) => org?.id === user?.orgId);
-  }, [organizations, user?.orgId]);
 
   return (
     <div className="flex flex-col gap-[20px]">
-      <h3 className="text-[20px]">
-        {t('developers', 'Developers')}
-        {currentOrg?.name ? ` - ${currentOrg.name}` : ''}
-      </h3>
-      <div className="flex gap-[6px]">
-        {(['api', 'developer'] as const).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            className={clsx(
-              'cursor-pointer px-[20px] h-[44px] text-[14px] rounded-[10px] transition-colors',
-              subTab === tab
-                ? 'bg-btnPrimary text-white font-[600]'
-                : 'bg-btnSimple text-textItemBlur font-[500] hover:bg-boxHover hover:text-textColor'
-            )}
-            onClick={() => setSubTab(tab)}
-          >
-            {tab === 'api'
-              ? t('access', 'Access')
-              : t('apps', 'Apps')}
-          </button>
-        ))}
-      </div>
-      {subTab === 'api' && <PublicApiContent />}
-      {subTab === 'developer' && <DeveloperComponent />}
+      <h3 className="text-[20px]">{t('agents', 'Agents')}</h3>
+      <PublicApiContent />
     </div>
   );
 };

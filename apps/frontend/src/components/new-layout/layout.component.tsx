@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ReactNode, useCallback } from 'react';
+import React, { ReactNode, useCallback, useEffect } from 'react';
 import { Logo } from '@gitroom/frontend/components/new-layout/logo';
 const ModeComponent = dynamic(
   () => import('@gitroom/frontend/components/layout/mode.component'),
@@ -41,6 +41,7 @@ import { PreConditionComponent } from '@gitroom/frontend/components/layout/pre-c
 import { AttachToFeedbackIcon } from '@gitroom/frontend/components/new-layout/sentry.feedback.component';
 import { FirstBillingComponent } from '@gitroom/frontend/components/billing/first.billing.component';
 import { TrialTracker } from '@gitroom/frontend/components/layout/gtm.component';
+import { setSentryUser } from '@gitroom/react/sentry/initialize.sentry.client';
 
 export const LayoutComponent = ({ children }: { children: ReactNode }) => {
   const fetch = useFetch();
@@ -60,6 +61,12 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
     refreshWhenHidden: false,
   });
 
+  useEffect(() => {
+    setSentryUser(
+      user ? { id: user.id, email: user.email, orgId: user.orgId } : null
+    );
+  }, [user]);
+
   if (!user) return null;
 
   return (
@@ -67,6 +74,7 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
       <CopilotKit
         credentials="include"
         runtimeUrl={backendUrl + '/copilot/chat'}
+        useSingleEndpoint={true}
         showDevConsole={false}
       >
         <MantineWrapper>

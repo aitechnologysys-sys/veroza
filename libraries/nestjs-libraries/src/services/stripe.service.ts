@@ -11,10 +11,15 @@ import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
-import { IBillingProvider } from '@gitroom/nestjs-libraries/services/billing.provider.interface';
 import { BillingEventsService } from '@gitroom/nestjs-libraries/database/prisma/billing-events/billing.events.service';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { isBillingEnabled } from '@gitroom/helpers/utils/is.billing.enabled';
+import {
+  PaymentPlatform,
+  PaymentProvider,
+  PaymentProviderAbstract,
+} from '@gitroom/nestjs-libraries/services/payment/payment.provider.interface';
+import { STRIPE_PROVIDER } from '@gitroom/nestjs-libraries/services/payment/payment.providers';
 
 // Pinned explicitly rather than inheriting whatever the installed stripe-node
 // happens to pin. The Stripe webhook endpoint must be configured with this same
@@ -56,8 +61,10 @@ const toSubscriptionStatus = (
   subscription: Pick<Stripe.Subscription, 'status'>
 ): SubscriptionStatus => stripeStatusMap[subscription.status] || 'ACTIVE';
 
-@Injectable()
-export class StripeService implements IBillingProvider {
+@PaymentProvider({ provider: STRIPE_PROVIDER })
+export class StripeService extends PaymentProviderAbstract {
+  platform: PaymentPlatform = 'web';
+
   constructor(
     private _subscriptionService: SubscriptionService,
     private _organizationService: OrganizationService,
@@ -65,7 +72,9 @@ export class StripeService implements IBillingProvider {
     private _trackService: TrackService,
     private _billingEventsService: BillingEventsService,
     private _notificationService: NotificationService
-  ) {}
+  ) {
+    super();
+  }
 
   private async orgIdByCustomer(customerId: string) {
     const org = await this._organizationService.getOrgByCustomerId(customerId);
@@ -92,6 +101,59 @@ export class StripeService implements IBillingProvider {
   }
   validateRequest(rawBody: Buffer, signature: string, endpointSecret: string) {
     return stripe.webhooks.constructEvent(rawBody, signature, endpointSecret);
+  }
+
+  validateWebhook(
+    rawBody: Buffer,
+    headers: Record<string, string | string[] | undefined>
+  ) {
+    return this.validateRequest(
+      rawBody,
+      headers['stripe-signature'] as string,
+      process.env.STRIPE_SIGNING_KEY
+    );
+  }
+
+  async processWebhook(event: Stripe.Event) {
+    // Postaryx: our checkouts tag metadata.service = 'postaryx' (upstream:
+    // 'gitroom'). Invoice and dispute objects do not carry our subscription
+    // metadata, so the "is this ours?" guard below cannot apply to them; they
+    // are resolved to an organization by customer id instead.
+    const bypassesMetadataCheck = [
+      'invoice.payment_succeeded',
+      'invoice.payment_failed',
+      'charge.dispute.created',
+      'charge.dispute.closed',
+    ];
+
+    // Maybe it comes from another stripe webhook
+    if (
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      event?.data?.object?.metadata?.service !== 'postaryx' &&
+      !bypassesMetadataCheck.includes(event.type)
+    ) {
+      return { ok: true };
+    }
+
+    switch (event.type) {
+      case 'invoice.payment_succeeded':
+        return this.paymentSucceeded(event);
+      case 'invoice.payment_failed':
+        return this.paymentFailed(event);
+      case 'charge.dispute.created':
+        return this.disputeCreated(event);
+      case 'charge.dispute.closed':
+        return this.disputeClosed(event);
+      case 'customer.subscription.created':
+        return this.createSubscription(event);
+      case 'customer.subscription.updated':
+        return this.updateSubscription(event);
+      case 'customer.subscription.deleted':
+        return this.deleteSubscription(event);
+      default:
+        return { ok: true };
+    }
   }
 
   async checkValidCard(
@@ -193,6 +255,7 @@ export class StripeService implements IBillingProvider {
     });
 
     return this._subscriptionService.createOrUpdateSubscription(
+      STRIPE_PROVIDER,
       event.data.object.status !== 'active',
       uniqueId,
       event.data.object.customer as string,
@@ -229,6 +292,7 @@ export class StripeService implements IBillingProvider {
     });
 
     return this._subscriptionService.createOrUpdateSubscription(
+      STRIPE_PROVIDER,
       event.data.object.status !== 'active',
       uniqueId,
       event.data.object.customer as string,
@@ -267,7 +331,7 @@ export class StripeService implements IBillingProvider {
         ? 'CANCELED'
         : 'EXPIRED';
 
-    await this._subscriptionService.deleteSubscription(customer, terminalStatus);
+    await this._subscriptionService.deleteSubscription(customer, STRIPE_PROVIDER, terminalStatus);
   }
 
   /**
@@ -511,8 +575,6 @@ export class StripeService implements IBillingProvider {
         },
       }));
 
-    const proration_date = Math.floor(Date.now() / 1000);
-
     const currentUserSubscription = {
       data: (
         await stripe.subscriptions.list({
@@ -549,12 +611,11 @@ export class StripeService implements IBillingProvider {
               quantity: 1,
             },
           ],
-          proration_date: proration_date,
         },
       });
 
       return {
-        price: price?.amount_remaining ? price?.amount_remaining / 100 : 0,
+        price: price?.amount_due ? price?.amount_due / 100 : 0,
       };
     } catch (err) {
       // null, not 0: the UI hides the line rather than quoting a free upgrade.
@@ -621,7 +682,7 @@ export class StripeService implements IBillingProvider {
       // cancel immediately. Note the deliberate absence of `prorate: true`:
       // cancelling never returns money, it only stops future charges.
       await stripe.subscriptions.cancel(sub.id);
-      await this._subscriptionService.deleteSubscription(customer, 'FAILED');
+      await this._subscriptionService.deleteSubscription(customer, STRIPE_PROVIDER, 'FAILED');
 
       await this._billingEventsService.record({
         organizationId,
@@ -663,6 +724,37 @@ export class StripeService implements IBillingProvider {
       id,
       cancel_at: cancel_at ? new Date(cancel_at * 1000) : undefined,
     };
+  }
+
+  async cancelAllSubscriptions(organizationId: string) {
+    if (!isBillingEnabled()) {
+      return;
+    }
+    // getOrgById must not filter deletedAt, this can run for an organization
+    // that was already soft deleted by an account deletion
+    const org = await this._organizationService.getOrgById(organizationId);
+    if (!org?.paymentId) {
+      return;
+    }
+
+    const subscriptions = await stripe.subscriptions.list({
+      customer: org.paymentId,
+      status: 'all',
+      limit: 100,
+    });
+
+    for (const subscription of subscriptions.data.filter(
+      (f) => f.status !== 'canceled'
+    )) {
+      await stripe.subscriptions.cancel(subscription.id);
+    }
+
+    // Account deletion is a deliberate ending (Postaryx terminal-status rule)
+    await this._subscriptionService.deleteSubscription(
+      org.paymentId,
+      STRIPE_PROVIDER,
+      'CANCELED'
+    );
   }
 
   async getCustomerByOrganizationId(organizationId: string): Promise<string | null> {
@@ -966,10 +1058,15 @@ export class StripeService implements IBillingProvider {
     return { url };
   }
 
-  async finishTrial(paymentId: string) {
+  async portalLink(organizationId: string) {
+    const customer = await this.getCustomerByOrganizationId(organizationId);
+    return this.createBillingPortalLink(customer);
+  }
+
+  async finishTrial(organization: Organization) {
     const list = (
       await stripe.subscriptions.list({
-        customer: paymentId,
+        customer: organization.paymentId,
       })
     ).data.filter((f) => f.status === 'trialing');
 
@@ -979,7 +1076,7 @@ export class StripeService implements IBillingProvider {
 
     // Ending a trial early charges the card immediately and that charge is final
     // — the UI says so before the customer confirms, and this is the record of it.
-    await this.record(paymentId, {
+    await this.record(organization.paymentId, {
       type: 'TRIAL_FINISHED',
       reference: updated.id,
       description: 'Trial ended early at the customer\'s request — charged now',
@@ -988,8 +1085,9 @@ export class StripeService implements IBillingProvider {
     return updated;
   }
 
-  async checkDiscount(customer: string) {
-    if (!process.env.STRIPE_DISCOUNT_ID) {
+  async checkDiscount(organization: Organization) {
+    const customer = organization.paymentId;
+    if (!process.env.STRIPE_DISCOUNT_ID || !customer) {
       return false;
     }
 
@@ -1027,8 +1125,9 @@ export class StripeService implements IBillingProvider {
     return true;
   }
 
-  async applyDiscount(customer: string) {
-    const check = this.checkDiscount(customer);
+  async applyDiscount(organization: Organization) {
+    const customer = organization.paymentId;
+    const check = this.checkDiscount(organization);
     if (!check) {
       return false;
     }
@@ -1465,7 +1564,7 @@ export class StripeService implements IBillingProvider {
     // not return money. Refunds go through refundCharges() as a separate,
     // explicitly recorded decision.
     await stripe.subscriptions.cancel(subscriptions[0].id);
-    await this._subscriptionService.deleteSubscription(customer, 'CANCELED');
+    await this._subscriptionService.deleteSubscription(customer, STRIPE_PROVIDER, 'CANCELED');
 
     await this._billingEventsService.record({
       organizationId,
@@ -1709,9 +1808,7 @@ export class StripeService implements IBillingProvider {
             ? invoiceSubscription
             : invoiceSubscription?.id;
 
-        chargeSubscription = subscriptions.find(
-          (f) => f.id === subscriptionId
-        );
+        chargeSubscription = subscriptions.find((f) => f.id === subscriptionId);
 
         if (chargeSubscription) {
           lastCharge = charge;
@@ -1787,7 +1884,10 @@ export class StripeService implements IBillingProvider {
     }
 
     if (preview.subscriptionIds.length) {
-      await this._subscriptionService.deleteSubscription(org?.paymentId!);
+      await this._subscriptionService.deleteSubscription(
+        org?.paymentId!,
+        STRIPE_PROVIDER
+      );
     }
 
     return {
@@ -1820,6 +1920,7 @@ export class StripeService implements IBillingProvider {
       const findPricing = pricing[nextPackage];
 
       await this._subscriptionService.createOrUpdateSubscription(
+        STRIPE_PROVIDER,
         false,
         makeId(10),
         organizationId,

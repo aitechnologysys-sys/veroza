@@ -91,13 +91,16 @@ export class SubscriptionRepository {
   // Retired rather than removed: the row is the only place the org's last known
   // tier / period / identifier lives, and support needs it after the fact. Every
   // read path filters on deletedAt, and createOrUpdateSubscription revives the
-  // row (deletedAt: null) if the org subscribes again.
+  // row (deletedAt: null) if the org subscribes again. Scoped to `provider`
+  // (upstream v2.24.0) so one provider never retires another one's row.
   deleteSubscriptionByCustomerId(
     customerId: string,
+    provider: string,
     status: SubscriptionStatus = 'EXPIRED'
   ) {
     return this._subscription.model.subscription.updateMany({
       where: {
+        provider,
         organization: {
           paymentId: customerId,
         },
@@ -120,6 +123,15 @@ export class SubscriptionRepository {
       },
       data: {
         status,
+      },
+    });
+  }
+
+  deleteSubscriptionByOrgId(organizationId: string, provider: string) {
+    return this._subscription.model.subscription.deleteMany({
+      where: {
+        organizationId,
+        provider,
       },
     });
   }
@@ -164,6 +176,7 @@ export class SubscriptionRepository {
   }
 
   async createOrUpdateSubscription(
+    provider: string,
     isTrailing: boolean,
     identifier: string,
     customerId: string,
@@ -185,7 +198,7 @@ export class SubscriptionRepository {
     await this._subscription.model.subscription.upsert({
       where: {
         organizationId: findOrg.id,
-        ...(!code
+        ...(!code && customerId
           ? {
               organization: {
                 paymentId: customerId,
@@ -195,6 +208,7 @@ export class SubscriptionRepository {
       },
       update: {
         subscriptionTier: billing,
+        provider,
         totalChannels,
         period,
         identifier,
@@ -206,6 +220,7 @@ export class SubscriptionRepository {
       create: {
         organizationId: findOrg.id,
         subscriptionTier: billing,
+        provider,
         isLifetime: !!code,
         totalChannels,
         period,
@@ -302,6 +317,39 @@ export class SubscriptionRepository {
       });
       throw err;
     }
+  }
+
+  // The caller picks the id, so charging the same work twice is one row
+  chargeCredits(
+    id: string,
+    organizationId: string,
+    type: string,
+    credits: number
+  ) {
+    return this._credits.model.credits.upsert({
+      where: {
+        id,
+      },
+      create: {
+        id,
+        organizationId,
+        credits,
+        type,
+      },
+      update: {},
+      select: {
+        id: true,
+      },
+    });
+  }
+
+  refundCredits(organizationId: string, id: string) {
+    return this._credits.model.credits.deleteMany({
+      where: {
+        id,
+        organizationId,
+      },
+    });
   }
 
   setCustomerId(orgId: string, customerId: string) {

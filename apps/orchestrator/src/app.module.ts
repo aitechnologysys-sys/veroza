@@ -6,6 +6,10 @@ import { AutopostService } from '@gitroom/nestjs-libraries/database/prisma/autop
 import { EmailActivity } from '@gitroom/orchestrator/activities/email.activity';
 import { IntegrationsActivity } from '@gitroom/orchestrator/activities/integrations.activity';
 import { MetaActivity } from '@gitroom/orchestrator/activities/meta.activity';
+import { VideoActivity } from '@gitroom/orchestrator/activities/video.activity';
+import { MediaActivity } from '@gitroom/orchestrator/activities/media.activity';
+import { ClippingActivity } from '@gitroom/orchestrator/activities/clipping.activity';
+import { VideoModule } from '@gitroom/nestjs-libraries/videos/video.module';
 import { HealthController } from '@gitroom/orchestrator/health.controller';
 
 const activities = [
@@ -14,10 +18,14 @@ const activities = [
   EmailActivity,
   IntegrationsActivity,
   MetaActivity,
+  VideoActivity,
+  MediaActivity,
+  ClippingActivity,
 ];
 @Module({
   imports: [
     DatabaseModule,
+    VideoModule,
     getTemporalModule(true, require.resolve('./workflows'), activities),
   ],
   controllers: [HealthController],

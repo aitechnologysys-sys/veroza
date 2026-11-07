@@ -22,7 +22,14 @@ import {
   THUMBNAIL_WARNING_SUBJECT,
 } from '@gitroom/nestjs-libraries/integrations/social/youtube.thumbnail.warning';
 
-jest.mock('axios', () => ({ __esModule: true, default: jest.fn() }));
+// The SSRF-safe client (upstream v2.24.0) calls axios.create() at module load;
+// the provider downloads the thumbnail through it, so it is stubbed per test to
+// return this same mock.
+jest.mock('axios', () => {
+  const mock: any = jest.fn();
+  mock.create = jest.fn(() => mock);
+  return { __esModule: true, default: mock };
+});
 
 const TOKEN = 'SYNTHETIC-access-token-must-never-be-logged';
 const VIDEO_ID = 'MWqtPykvbcY';
@@ -112,6 +119,9 @@ describe('YoutubeProvider.post thumbnail handling', () => {
       thumbnails: { set: setThumbnail },
     } as any);
     (axios as unknown as jest.Mock).mockResolvedValue({ data: 'stream' });
+    jest
+      .spyOn(YoutubeProvider.prototype as any, 'getSsrfSafeAxios')
+      .mockReturnValue(axios);
     logged = jest.spyOn(console, 'error').mockImplementation(() => undefined);
   });
 
@@ -282,6 +292,9 @@ describe('YoutubeProvider.finalizePost thumbnail (postWorkflowV106 path)', () =>
   beforeEach(() => {
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
     (axios as unknown as jest.Mock).mockResolvedValue({ data: 'stream' });
+    jest
+      .spyOn(YoutubeProvider.prototype as any, 'getSsrfSafeAxios')
+      .mockReturnValue(axios);
   });
 
   afterEach(() => {

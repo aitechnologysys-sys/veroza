@@ -13,7 +13,7 @@ import { sign } from 'jsonwebtoken';
 import { Organization, User } from '@prisma/client';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
-import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
+import { PaymentService } from '@gitroom/nestjs-libraries/services/payment/payment.service';
 import { isBillingEnabled } from '@gitroom/helpers/utils/is.billing.enabled';
 import { Response, Request } from 'express';
 import { AuthService } from '@gitroom/backend/services/auth/auth.service';
@@ -42,7 +42,7 @@ import {
 export class UsersController {
   constructor(
     private _subscriptionService: SubscriptionService,
-    private _stripeService: StripeService,
+    private _paymentService: PaymentService,
     private _authService: AuthService,
     private _orgService: OrganizationService,
     private _userService: UsersService,
@@ -209,7 +209,7 @@ export class UsersController {
       adminId
     );
 
-    await this._stripeService.syncCustomerEmailsAfterSwitch([kept, switched]);
+    await this._paymentService.syncCustomerEmailsAfterSwitch([kept, switched]);
 
     return { success: true };
   }
@@ -254,10 +254,9 @@ export class UsersController {
   @Get('/subscription')
   @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async getSubscription(@GetOrgFromRequest() organization: Organization) {
-    const subscription =
-      await this._subscriptionService.getSubscriptionByOrganizationId(
-        organization.id
-      );
+    const subscription = await this._paymentService.getSubscription(
+      organization.id
+    );
 
     return subscription ? { subscription } : { subscription: undefined };
   }
@@ -265,7 +264,7 @@ export class UsersController {
   @Get('/subscription/tiers')
   @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async tiers() {
-    return this._stripeService.getPackages();
+    return this._paymentService.getDefaultProvider('web').getPackages();
   }
 
   @Post('/join-org')
@@ -321,6 +320,43 @@ export class UsersController {
     }
 
     response.status(200).send();
+  }
+
+  @Post('/delete-account')
+  async deleteAccount(
+    @GetUserFromRequest() user: User,
+    @Req() req: Request,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const impersonate = req.cookies.impersonate || req.headers.impersonate;
+    if (impersonate) {
+      throw new HttpException(
+        'Account cannot be deleted while impersonating',
+        400
+      );
+    }
+
+    // Cancel billing before scrubbing the account — once the account is
+    // deleted there is no way to retry a failed cancellation
+    const ownedOrgs = await this._userService.getOrgsToDeleteForAccount(
+      user.id
+    );
+
+    for (const org of ownedOrgs) {
+      try {
+        await this._paymentService.cancelAllSubscriptions(org.id);
+      } catch (err) {
+        console.log(err);
+        throw new HttpException(
+          'Could not cancel your subscription, please try again or contact support',
+          400
+        );
+      }
+    }
+
+    await this._userService.deleteAccount(user.id);
+
+    return this.logout(response);
   }
 
   @Post('/logout')

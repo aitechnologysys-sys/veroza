@@ -13,7 +13,7 @@ Branch `chore/upstream-sync-2026-11-07`, cut from `origin/main` at `45ea7360a`. 
 | 1 | `v2.23.0` (folds in v2.21.9, v2.21.10, v2.22.1) | 170 | no | **done**: `1102d44f` |
 | – | `chore/fix-test-harness` (our branch, cut from `main`) | – | – | **merged in**: `896422ea` (own PR to `main` too) |
 | 2 | `v2.24.0` | 269 | yes, about 880 lines | **done**: `9902dbad` |
-| 3 | `v2.25.1` (folds in v2.25.0) | 304 | small | pending |
+| 3 | `v2.25.1` (folds in v2.25.0) | 304 | small | **done**: `91db3c53` |
 | 4 | `v2.25.3` / `upstream/main` | 160 + 56 | tiny | pending |
 
 ---
@@ -130,3 +130,55 @@ Open, no decision needed to continue:
 - Step 2 extended the ESM list for upstream's upgraded `file-type` and updated two stale mocks: the YouTube spec now stubs the SSRF-safe axios client, and the OAuth reconnect spec now mocks `migrateIntegration`.
 - Next, as planned: unit tests for the billing provider selection and `processWebhook` dispatch (the `'postaryx'` tag), Polar's `cancelAllSubscriptions` no-op, upload limits, `publishedNotification` in V112, and a check against new "Postiz" strings. Integration tests after the sync.
 
+---
+
+## Step 3 (`v2.25.1`) is merged and verified
+
+Merged and committed on 7 Nov 2026 as `91db3c53`. 304 upstream commits; 65 conflicted files (15 of them translations); 241 files changed in total. No push.
+
+**Verification**
+
+- Backend, orchestrator and frontend all build.
+- `check-banned-providers` passes (`vk.provider.ts` and the frontend `vk/vk.provider.tsx` were deleted again). `git diff --check` is clean. The `process.env.STRIPE_*` / `POLAR_*` reads are the same 9 config reads as before; upstream added no new billing gates.
+- **`pnpm test`: 277 passed, 0 failed** (19 suites; the 2 e2e suites skip as designed). Two of our specs asserted on behaviour upstream deliberately changed and were updated (see testing notes).
+- **Database change, not applied anywhere:** `docs/migrations/2026-11-07-upstream-v2.25.1.sql`. Apply it **after** the v2.24.0 file. Review notes are at the top of the file:
+  - Additive: `Integration.customName`, `Post.batchId`, comment threading/anchoring columns, the `OAuthSelfHostedAuthorization` table, 5 indexes. All new columns are nullable.
+  - Not purely additive, without data loss: `Comments.userId` becomes nullable (anonymous preview comments) and its foreign key is re-created with `ON DELETE SET NULL`.
+
+**How conflicts were resolved**
+
+| Area | Resolution |
+|---|---|
+| Docs (`README`, `CLAUDE`, `SECURITY`), `.env.example` | Kept ours. Added upstream's new vars to `.env.example`: `CANVA_APP_ORIGIN`, `RECAPTCHA_SITE_KEY` / `RECAPTCHA_SECRET_KEY` (anonymous preview comments) and `MCP_SELF_HOSTED_RELAY` (documented as off; it is Postiz Cloud's relay to self-hosted instances) |
+| Translations | Key-level merge as before. 150 rebranded values kept, 240 keys we removed stay removed, upstream's new keys added. One new "Postiz" string (`connector_self_hosted_description`) is only shown behind the disabled connector buttons |
+| **Stripe** (`stripe.service.ts`) | Took upstream's duplicate-subscription handling (a newer live subscription for the same customer is cancelled on `customer.subscription.created`; on deletion a surviving live subscription keeps the org on its plan), `getLiveSubscriptions` (incomplete subs never count as live), cancel/un-cancel over **all** live subscriptions with `updateCancelAt`, the checkout block when a live subscription exists, and `getInvoices`. Kept ours on top: the `'postaryx'` metadata tag on cancel/un-cancel (upstream writes `'gitroom'`, which our webhook would ignore), terminal statuses (FAILED / CANCELED / EXPIRED) on every delete path, and all `BillingEvent` audit records. **Added** an audit record (`SUBSCRIPTION_CANCELED_IMMEDIATELY`) when a duplicate is auto-cancelled, because upstream issues no refund there |
+| Billing controller | Both import sets; upstream's admin-only `GET /billing/invoices` and "send the cancellation email only when a cancel was actually scheduled" came in cleanly |
+| Billing UI | Took upstream's redesigned plan cards, billing history page and Stripe.js load-failure message, recoloured to our orange (`#c2410c` / `#ea580c`). Kept our Polar `{ url }` redirect and the `data?.client_secret` guard, plus upstream's `blocked` refresh |
+| Settings | Took upstream's move of **Integrations, Plugs and Apps into Settings tabs** (the old `/plugs` and `/third-party` pages now redirect). Upstream renamed the Developers tab to **Agents**; it stays hidden by our `SHOW_DEVELOPER_PORTAL = false`, which now also hides the OAuth-app management inside Apps, so Apps shows only Approved Apps |
+| MCP / Public API page, onboarding | Upstream's new "Official connector" auth tab is wired to our `showPostizDirectoryConnectors = false` (it pointed at Postiz's directory listings, and would also have shown on any build with `NEXT_PUBLIC_VERSION`). Kept our docs-link gating, Postaryx server names and styling, plus upstream's mobile classes. Onboarding stays single-step (upstream's agent and tutorial steps not taken) |
+| OAuth consent screen | Upstream moved it to `components/oauth/authorize.component.tsx` (sign-in for signed-out visitors). Rebranded strings and colours there; `proxy.ts` exempts both `/logos/` (ours) and `/oauth/authorize` (theirs) |
+| Frontend restyle vs upstream's mobile layout | About 25 components: kept our tokens, radii (8px), colours and the removed Jakarta Sans font, and added upstream's `mobile:` classes. Where upstream rewrote a file we had only recoloured (preview page, plugs, third-party, select-current, manage modal, editor), took theirs and re-applied the rebrand. Purple/pink upstream colours that merged without conflict in 7 files (filters, date picker, repeat, select channels/customer, tags, mobile top bar) were recoloured too |
+| Editor uploads | Took upstream's inline images and paste handling; kept our per-file limit (`isOverUploadLimit`, 10 MB images / 1 GB video) instead of their 1 GB per-batch total |
+| Providers | **Nostr:** upstream fixed the same hex-key bug (#15), so took theirs. **Instagram:** upstream's checkpoint → disconnect mapping, then our code-190 classification. **YouTube:** both our `revokeToken` and upstream's `invalid_rapt` refresh message (rebranded). **Listmonk / X / Moltbook:** both import sets. **WordPress:** upstream's new User-Agent changed from `Postiz/1.0 (+https://postiz.com)` to `Postaryx/1.0 (+https://postaryx.com)` |
+| Token refresh | Kept our `canRefreshToken === false` short-circuit and took upstream's error capture plus `refreshErrorMessage`. Reconnect keeps the new `expiresIn` as well as the refresh token (upstream fixed the same bug) |
+| Other backend | Integrations controller: both endpoints (upstream's `PUT /:id/custom-name`, our `/approval-status`). Throttler: took upstream's IP fallback for unauthenticated routes. MCP: agent stays `postaryx`, plus upstream's tool listing |
+| Workflows | No new post-workflow version in this step. Upstream edited `autopost`, `missing.post` and `streak` workflows behind `patched()` markers (replay-safe) and added `streakWorkflowV2` and `sendSingleEmailWorkflow` alongside the old ones |
+
+**Questions and your answers**
+
+| Question | Answer |
+|---|---|
+| Commit step 3? | **Yes.** Committed as `91db3c53`, not pushed |
+
+Open, no decision needed to continue:
+- **Polar gap:** upstream's `getInvoices` is not implemented for Polar (default "not supported"), so the new billing history would error for a Polar org. Polar is parked.
+- **Duplicate subscriptions:** upstream cancels a duplicate Stripe subscription without refunding it. We now leave an audit record so support can refund by hand; an automatic refund would be a policy decision.
+- New "Postiz" copy only behind switched-off features: `oauth/self.hosted.component.tsx` (needs `MCP_SELF_HOSTED_RELAY=true`) and the connector descriptions on the hidden Agents page.
+
+**Unit and integration tests: status**
+
+- `pnpm test` ran for real (no scratch config needed): 277 passed, 0 failed.
+- Updated two of our specs to upstream's deliberate behaviour changes:
+  - `no.auth.integrations.reconnect.spec.ts`: a missing code verifier is still rejected, now with "This connection link expired or was already used".
+  - `refresh.integration.service.spec.ts`: a provider that cannot refresh still gets `refreshNeeded`, but no longer also calls `disconnectChannel` (that sent a second, cause-less email).
+- Next, as planned: unit tests for the Stripe duplicate/survivor paths (the `'postaryx'` tag on cancel, terminal statuses, the new audit record), the `SHOW_DEVELOPER_PORTAL` gating of the Agents tab, and the earlier list (provider selection, Polar no-ops, upload limits, `publishedNotification`, new "Postiz" strings).

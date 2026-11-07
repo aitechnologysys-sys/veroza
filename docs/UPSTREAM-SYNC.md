@@ -10,17 +10,23 @@ Pulling **from** upstream is safe and sends them nothing — see
 
 ## Where we stand right now
 
-Measured 16 Aug 2026 (was 205/19 on 8 Aug — re-measure with the command below,
-this drifts every week):
+Measured 7 Nov 2026 (was 232/21 on 16 Aug and 205/19 on 8 Aug). Re-measure with the
+commands below, because this drifts every week:
 
 ```
-commits upstream has that we lack:   232
-commits we have that upstream lacks:  21
+commits upstream has that we lack:   959   (releases v2.21.9 → v2.25.3, plus 56 after)
+commits we have that upstream lacks:  52
 last common commit:                   f7f1f318  (29 May 2026)
+files that conflict in a test merge: 119
+schema.prisma growth upstream:       ~940 lines, mostly in v2.24.0
 ```
 
-So we are about **eleven weeks behind**. That gap is the single biggest reason to do
-this deliberately rather than casually — 232 commits is a lot of surface area.
+So we are about **five months behind**. That gap is the biggest reason to do this
+deliberately rather than casually. For the first catch-up, merge **release tag by
+release tag** (see [Step-by-step](#step-by-step-by-release-tag)).
+
+With Claude Code, run the `/upstream-sync` skill
+(`.claude/skills/upstream-sync/SKILL.md`). It follows this document.
 
 Re-measure any time:
 
@@ -93,8 +99,32 @@ git checkout -b chore/upstream-merge-2026-08        # NEVER merge upstream onto 
 git merge upstream/main
 ```
 
-You will get conflicts. Expected — and we know exactly where, because we measured
+You will get conflicts. That's expected, and we know exactly where, because we measured
 the overlap between the files we changed and the files they changed.
+
+### Step-by-step by release tag
+
+When we are far behind, don't merge `upstream/main` in one go. Merge one release tag
+at a time on the same sync branch (`git merge --no-ff v2.23.0`, resolve, verify, commit,
+then the next tag). The total conflict count is about the same, but:
+
+- every step lands on a state upstream actually shipped and tested;
+- when something breaks, you know which release caused it;
+- a tag that changes `schema.prisma` a lot can be its own step, so its SQL is reviewed alone;
+- you can stop after any step and still have a working branch.
+
+Turn on `git config rerere.enabled true` (and `rerere.autoupdate true`) first. Git then
+replays a resolution you already made when the same conflict reappears in a later step
+or in a feature branch.
+
+Plan made on 7 Nov 2026, using the per-tag measurement in the skill:
+
+| Step | Target | Upstream commits | Schema change |
+|---|---|---|---|
+| 1 | `v2.23.0` (folds in v2.21.9, v2.21.10, v2.22.1) | 170 | no |
+| 2 | `v2.24.0` | 269 | **yes, about 880 lines; review the SQL alone** |
+| 3 | `v2.25.1` (folds in v2.25.0) | 304 | small |
+| 4 | `v2.25.3` / `upstream/main` | 160 + 56 | tiny |
 
 ### The 25 conflict hotspots, and how to resolve each
 
@@ -150,6 +180,14 @@ re-introducing a `process.env.STRIPE_*` check:
 - **Keep our** `isBillingEnabled()` call.
 - **Take their** actual logic change around it.
 
+We also put billing behind a provider interface so that Polar can sit beside Stripe
+(`libraries/nestjs-libraries/src/services/billing.provider.interface.ts`,
+`polar.service.ts`). Those files are ours alone and rarely conflict. Their callers do
+conflict: `subscription.service.ts`, `subscription.repository.ts`,
+`stripe.controller.ts`, `main.billing.component.tsx`. Keep the calls going through the
+provider interface, and take upstream's logic changes underneath. Our refund-policy work
+(proration preview, portal, audit trail, #12/#17) also lives in these files. Keep it.
+
 Also keep our explicit `STRIPE_API_VERSION` pin in `stripe.service.ts`; upstream
 inherits the SDK default. If you bump the SDK, the pinned version must stay in
 sync with the API version set on the Stripe webhook endpoint — a mismatch fails
@@ -173,6 +211,33 @@ Why: [CONTAINMENT-DEPLOYMENT-PLAN.md](./CONTAINMENT-DEPLOYMENT-PLAN.md) §6.
 
 `README.md`, `CLAUDE.md` — these describe *our* fork. Take ours; skim their diff
 only in case they documented a new env var worth copying.
+
+#### Group 4b — Mechanical files (resolve by rule, never line by line)
+
+| File | Resolution |
+|---|---|
+| `pnpm-lock.yaml` | Take theirs, then run `pnpm install` once everything else is resolved |
+| `package.json` | Their versions and scripts, plus our deliberate script differences (`pm2-run` without `prisma-db-push`, see [database-migrations.md](./database-migrations.md)) |
+| `i18n.lock` | Take theirs |
+| `locales/*/translation.json` (15 files) | **Key-level 3-way merge.** Start from theirs. Keys whose value we changed take ours (that's the rebrand: Postiz/Gitroom → Postaryx). Keys we deleted stay deleted. Keys we added stay. Then list any new `Postiz` strings upstream added, and decide on each one. A plain line merge is wrong here: the rebrand touched hundreds of lines and also renamed some keys |
+
+#### Group 4c — Our product fixes since August
+
+Uploads, which are 10 MB images / 1 GB video per type on every path including R2 (#23, #26, #27):
+`custom.upload.validation.ts`, `upload.factory.ts`, `local.storage.ts`, `r2.uploader.ts`,
+`cloudflare.storage.ts`, `media.controller.ts`, `media.service.ts`, `media.component.tsx`,
+`api/uploads/[[...path]]/route.ts`.
+
+Providers: nostr/dev.to/moltbook hex key (#15), telegram local media (#16),
+hashnode/mastodon-custom (#10), kick/whop (#19), Pinterest base URL from env (#20),
+Facebook integration (#25), YouTube scopes and thumbnail status (#28).
+
+UI: hidden Chrome-extension button (#18), wallet removed, Google SSO enabled,
+unpublished Docs buttons hidden (#30).
+
+Rule: **if upstream fixed the same bug, take theirs and drop ours**, because that's
+one less difference to carry. Otherwise keep our behaviour and take their other changes.
+Upload limits are a product decision: keep 10 MB / 1 GB even if upstream changes its defaults.
 
 #### Group 5 — Ordinary code conflicts (just read them)
 

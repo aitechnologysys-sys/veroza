@@ -104,7 +104,7 @@ git switch -c chore/upstream-sync-<final-target>-<YYYY-MM-DD> main
    pnpm install && pnpm run prisma-generate && pnpm run build && pnpm test
    ```
    Report failures with their output. Don't hide them.
-7. **Schema:** if `schema.prisma` changed in this step, generate the SQL per `docs/database-migrations.md` into `docs/migrations/<date>-upstream-<tag>.sql`. Flag anything destructive (drops, type changes, NOT NULL without a default). Don't apply it anywhere.
+7. **Schema:** if `schema.prisma` changed in this step, generate the SQL per `docs/database-migrations.md` into `docs/migrations/<date>-upstream-<tag>.sql`. Flag anything destructive (drops, type changes, NOT NULL without a default). Don't apply it anywhere. Add it to the "Files, in order" table and add a "not yet" row per environment to the ledger in `docs/migrations/README.md`.
 8. **Commit:** ask, then `git commit --no-edit` (keeps `Merge tag '<tag>'`).
 9. **Log the step (always):** append a section to `docs/UPSTREAM-SYNC-LOG.md`, using the format of the existing entries:
    - **Header:** "Step N (`<tag>`) is merged and verified".

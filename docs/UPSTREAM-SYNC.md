@@ -180,13 +180,24 @@ re-introducing a `process.env.STRIPE_*` check:
 - **Keep our** `isBillingEnabled()` call.
 - **Take their** actual logic change around it.
 
-We also put billing behind a provider interface so that Polar can sit beside Stripe
-(`libraries/nestjs-libraries/src/services/billing.provider.interface.ts`,
-`polar.service.ts`). Those files are ours alone and rarely conflict. Their callers do
-conflict: `subscription.service.ts`, `subscription.repository.ts`,
-`stripe.controller.ts`, `main.billing.component.tsx`. Keep the calls going through the
-provider interface, and take upstream's logic changes underneath. Our refund-policy work
-(proration preview, portal, audit trail, #12/#17) also lives in these files. Keep it.
+Since the 2026-11-07 sync (step 2, v2.24.0) billing runs on **upstream's**
+payment-provider system (`services/payment/`), and Polar is one more provider in it
+(`@PaymentProvider({ provider: 'polar' })`). Our old `IBillingProvider` is gone, so
+most billing code now matches upstream. The remaining Postaryx differences, which must
+survive every merge:
+
+- `StripeService.processWebhook`: `metadata.service !== 'postaryx'` (upstream checks
+  `'gitroom'`; taking theirs silently drops **every** Stripe webhook), plus our
+  `invoice.payment_failed` / `charge.dispute.*` cases.
+- `PaymentProviderManager.getDefaultProvider`: picks `BILLING_PROVIDER` (default
+  `stripe`) instead of registration order.
+- `PaymentProviderAbstract.refundCharges` / `cancelSubscription` take an optional
+  `actorUserId` (audit trail). `deleteSubscription(customerId, provider, status)` keeps
+  our terminal status plus soft delete.
+- `BillingController`: `/lifetime`, `/events` and the actor ids are ours; the Chatbase
+  refund endpoints are disabled (404).
+- Our refund-policy work (proration preview, portal, BillingEvent audit trail, #12/#17)
+  lives in `stripe.service.ts`. Keep it.
 
 Also keep our explicit `STRIPE_API_VERSION` pin in `stripe.service.ts`; upstream
 inherits the SDK default. If you bump the SDK, the pinned version must stay in

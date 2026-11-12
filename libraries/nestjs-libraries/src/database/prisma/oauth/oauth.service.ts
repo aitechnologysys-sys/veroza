@@ -140,8 +140,10 @@ export class OAuthService {
   }
 
   // Domains allowed to receive DCR redirect_uris, from the
-  // DCR_VERIFIED_DOMAINS env (comma separated). An empty list
-  // means open registration (self-hosted default)
+  // DCR_VERIFIED_DOMAINS env (comma separated). Postaryx: an empty list
+  // refuses every web (https) redirect_uri. Upstream treats it as open
+  // registration, which lets anyone register a client that receives codes
+  // on their own site (consent phishing / framed one-click approval)
   private verifiedDomainList() {
     return (process.env.DCR_VERIFIED_DOMAINS || '')
       .split(',')
@@ -188,8 +190,19 @@ export class OAuthService {
       // Loopback and private-use callbacks never leave the user's machine
       // (native clients like Cursor, Grok and Claude Code), so only web
       // callbacks are held to the verified domain list
-      if (isLoopback || isPrivateScheme || !verifiedDomains.length) {
+      if (isLoopback || isPrivateScheme) {
         continue;
+      }
+
+      if (!verifiedDomains.length) {
+        throw new HttpException(
+          {
+            error: 'invalid_redirect_uri',
+            error_description:
+              'Web redirect_uris are not accepted: DCR_VERIFIED_DOMAINS is not configured',
+          },
+          HttpStatus.BAD_REQUEST
+        );
       }
 
       const host = parsed.hostname.toLowerCase();

@@ -38,7 +38,10 @@ export class OAuthController {
     private _mcpRelayService: McpRelayService
   ) {}
 
-  // Dynamic Client Registration (RFC 7591), used by MCP clients like Claude
+  // Dynamic Client Registration (RFC 7591), used by MCP clients like Claude.
+  // Anonymous, so capped per client IP: every call writes an OAuthApp row
+  @UseGuards(ThrottlerRealIpGuard)
+  @Throttle({ default: { limit: 20, ttl: 3600000 } })
   @Post('/register')
   @HttpCode(201)
   async register(@Body() body: RegisterClientDto) {
@@ -221,6 +224,19 @@ export class OAuthAuthorizedController {
     // Dynamic clients redirect to their validated redirect_uri,
     // static apps keep using the one stored on the app
     const redirectTarget = app.dynamic ? body.redirect_uri! : app.redirectUrl;
+
+    // The token minted here acts as SUPERADMIN on the public API and MCP, so
+    // only admins may grant it (the same bar as reading the org API key).
+    // Checked explicitly so it holds when BILLING_ENABLED is off, where
+    // @CheckPolicies lets every role through.
+    const role = (org as Organization & { users?: { role: string }[] })
+      .users?.[0]?.role;
+    if (body.action !== 'deny' && !['ADMIN', 'SUPERADMIN'].includes(role!)) {
+      throw new HttpException(
+        'Only workspace admins can connect apps to this workspace',
+        HttpStatus.FORBIDDEN
+      );
+    }
 
     if (body.action === 'deny') {
       const redirectUrl = new URL(redirectTarget);

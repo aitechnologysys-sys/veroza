@@ -16,6 +16,17 @@ const nextConfig = {
             key: 'Document-Policy',
             value: 'js-profiling',
           },
+          // Postaryx: no page of the app is meant to be framed. Without this the
+          // OAuth/MCP consent page (/oauth/authorize) can be loaded invisibly on
+          // another site and a single click approves an attacker's client.
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: "frame-ancestors 'none'",
+          },
         ],
       },
     ];

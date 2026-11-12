@@ -168,6 +168,15 @@ const CommentComposer: FC<{
       let displayName: string | undefined;
       let recaptchaToken: string | undefined;
       if (!user?.id) {
+        // Anonymous comments need reCAPTCHA; the backend refuses them otherwise
+        if (!recaptchaSiteKey) {
+          toast.show(
+            t('preview_comment_sign_in', 'Sign in to comment on this post'),
+            'warning'
+          );
+          return;
+        }
+
         const name = await askForName();
         if (!name) {
           return;

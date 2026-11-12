@@ -824,6 +824,7 @@
   "preview_comment_name_required": "We can only post your comment if you provide your name.",
   "preview_comment_your_name": "Your name",
   "preview_comment_failed": "Could not post the comment",
+  "preview_comment_sign_in": "Sign in to comment on this post",
   "preview_comment_detach_hint": "Comments on selected text lose their highlight if the text is edited later.",
   "preview_comment_text_changed": "Text changed",
   "preview_no_comments_yet": "No comments yet. Select some text in the post to comment on it, or add a general comment.",

@@ -1719,8 +1719,11 @@ export class PostsService {
   }
 
   private async verifyRecaptcha(token: string | undefined, ip: string) {
+    // Postaryx: fail closed. Upstream skips the check when the key is unset,
+    // which lets anyone with a preview link post unlimited comments under any
+    // name. Without reCAPTCHA configured, only signed-in members can comment.
     if (!process.env.RECAPTCHA_SECRET_KEY) {
-      return;
+      throw new BadRequestException('Sign in to comment on this post');
     }
 
     if (!token) {

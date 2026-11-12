@@ -18,6 +18,11 @@
 -- * ALTER TYPE "Provider" ADD VALUE 'APPLE' (Sign in with Apple). Postgres
 --   cannot use a new enum value inside the transaction that adds it; nothing
 --   below uses it, so this is safe in one transaction.
+-- * Postaryx (2026-11-12): Mastra (@mastra/pg PostgresStore) creates and
+--   upgrades its own mastra_* tables at runtime, so production already had
+--   most of them. Every mastra_* statement below is IF NOT EXISTS (as Mastra
+--   itself does) and the mastra_ai_spans primary key is added only if
+--   missing. Statements on app tables stay strict and still fail loudly.
 -- * No DROP TABLE, no DROP COLUMN.
 
 -- AlterEnum
@@ -40,40 +45,52 @@ ADD COLUMN     "status" TEXT NOT NULL DEFAULT 'ready';
 ALTER TABLE "Subscription" ADD COLUMN     "provider" TEXT NOT NULL DEFAULT 'stripe';
 
 -- AlterTable
-ALTER TABLE "mastra_ai_spans" ADD COLUMN     "entityId" TEXT,
-ADD COLUMN     "entityName" TEXT,
-ADD COLUMN     "entityType" TEXT,
-ADD COLUMN     "entityVersionId" TEXT,
-ADD COLUMN     "environment" TEXT,
-ADD COLUMN     "experimentId" TEXT,
-ADD COLUMN     "organizationId" TEXT,
-ADD COLUMN     "parentEntityId" TEXT,
-ADD COLUMN     "parentEntityName" TEXT,
-ADD COLUMN     "parentEntityType" TEXT,
-ADD COLUMN     "parentEntityVersionId" TEXT,
-ADD COLUMN     "requestContext" JSONB,
-ADD COLUMN     "requestId" TEXT,
-ADD COLUMN     "resourceId" TEXT,
-ADD COLUMN     "rootEntityId" TEXT,
-ADD COLUMN     "rootEntityName" TEXT,
-ADD COLUMN     "rootEntityType" TEXT,
-ADD COLUMN     "rootEntityVersionId" TEXT,
-ADD COLUMN     "runId" TEXT,
-ADD COLUMN     "serviceName" TEXT,
-ADD COLUMN     "sessionId" TEXT,
-ADD COLUMN     "source" TEXT,
-ADD COLUMN     "tags" JSONB,
-ADD COLUMN     "threadId" TEXT,
-ADD COLUMN     "userId" TEXT,
-ADD CONSTRAINT "public_mastra_ai_spans_traceid_spanid_pk" PRIMARY KEY ("traceId", "spanId");
+ALTER TABLE "mastra_ai_spans" ADD COLUMN IF NOT EXISTS "entityId" TEXT,
+ADD COLUMN IF NOT EXISTS "entityName" TEXT,
+ADD COLUMN IF NOT EXISTS "entityType" TEXT,
+ADD COLUMN IF NOT EXISTS "entityVersionId" TEXT,
+ADD COLUMN IF NOT EXISTS "environment" TEXT,
+ADD COLUMN IF NOT EXISTS "experimentId" TEXT,
+ADD COLUMN IF NOT EXISTS "organizationId" TEXT,
+ADD COLUMN IF NOT EXISTS "parentEntityId" TEXT,
+ADD COLUMN IF NOT EXISTS "parentEntityName" TEXT,
+ADD COLUMN IF NOT EXISTS "parentEntityType" TEXT,
+ADD COLUMN IF NOT EXISTS "parentEntityVersionId" TEXT,
+ADD COLUMN IF NOT EXISTS "requestContext" JSONB,
+ADD COLUMN IF NOT EXISTS "requestId" TEXT,
+ADD COLUMN IF NOT EXISTS "resourceId" TEXT,
+ADD COLUMN IF NOT EXISTS "rootEntityId" TEXT,
+ADD COLUMN IF NOT EXISTS "rootEntityName" TEXT,
+ADD COLUMN IF NOT EXISTS "rootEntityType" TEXT,
+ADD COLUMN IF NOT EXISTS "rootEntityVersionId" TEXT,
+ADD COLUMN IF NOT EXISTS "runId" TEXT,
+ADD COLUMN IF NOT EXISTS "serviceName" TEXT,
+ADD COLUMN IF NOT EXISTS "sessionId" TEXT,
+ADD COLUMN IF NOT EXISTS "source" TEXT,
+ADD COLUMN IF NOT EXISTS "tags" JSONB,
+ADD COLUMN IF NOT EXISTS "threadId" TEXT,
+ADD COLUMN IF NOT EXISTS "userId" TEXT;
+
+-- Postaryx: Mastra creates this exact primary key itself at runtime, so
+-- production already has it (found 2026-11-12). Add it only where missing.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = '"mastra_ai_spans"'::regclass AND contype = 'p'
+  ) THEN
+    ALTER TABLE "mastra_ai_spans" ADD CONSTRAINT "public_mastra_ai_spans_traceid_spanid_pk" PRIMARY KEY ("traceId", "spanId");
+  END IF;
+END
+$$;
 
 -- AlterTable
-ALTER TABLE "mastra_scorers" ADD COLUMN     "batchId" TEXT,
-ADD COLUMN     "datasetId" TEXT,
-ADD COLUMN     "datasetItemId" TEXT,
-ADD COLUMN     "organizationId" TEXT,
-ADD COLUMN     "projectId" TEXT,
-ADD COLUMN     "requestContext" JSONB;
+ALTER TABLE "mastra_scorers" ADD COLUMN IF NOT EXISTS "batchId" TEXT,
+ADD COLUMN IF NOT EXISTS "datasetId" TEXT,
+ADD COLUMN IF NOT EXISTS "datasetItemId" TEXT,
+ADD COLUMN IF NOT EXISTS "organizationId" TEXT,
+ADD COLUMN IF NOT EXISTS "projectId" TEXT,
+ADD COLUMN IF NOT EXISTS "requestContext" JSONB;
 
 -- AlterTable
 ALTER TABLE "OAuthApp" ADD COLUMN     "dynamic" BOOLEAN NOT NULL DEFAULT false,
@@ -130,7 +147,7 @@ CREATE TABLE "ClippingClip" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_agent_versions" (
+CREATE TABLE IF NOT EXISTS "mastra_agent_versions" (
     "id" TEXT NOT NULL,
     "agentId" TEXT NOT NULL,
     "versionNumber" INTEGER NOT NULL,
@@ -164,7 +181,7 @@ CREATE TABLE "mastra_agent_versions" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_agents" (
+CREATE TABLE IF NOT EXISTS "mastra_agents" (
     "id" TEXT NOT NULL,
     "status" TEXT NOT NULL,
     "activeVersionId" TEXT,
@@ -181,7 +198,7 @@ CREATE TABLE "mastra_agents" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_background_tasks" (
+CREATE TABLE IF NOT EXISTS "mastra_background_tasks" (
     "id" TEXT NOT NULL,
     "tool_call_id" TEXT NOT NULL,
     "tool_name" TEXT NOT NULL,
@@ -210,7 +227,7 @@ CREATE TABLE "mastra_background_tasks" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_channel_config" (
+CREATE TABLE IF NOT EXISTS "mastra_channel_config" (
     "platform" TEXT NOT NULL,
     "data" JSONB NOT NULL,
     "updatedAt" TIMESTAMP(6) NOT NULL,
@@ -220,7 +237,7 @@ CREATE TABLE "mastra_channel_config" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_channel_installations" (
+CREATE TABLE IF NOT EXISTS "mastra_channel_installations" (
     "id" TEXT NOT NULL,
     "platform" TEXT NOT NULL,
     "agentId" TEXT NOT NULL,
@@ -238,7 +255,7 @@ CREATE TABLE "mastra_channel_installations" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_dataset_items" (
+CREATE TABLE IF NOT EXISTS "mastra_dataset_items" (
     "id" TEXT NOT NULL,
     "datasetId" TEXT NOT NULL,
     "datasetVersion" INTEGER NOT NULL,
@@ -265,7 +282,7 @@ CREATE TABLE "mastra_dataset_items" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_dataset_versions" (
+CREATE TABLE IF NOT EXISTS "mastra_dataset_versions" (
     "id" TEXT NOT NULL,
     "datasetId" TEXT NOT NULL,
     "version" INTEGER NOT NULL,
@@ -276,7 +293,7 @@ CREATE TABLE "mastra_dataset_versions" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_datasets" (
+CREATE TABLE IF NOT EXISTS "mastra_datasets" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
@@ -302,7 +319,7 @@ CREATE TABLE "mastra_datasets" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_experiment_results" (
+CREATE TABLE IF NOT EXISTS "mastra_experiment_results" (
     "id" TEXT NOT NULL,
     "experimentId" TEXT NOT NULL,
     "itemId" TEXT NOT NULL,
@@ -332,7 +349,7 @@ CREATE TABLE "mastra_experiment_results" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_experiments" (
+CREATE TABLE IF NOT EXISTS "mastra_experiments" (
     "id" TEXT NOT NULL,
     "name" TEXT,
     "description" TEXT,
@@ -369,7 +386,7 @@ CREATE TABLE "mastra_experiments" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_favorites" (
+CREATE TABLE IF NOT EXISTS "mastra_favorites" (
     "userId" TEXT NOT NULL,
     "entityType" TEXT NOT NULL,
     "entityId" TEXT NOT NULL,
@@ -380,7 +397,7 @@ CREATE TABLE "mastra_favorites" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_knowledge_activity" (
+CREATE TABLE IF NOT EXISTS "mastra_knowledge_activity" (
     "id" TEXT NOT NULL,
     "action" TEXT NOT NULL,
     "recordType" TEXT NOT NULL,
@@ -395,7 +412,7 @@ CREATE TABLE "mastra_knowledge_activity" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_knowledge_cursors" (
+CREATE TABLE IF NOT EXISTS "mastra_knowledge_cursors" (
     "sourceThreadId" TEXT NOT NULL,
     "agent" TEXT NOT NULL,
     "lastKnowledgeId" TEXT NOT NULL,
@@ -406,7 +423,7 @@ CREATE TABLE "mastra_knowledge_cursors" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_knowledge_mentions" (
+CREATE TABLE IF NOT EXISTS "mastra_knowledge_mentions" (
     "sourceType" TEXT NOT NULL,
     "sourceId" TEXT NOT NULL,
     "recordId" TEXT NOT NULL,
@@ -415,7 +432,7 @@ CREATE TABLE "mastra_knowledge_mentions" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_knowledge_nodes" (
+CREATE TABLE IF NOT EXISTS "mastra_knowledge_nodes" (
     "id" TEXT NOT NULL,
     "type" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -436,7 +453,7 @@ CREATE TABLE "mastra_knowledge_nodes" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_knowledge_records" (
+CREATE TABLE IF NOT EXISTS "mastra_knowledge_records" (
     "id" TEXT NOT NULL,
     "node" TEXT NOT NULL,
     "text" TEXT NOT NULL,
@@ -457,7 +474,7 @@ CREATE TABLE "mastra_knowledge_records" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_knowledge_semantic_outbox" (
+CREATE TABLE IF NOT EXISTS "mastra_knowledge_semantic_outbox" (
     "id" TEXT NOT NULL,
     "idempotencyKey" TEXT NOT NULL,
     "documentId" TEXT NOT NULL,
@@ -481,7 +498,7 @@ CREATE TABLE "mastra_knowledge_semantic_outbox" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_mcp_client_versions" (
+CREATE TABLE IF NOT EXISTS "mastra_mcp_client_versions" (
     "id" TEXT NOT NULL,
     "mcpClientId" TEXT NOT NULL,
     "versionNumber" INTEGER NOT NULL,
@@ -497,7 +514,7 @@ CREATE TABLE "mastra_mcp_client_versions" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_mcp_clients" (
+CREATE TABLE IF NOT EXISTS "mastra_mcp_clients" (
     "id" TEXT NOT NULL,
     "status" TEXT NOT NULL,
     "activeVersionId" TEXT,
@@ -512,7 +529,7 @@ CREATE TABLE "mastra_mcp_clients" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_mcp_server_versions" (
+CREATE TABLE IF NOT EXISTS "mastra_mcp_server_versions" (
     "id" TEXT NOT NULL,
     "mcpServerId" TEXT NOT NULL,
     "versionNumber" INTEGER NOT NULL,
@@ -536,7 +553,7 @@ CREATE TABLE "mastra_mcp_server_versions" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_mcp_servers" (
+CREATE TABLE IF NOT EXISTS "mastra_mcp_servers" (
     "id" TEXT NOT NULL,
     "status" TEXT NOT NULL,
     "activeVersionId" TEXT,
@@ -551,7 +568,7 @@ CREATE TABLE "mastra_mcp_servers" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_notifications" (
+CREATE TABLE IF NOT EXISTS "mastra_notifications" (
     "id" TEXT NOT NULL,
     "threadId" TEXT NOT NULL,
     "source" TEXT NOT NULL,
@@ -596,7 +613,7 @@ CREATE TABLE "mastra_notifications" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_observational_memory" (
+CREATE TABLE IF NOT EXISTS "mastra_observational_memory" (
     "id" TEXT NOT NULL,
     "lookupKey" TEXT NOT NULL,
     "scope" TEXT NOT NULL,
@@ -641,7 +658,7 @@ CREATE TABLE "mastra_observational_memory" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_prompt_block_versions" (
+CREATE TABLE IF NOT EXISTS "mastra_prompt_block_versions" (
     "id" TEXT NOT NULL,
     "blockId" TEXT NOT NULL,
     "versionNumber" INTEGER NOT NULL,
@@ -659,7 +676,7 @@ CREATE TABLE "mastra_prompt_block_versions" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_prompt_blocks" (
+CREATE TABLE IF NOT EXISTS "mastra_prompt_blocks" (
     "id" TEXT NOT NULL,
     "status" TEXT NOT NULL,
     "activeVersionId" TEXT,
@@ -674,7 +691,7 @@ CREATE TABLE "mastra_prompt_blocks" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_schedule_triggers" (
+CREATE TABLE IF NOT EXISTS "mastra_schedule_triggers" (
     "id" TEXT NOT NULL,
     "schedule_id" TEXT NOT NULL,
     "run_id" TEXT,
@@ -690,7 +707,7 @@ CREATE TABLE "mastra_schedule_triggers" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_schedules" (
+CREATE TABLE IF NOT EXISTS "mastra_schedules" (
     "id" TEXT NOT NULL,
     "target" JSONB NOT NULL,
     "cron" TEXT NOT NULL,
@@ -709,7 +726,7 @@ CREATE TABLE "mastra_schedules" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_scorer_definition_versions" (
+CREATE TABLE IF NOT EXISTS "mastra_scorer_definition_versions" (
     "id" TEXT NOT NULL,
     "scorerDefinitionId" TEXT NOT NULL,
     "versionNumber" INTEGER NOT NULL,
@@ -730,7 +747,7 @@ CREATE TABLE "mastra_scorer_definition_versions" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_scorer_definitions" (
+CREATE TABLE IF NOT EXISTS "mastra_scorer_definitions" (
     "id" TEXT NOT NULL,
     "status" TEXT NOT NULL,
     "activeVersionId" TEXT,
@@ -747,7 +764,7 @@ CREATE TABLE "mastra_scorer_definitions" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_skill_blobs" (
+CREATE TABLE IF NOT EXISTS "mastra_skill_blobs" (
     "hash" TEXT NOT NULL,
     "content" TEXT NOT NULL,
     "size" INTEGER NOT NULL,
@@ -759,7 +776,7 @@ CREATE TABLE "mastra_skill_blobs" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_skill_versions" (
+CREATE TABLE IF NOT EXISTS "mastra_skill_versions" (
     "id" TEXT NOT NULL,
     "skillId" TEXT NOT NULL,
     "versionNumber" INTEGER NOT NULL,
@@ -784,7 +801,7 @@ CREATE TABLE "mastra_skill_versions" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_skills" (
+CREATE TABLE IF NOT EXISTS "mastra_skills" (
     "id" TEXT NOT NULL,
     "status" TEXT NOT NULL,
     "activeVersionId" TEXT,
@@ -800,7 +817,7 @@ CREATE TABLE "mastra_skills" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_thread_state" (
+CREATE TABLE IF NOT EXISTS "mastra_thread_state" (
     "threadId" TEXT NOT NULL,
     "type" TEXT NOT NULL,
     "value" JSONB NOT NULL,
@@ -813,7 +830,7 @@ CREATE TABLE "mastra_thread_state" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_tool_provider_connections" (
+CREATE TABLE IF NOT EXISTS "mastra_tool_provider_connections" (
     "authorId" TEXT NOT NULL,
     "providerId" TEXT NOT NULL,
     "connectionId" TEXT NOT NULL,
@@ -829,7 +846,7 @@ CREATE TABLE "mastra_tool_provider_connections" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_workflow_definitions" (
+CREATE TABLE IF NOT EXISTS "mastra_workflow_definitions" (
     "id" TEXT NOT NULL,
     "description" TEXT,
     "metadata" JSONB,
@@ -851,7 +868,7 @@ CREATE TABLE "mastra_workflow_definitions" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_workspace_versions" (
+CREATE TABLE IF NOT EXISTS "mastra_workspace_versions" (
     "id" TEXT NOT NULL,
     "workspaceId" TEXT NOT NULL,
     "versionNumber" INTEGER NOT NULL,
@@ -874,7 +891,7 @@ CREATE TABLE "mastra_workspace_versions" (
 );
 
 -- CreateTable
-CREATE TABLE "mastra_workspaces" (
+CREATE TABLE IF NOT EXISTS "mastra_workspaces" (
     "id" TEXT NOT NULL,
     "status" TEXT NOT NULL,
     "activeVersionId" TEXT,
@@ -898,139 +915,139 @@ CREATE INDEX "Clipping_deletedAt_idx" ON "Clipping"("deletedAt");
 CREATE INDEX "ClippingClip_clippingId_idx" ON "ClippingClip"("clippingId");
 
 -- CreateIndex
-CREATE INDEX "mastra_bg_tasks_agent_status_idx" ON "mastra_background_tasks"("agent_id", "status");
+CREATE INDEX IF NOT EXISTS "mastra_bg_tasks_agent_status_idx" ON "mastra_background_tasks"("agent_id", "status");
 
 -- CreateIndex
-CREATE INDEX "mastra_bg_tasks_status_created_at_idx" ON "mastra_background_tasks"("status", "createdAt");
+CREATE INDEX IF NOT EXISTS "mastra_bg_tasks_status_created_at_idx" ON "mastra_background_tasks"("status", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "mastra_bg_tasks_thread_idx" ON "mastra_background_tasks"("thread_id", "createdAt");
+CREATE INDEX IF NOT EXISTS "mastra_bg_tasks_thread_idx" ON "mastra_background_tasks"("thread_id", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "mastra_bg_tasks_tool_call_idx" ON "mastra_background_tasks"("tool_call_id");
+CREATE INDEX IF NOT EXISTS "mastra_bg_tasks_tool_call_idx" ON "mastra_background_tasks"("tool_call_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "idx_channel_installations_webhook" ON "mastra_channel_installations"("webhookId");
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_channel_installations_webhook" ON "mastra_channel_installations"("webhookId");
 
 -- CreateIndex
-CREATE INDEX "idx_channel_installations_platform_agent" ON "mastra_channel_installations"("platform", "agentId");
+CREATE INDEX IF NOT EXISTS "idx_channel_installations_platform_agent" ON "mastra_channel_installations"("platform", "agentId");
 
 -- CreateIndex
-CREATE INDEX "idx_dataset_items_dataset_validto" ON "mastra_dataset_items"("datasetId", "validTo");
+CREATE INDEX IF NOT EXISTS "idx_dataset_items_dataset_validto" ON "mastra_dataset_items"("datasetId", "validTo");
 
 -- CreateIndex
-CREATE INDEX "idx_dataset_items_dataset_validto_deleted" ON "mastra_dataset_items"("datasetId", "validTo", "isDeleted");
+CREATE INDEX IF NOT EXISTS "idx_dataset_items_dataset_validto_deleted" ON "mastra_dataset_items"("datasetId", "validTo", "isDeleted");
 
 -- CreateIndex
-CREATE INDEX "idx_dataset_items_dataset_version" ON "mastra_dataset_items"("datasetId", "datasetVersion");
+CREATE INDEX IF NOT EXISTS "idx_dataset_items_dataset_version" ON "mastra_dataset_items"("datasetId", "datasetVersion");
 
 -- CreateIndex
-CREATE INDEX "idx_dataset_items_external_id_history" ON "mastra_dataset_items"("datasetId", "externalId", "datasetVersion");
+CREATE INDEX IF NOT EXISTS "idx_dataset_items_external_id_history" ON "mastra_dataset_items"("datasetId", "externalId", "datasetVersion");
 
 -- CreateIndex
-CREATE INDEX "idx_dataset_items_org_project" ON "mastra_dataset_items"("organizationId", "projectId");
+CREATE INDEX IF NOT EXISTS "idx_dataset_items_org_project" ON "mastra_dataset_items"("organizationId", "projectId");
 
 -- CreateIndex
-CREATE INDEX "idx_dataset_versions_dataset_version" ON "mastra_dataset_versions"("datasetId", "version");
+CREATE INDEX IF NOT EXISTS "idx_dataset_versions_dataset_version" ON "mastra_dataset_versions"("datasetId", "version");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "idx_dataset_versions_dataset_version_unique" ON "mastra_dataset_versions"("datasetId", "version");
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_dataset_versions_dataset_version_unique" ON "mastra_dataset_versions"("datasetId", "version");
 
 -- CreateIndex
-CREATE INDEX "idx_datasets_candidate" ON "mastra_datasets"("candidateKey", "candidateId");
+CREATE INDEX IF NOT EXISTS "idx_datasets_candidate" ON "mastra_datasets"("candidateKey", "candidateId");
 
 -- CreateIndex
-CREATE INDEX "idx_datasets_org_project" ON "mastra_datasets"("organizationId", "projectId");
+CREATE INDEX IF NOT EXISTS "idx_datasets_org_project" ON "mastra_datasets"("organizationId", "projectId");
 
 -- CreateIndex
-CREATE INDEX "idx_experiment_results_experimentid" ON "mastra_experiment_results"("experimentId");
+CREATE INDEX IF NOT EXISTS "idx_experiment_results_experimentid" ON "mastra_experiment_results"("experimentId");
 
 -- CreateIndex
-CREATE INDEX "idx_experiment_results_org_project" ON "mastra_experiment_results"("organizationId", "projectId");
+CREATE INDEX IF NOT EXISTS "idx_experiment_results_org_project" ON "mastra_experiment_results"("organizationId", "projectId");
 
 -- CreateIndex
-CREATE INDEX "idx_experiment_results_tags_gin" ON "mastra_experiment_results" USING GIN ("tags");
+CREATE INDEX IF NOT EXISTS "idx_experiment_results_tags_gin" ON "mastra_experiment_results" USING GIN ("tags");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "idx_experiment_results_exp_item_attempt" ON "mastra_experiment_results"("experimentId", "itemId", "attempt");
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_experiment_results_exp_item_attempt" ON "mastra_experiment_results"("experimentId", "itemId", "attempt");
 
 -- CreateIndex
-CREATE INDEX "idx_experiments_datasetid" ON "mastra_experiments"("datasetId");
+CREATE INDEX IF NOT EXISTS "idx_experiments_datasetid" ON "mastra_experiments"("datasetId");
 
 -- CreateIndex
-CREATE INDEX "idx_experiments_grouping" ON "mastra_experiments"("experimentSetId", "comparisonId", "variantId", "trialIndex");
+CREATE INDEX IF NOT EXISTS "idx_experiments_grouping" ON "mastra_experiments"("experimentSetId", "comparisonId", "variantId", "trialIndex");
 
 -- CreateIndex
-CREATE INDEX "idx_experiments_org_project" ON "mastra_experiments"("organizationId", "projectId");
+CREATE INDEX IF NOT EXISTS "idx_experiments_org_project" ON "mastra_experiments"("organizationId", "projectId");
 
 -- CreateIndex
-CREATE INDEX "idx_favorites_entity" ON "mastra_favorites"("entityType", "entityId");
+CREATE INDEX IF NOT EXISTS "idx_favorites_entity" ON "mastra_favorites"("entityType", "entityId");
 
 -- CreateIndex
-CREATE INDEX "idx_knowledge_activity_latest" ON "mastra_knowledge_activity"("id" DESC);
+CREATE INDEX IF NOT EXISTS "idx_knowledge_activity_latest" ON "mastra_knowledge_activity"("id" DESC);
 
 -- CreateIndex
-CREATE INDEX "idx_knowledge_mentions_record" ON "mastra_knowledge_mentions"("recordId", "sourceType", "sourceId");
+CREATE INDEX IF NOT EXISTS "idx_knowledge_mentions_record" ON "mastra_knowledge_mentions"("recordId", "sourceType", "sourceId");
 
 -- CreateIndex
-CREATE INDEX "idx_knowledge_nodes_scope" ON "mastra_knowledge_nodes"("scopeKey", "type");
+CREATE INDEX IF NOT EXISTS "idx_knowledge_nodes_scope" ON "mastra_knowledge_nodes"("scopeKey", "type");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "idx_knowledge_nodes_identity" ON "mastra_knowledge_nodes"("type", "scopeKey", "canonicalName");
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_knowledge_nodes_identity" ON "mastra_knowledge_nodes"("type", "scopeKey", "canonicalName");
 
 -- CreateIndex
-CREATE INDEX "idx_knowledge_records_node_latest" ON "mastra_knowledge_records"("node", "id" DESC);
+CREATE INDEX IF NOT EXISTS "idx_knowledge_records_node_latest" ON "mastra_knowledge_records"("node", "id" DESC);
 
 -- CreateIndex
-CREATE INDEX "idx_knowledge_records_thread_latest" ON "mastra_knowledge_records"("sourceThreadId", "id" DESC);
+CREATE INDEX IF NOT EXISTS "idx_knowledge_records_thread_latest" ON "mastra_knowledge_records"("sourceThreadId", "id" DESC);
 
 -- CreateIndex
-CREATE UNIQUE INDEX "idx_knowledge_outbox_idempotency" ON "mastra_knowledge_semantic_outbox"("idempotencyKey");
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_knowledge_outbox_idempotency" ON "mastra_knowledge_semantic_outbox"("idempotencyKey");
 
 -- CreateIndex
-CREATE INDEX "idx_knowledge_outbox_claim" ON "mastra_knowledge_semantic_outbox"("status", "availableAt", "createdAt");
+CREATE INDEX IF NOT EXISTS "idx_knowledge_outbox_claim" ON "mastra_knowledge_semantic_outbox"("status", "availableAt", "createdAt");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "idx_mcp_client_versions_client_version" ON "mastra_mcp_client_versions"("mcpClientId", "versionNumber");
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_mcp_client_versions_client_version" ON "mastra_mcp_client_versions"("mcpClientId", "versionNumber");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "idx_mcp_server_versions_server_version" ON "mastra_mcp_server_versions"("mcpServerId", "versionNumber");
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_mcp_server_versions_server_version" ON "mastra_mcp_server_versions"("mcpServerId", "versionNumber");
 
 -- CreateIndex
-CREATE INDEX "idx_notifications_coalescing" ON "mastra_notifications"("threadId", "source", "kind", "status", "agentId", "resourceId", "dedupeKey", "coalesceKey");
+CREATE INDEX IF NOT EXISTS "idx_notifications_coalescing" ON "mastra_notifications"("threadId", "source", "kind", "status", "agentId", "resourceId", "dedupeKey", "coalesceKey");
 
 -- CreateIndex
-CREATE INDEX "idx_notifications_due" ON "mastra_notifications"("status", "deliverAt", "summaryAt");
+CREATE INDEX IF NOT EXISTS "idx_notifications_due" ON "mastra_notifications"("status", "deliverAt", "summaryAt");
 
 -- CreateIndex
-CREATE INDEX "idx_notifications_thread_status_updated" ON "mastra_notifications"("threadId", "status", "updatedAt");
+CREATE INDEX IF NOT EXISTS "idx_notifications_thread_status_updated" ON "mastra_notifications"("threadId", "status", "updatedAt");
 
 -- CreateIndex
-CREATE INDEX "idx_om_lookup_key" ON "mastra_observational_memory"("lookupKey");
+CREATE INDEX IF NOT EXISTS "idx_om_lookup_key" ON "mastra_observational_memory"("lookupKey");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "idx_prompt_block_versions_block_version" ON "mastra_prompt_block_versions"("blockId", "versionNumber");
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_prompt_block_versions_block_version" ON "mastra_prompt_block_versions"("blockId", "versionNumber");
 
 -- CreateIndex
-CREATE INDEX "idx_mastra_schedule_triggers_schedule_fire" ON "mastra_schedule_triggers"("schedule_id", "actual_fire_at" DESC);
+CREATE INDEX IF NOT EXISTS "idx_mastra_schedule_triggers_schedule_fire" ON "mastra_schedule_triggers"("schedule_id", "actual_fire_at" DESC);
 
 -- CreateIndex
-CREATE INDEX "idx_mastra_schedules_status_next_fire" ON "mastra_schedules"("status", "next_fire_at");
+CREATE INDEX IF NOT EXISTS "idx_mastra_schedules_status_next_fire" ON "mastra_schedules"("status", "next_fire_at");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "idx_scorer_definition_versions_def_version" ON "mastra_scorer_definition_versions"("scorerDefinitionId", "versionNumber");
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_scorer_definition_versions_def_version" ON "mastra_scorer_definition_versions"("scorerDefinitionId", "versionNumber");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "idx_skill_versions_skill_version" ON "mastra_skill_versions"("skillId", "versionNumber");
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_skill_versions_skill_version" ON "mastra_skill_versions"("skillId", "versionNumber");
 
 -- CreateIndex
-CREATE INDEX "idx_tool_provider_connections_author" ON "mastra_tool_provider_connections"("authorId", "providerId", "toolkit");
+CREATE INDEX IF NOT EXISTS "idx_tool_provider_connections_author" ON "mastra_tool_provider_connections"("authorId", "providerId", "toolkit");
 
 -- CreateIndex
-CREATE INDEX "idx_workflow_definitions_status" ON "mastra_workflow_definitions"("status");
+CREATE INDEX IF NOT EXISTS "idx_workflow_definitions_status" ON "mastra_workflow_definitions"("status");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "idx_workspace_versions_workspace_version" ON "mastra_workspace_versions"("workspaceId", "versionNumber");
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_workspace_versions_workspace_version" ON "mastra_workspace_versions"("workspaceId", "versionNumber");
 
 -- CreateIndex
 CREATE INDEX "Organization_deletedAt_idx" ON "Organization"("deletedAt");
@@ -1039,22 +1056,22 @@ CREATE INDEX "Organization_deletedAt_idx" ON "Organization"("deletedAt");
 CREATE INDEX "User_deletedAt_idx" ON "User"("deletedAt");
 
 -- CreateIndex
-CREATE INDEX "mastra_ai_spans_entitytype_entityid_idx" ON "mastra_ai_spans"("entityType", "entityId");
+CREATE INDEX IF NOT EXISTS "mastra_ai_spans_entitytype_entityid_idx" ON "mastra_ai_spans"("entityType", "entityId");
 
 -- CreateIndex
-CREATE INDEX "mastra_ai_spans_entitytype_entityname_idx" ON "mastra_ai_spans"("entityType", "entityName");
+CREATE INDEX IF NOT EXISTS "mastra_ai_spans_entitytype_entityname_idx" ON "mastra_ai_spans"("entityType", "entityName");
 
 -- CreateIndex
-CREATE INDEX "mastra_ai_spans_metadata_gin_idx" ON "mastra_ai_spans" USING GIN ("metadata");
+CREATE INDEX IF NOT EXISTS "mastra_ai_spans_metadata_gin_idx" ON "mastra_ai_spans" USING GIN ("metadata");
 
 -- CreateIndex
-CREATE INDEX "mastra_ai_spans_orgid_userid_idx" ON "mastra_ai_spans"("organizationId", "userId");
+CREATE INDEX IF NOT EXISTS "mastra_ai_spans_orgid_userid_idx" ON "mastra_ai_spans"("organizationId", "userId");
 
 -- CreateIndex
-CREATE INDEX "mastra_ai_spans_tags_gin_idx" ON "mastra_ai_spans" USING GIN ("tags");
+CREATE INDEX IF NOT EXISTS "mastra_ai_spans_tags_gin_idx" ON "mastra_ai_spans" USING GIN ("tags");
 
 -- CreateIndex
-CREATE INDEX "mastra_workflow_snapshot_name_createdat_idx" ON "mastra_workflow_snapshot"("workflow_name", "createdAt" DESC);
+CREATE INDEX IF NOT EXISTS "mastra_workflow_snapshot_name_createdat_idx" ON "mastra_workflow_snapshot"("workflow_name", "createdAt" DESC);
 
 -- CreateIndex
 CREATE INDEX "OAuthApp_dynamic_idx" ON "OAuthApp"("dynamic");

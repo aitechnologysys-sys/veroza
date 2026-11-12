@@ -173,9 +173,10 @@ goes live after that.
 **A1. The PR is green.** `Build`, `Test` (299 passing), `ESLint` and `CodeQL` checks on the PR to `main`.
 
 **A2. Prepare the env changes.** Go through the table in §5 and collect the values
-you need. For this release that means `DCR_VERIFIED_DOMAINS`, `TRUSTED_PROXY_HOPS`,
-and reCAPTCHA keys if you want guest comments. Don't edit `.env.prod` yet. That
-happens in step C9.
+you need. Nothing is required for the app to run. For this release: `TRUSTED_PROXY_HOPS`
+(recommended), `DCR_VERIFIED_DOMAINS` only if Claude.ai/ChatGPT connectors should
+work, and reCAPTCHA keys only if you want guest comments. Don't edit `.env.prod` yet.
+That happens in step C10.
 
 **A3. Optional but recommended: rehearse the image locally** with the branch image (§1.7).
 
@@ -437,7 +438,7 @@ chmod 600 ~/backups/env.prod.*
 nano .env.prod
 ```
 
-Make it match §5: **add** `DCR_VERIFIED_DOMAINS` and `TRUSTED_PROXY_HOPS`, **confirm**
+Make it match §5: **add** `TRUSTED_PROXY_HOPS` (and `DCR_VERIFIED_DOMAINS` if you want the connectors), **confirm**
 `BILLING_ENABLED="true"`, and **make sure the "keep unset" vars are absent**. Then verify
 without printing secrets:
 
@@ -615,15 +616,20 @@ is in [migrations/README.md](./migrations/README.md#ledger). Update both after a
 
 Sources: `git diff origin/main...HEAD -- .env.example`, the step notes in
 `UPSTREAM-SYNC-LOG.md`, a diff of every `process.env.X` the code reads on `main` vs
-this branch, and the security-fix pass on the branch. Set these in **`.env.prod`**,
+this branch, and the security-fix pass on the branch. Set them in **`.env.prod`**,
 then recreate the container (C11). No rebuild is needed.
 
-### 5.1 Required for us, set before the new code goes live
+**Nothing in this section is needed for the app to start or for existing features to
+keep working.** Most new lines in `.env.example` are placeholders for features we
+don't use (§5.2–5.3: leave them out). Two values are **recommended** (§5.1), and
+`BILLING_ENABLED` is worth confirming.
 
-| Var | Prod value | What it does / what breaks |
+### 5.1 Recommended, set before the new code goes live
+
+| Var | Prod value | What it does / what happens if it's unset |
 |---|---|---|
-| `DCR_VERIFIED_DOMAINS` | `claude.ai,claude.com,chatgpt.com,openai.com` | MCP OAuth dynamic client registration (`POST /api/oauth/register`) accepts `https` redirect URIs only on these domains and their subdomains. **When unset, every web (https) redirect URI is refused**, so the Claude.ai and ChatGPT connectors can't register. Loopback (`http://localhost:...`) and native-app schemes (`cursor://...`) are always allowed. Add `cursor.com` if Cursor's web flow is needed |
-| `TRUSTED_PROXY_HOPS` | **`2`** | How many reverse proxies in front of the backend append to `X-Forwarded-For`. The backend takes the client IP from that many entries from the right, so a client can't spoof it by sending its own header. Rate limits key on it (public API posting, guest comments). Unset defaults to `1`, the rightmost entry. That is spoof-proof here, but it's the Docker gateway address, so all clients share one rate-limit bucket. Our chain, verified in the docs: host nginx appends the client IP (`7. MULTI-DOMAIN-DEPLOYMENT-WALKTHROUGH.md` line 279, `2. ORACLE-CLOUD-SETUP-WALKTHROUGH.md` line 457), the container nginx appends the host nginx's address (`var/docker/nginx.conf` lines 25 and 58), then the backend. Cloudflare is **DNS only** (grey cloud) for `app` (walkthrough §4.3, lines 151 and 169–184), so it adds nothing. **If `app` is ever switched to Cloudflare-proxied (orange), change this to `3`.** C10 has the check |
+| `DCR_VERIFIED_DOMAINS` | `claude.ai,claude.com,chatgpt.com,openai.com` | MCP OAuth dynamic client registration (`POST /api/oauth/register`) accepts `https` redirect URIs only on these domains and their subdomains. **Unset is the safe default:** every web (https) redirect URI is refused, so the Claude.ai and ChatGPT connectors can't connect, and nothing else is affected. Set it only if people should be able to connect Postaryx to Claude.ai / ChatGPT. Loopback (`http://localhost:...`) and native-app schemes (`cursor://...`) are always allowed. Add `cursor.com` if Cursor's web flow is needed |
+| `TRUSTED_PROXY_HOPS` | **`2`** | How many reverse proxies in front of the backend append to `X-Forwarded-For`. The backend takes the client IP from that many entries from the right, so a client can't spoof it by sending its own header. The per-IP rate limits use it: OAuth client registration (20/h), Farcaster sign-in (30/h) and guest comments. Public API posting is limited per workspace and doesn't use it. Unset defaults to `1`, the rightmost entry. That is spoof-proof here, but it's the Docker gateway address, so everyone shares one bucket for those limits (e.g. 30 Farcaster sign-ins per hour in total). Our chain, verified in the docs: host nginx appends the client IP (`7. MULTI-DOMAIN-DEPLOYMENT-WALKTHROUGH.md` line 279, `2. ORACLE-CLOUD-SETUP-WALKTHROUGH.md` line 457), the container nginx appends the host nginx's address (`var/docker/nginx.conf` lines 25 and 58), then the backend. Cloudflare is **DNS only** (grey cloud) for `app` (walkthrough §4.3, lines 151 and 169–184), so it adds nothing. **If `app` is ever switched to Cloudflare-proxied (orange), change this to `3`.** C10 has the check |
 | `BILLING_ENABLED` | `"true"` (literal) | Not new, but **confirm it.** Anything other than `"true"` turns on free self-hosted mode: every org is ULTIMATE, permission checks pass, and every member effectively gets admin permissions |
 | `BILLING_PROVIDER` | `stripe` | Not new. Picks the gateway for **new** checkouts only. Existing subscriptions use `Subscription.provider` (see C9) |
 

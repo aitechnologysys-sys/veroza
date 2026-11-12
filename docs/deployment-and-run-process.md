@@ -271,8 +271,11 @@ Copy it off the box as well, for example `scp` from your laptop or OCI Object St
 
 **C6. Pre-flight data checks [Nov 2026 sync]. Run only if `f2` was `f`.**
 
-File 2 adds a primary key to `mastra_ai_spans` (AI agent trace spans). That fails if the
-table is missing, already has a primary key, or has duplicate keys:
+File 2 touches the `mastra_*` tables (AI agent memory). Mastra creates and upgrades
+those itself at runtime, so production already has most of them (found 12 Nov 2026).
+Since then every `mastra_*` statement in file 2 is `IF NOT EXISTS` and the
+`mastra_ai_spans` primary key is only added if missing. What can still fail is adding
+that key where it's missing and the table has duplicate keys:
 
 ```bash
 docker exec -i postaryx-postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
@@ -288,9 +291,9 @@ SQL
 
 | Result | Meaning |
 |---|---|
-| both tables non-empty names, `existing_pk = 0`, `duplicate_keys = 0` | Good, continue |
-| a table is empty/NULL | File 2 will fail on `ALTER TABLE`. Stop and investigate the schema drift |
-| `existing_pk = 1` | File 2 will fail ("multiple primary keys"). Stop. The file needs that line removed, as a reviewed change |
+| `duplicate_keys = 0` | Good, continue (whatever `existing_pk` and the table names show) |
+| a table is empty/NULL | Fine: file 2 creates it |
+| `existing_pk = 1` | Fine: file 2 keeps the existing key (production, 12 Nov 2026: `public_mastra_ai_spans_traceid_spanid_pk` on `("traceId", "spanId")`, the same one file 2 would add) |
 | `duplicate_keys > 0` | File 2 will fail. These rows are observability data, not customer content. With the owner's OK, dedupe (keeps one row per key) and re-run the check: `DELETE FROM "mastra_ai_spans" a USING "mastra_ai_spans" b WHERE a.ctid < b.ctid AND a."traceId" = b."traceId" AND a."spanId" = b."spanId";` |
 
 Keep `post_rows` for step C7, file 4.

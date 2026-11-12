@@ -271,30 +271,16 @@ Copy it off the box as well, for example `scp` from your laptop or OCI Object St
 
 **C6. Pre-flight data checks [Nov 2026 sync]. Run only if `f2` was `f`.**
 
-File 2 touches the `mastra_*` tables (AI agent memory). Mastra creates and upgrades
-those itself at runtime, so production already has most of them (found 12 Nov 2026).
-Since then every `mastra_*` statement in file 2 is `IF NOT EXISTS` and the
-`mastra_ai_spans` primary key is only added if missing. What can still fail is adding
-that key where it's missing and the table has duplicate keys:
+File 2 no longer touches the `mastra_*` tables (AI agent memory). Mastra creates
+and upgrades those itself when the backend starts, and production already had older
+versions of them, which made the original file fail (found 12 Nov 2026). The only
+pre-check left is the size of `Post`, for file 4:
 
 ```bash
 docker exec -i postaryx-postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
-SELECT to_regclass('"mastra_ai_spans"') AS spans_table,
-       to_regclass('"mastra_scorers"')  AS scorers_table;
-SELECT count(*) AS existing_pk FROM pg_constraint
- WHERE conrelid = to_regclass('"mastra_ai_spans"') AND contype = 'p';
-SELECT count(*) AS duplicate_keys FROM (
-  SELECT 1 FROM "mastra_ai_spans" GROUP BY "traceId", "spanId" HAVING count(*) > 1) d;
 SELECT count(*) AS post_rows, pg_size_pretty(pg_total_relation_size('"Post"')) AS post_size FROM "Post";
 SQL
 ```
-
-| Result | Meaning |
-|---|---|
-| `duplicate_keys = 0` | Good, continue (whatever `existing_pk` and the table names show) |
-| a table is empty/NULL | Fine: file 2 creates it |
-| `existing_pk = 1` | Fine: file 2 keeps the existing key (production, 12 Nov 2026: `public_mastra_ai_spans_traceid_spanid_pk` on `("traceId", "spanId")`, the same one file 2 would add) |
-| `duplicate_keys > 0` | File 2 will fail. These rows are observability data, not customer content. With the owner's OK, dedupe (keeps one row per key) and re-run the check: `DELETE FROM "mastra_ai_spans" a USING "mastra_ai_spans" b WHERE a.ctid < b.ctid AND a."traceId" = b."traceId" AND a."spanId" = b."spanId";` |
 
 Keep `post_rows` for step C7, file 4.
 
@@ -394,8 +380,9 @@ unset DBURL
 | Output | Action |
 |---|---|
 | `-- This is an empty migration.` | Perfect. Continue |
+| Only `mastra_*` lines (`CREATE TABLE "mastra_...`, `CREATE INDEX ... ON "mastra_...`, `ALTER TABLE "mastra_...`) | Expected **before C11**: Mastra creates and upgrades its own tables when the new backend starts. Continue. Run the diff again after C11 if you want; those lines should shrink to nothing or a few |
 | Only `DROP ...` lines | The live DB has objects the schema doesn't know about. That drift is older than tonight and harmless to the new code. **Don't apply it.** Note it for follow-up and continue |
-| Any `CREATE` / `ADD COLUMN` / `ALTER COLUMN` line | The new code expects something that's missing. **Stop and don't deploy.** Re-check C4 and C7 |
+| Any `CREATE` / `ADD COLUMN` / `ALTER COLUMN` line on a **non-`mastra_*`** table | The new code expects something that's missing. **Stop and don't deploy.** Re-check C4 and C7 |
 
 **C9. Pre-deploy data check: Polar subscriptions [Nov 2026 sync].**
 
@@ -604,7 +591,7 @@ Production schema changes live in `docs/migrations/` as reviewed SQL (generated 
 | Order | File | Generated | What it adds | Purely additive? | Production status |
 |---|---|---|---|---|---|
 | 1 | `2026-10-14-meta-deletion-request.sql` | 2026-10-14 | `MetaDeletionRequest` table + 3 enums + 3 indexes (Meta deauthorize / data-deletion callbacks, PR #25). Already needed by `main` | **Yes** | **Unknown.** Check with C4 |
-| 2 | `2026-11-07-upstream-v2.24.0.sql` | 2026-11-07 | Upstream v2.24.0: 39 tables (mostly `mastra_*` agent memory, `Clipping`/`ClippingClip`), 57 indexes, `Subscription.provider` (`NOT NULL DEFAULT 'stripe'`), `Media.status`/`processingError`, `deletedAt` on User/Organization, OAuth DCR columns, enum `Provider` + `APPLE`, PK on `mastra_ai_spans` | **No, but no data loss:** `OAuthApp.organizationId`/`clientSecret` become nullable, the `OAuthApp → Organization` FK is re-created `ON DELETE SET NULL`, and a primary key is added to the existing `mastra_ai_spans` (fails on duplicate keys, see C6) | **Pending** (not applied anywhere) |
+| 2 | `2026-11-07-upstream-v2.24.0.sql` | 2026-11-07 | Upstream v2.24.0: `Clipping`/`ClippingClip` tables, 6 indexes, `Subscription.provider` (`NOT NULL DEFAULT 'stripe'`), `Media.status`/`processingError`, `deletedAt` on User/Organization, OAuth DCR columns, enum `Provider` + `APPLE`. The `mastra_*` statements were removed on 12 Nov 2026: Mastra manages those tables itself at startup | **No, but no data loss:** `OAuthApp.organizationId`/`clientSecret` become nullable, and the `OAuthApp → Organization` FK is re-created `ON DELETE SET NULL` | **Pending** (not applied anywhere) |
 | 3 | `2026-11-07-upstream-v2.25.1.sql` | 2026-11-07 | Upstream v2.25.1: `Integration.customName`, `Post.batchId`, comment threading/anchoring columns, `OAuthSelfHostedAuthorization` table, 5 indexes | **No, but no data loss:** `Comments.userId` becomes nullable and its FK is re-created `ON DELETE SET NULL` (was RESTRICT) | **Pending** |
 | 4 | `2026-11-07-upstream-main-5a131eb0.sql` | 2026-11-07 | Upstream main at `5a131eb0`: `User.timezoneName` (nullable) + 5 indexes (2 on `Post`) | **Yes.** Index builds lock writes. Consider `CONCURRENTLY` for the 2 `Post` indexes (C7) | **Pending** |
 

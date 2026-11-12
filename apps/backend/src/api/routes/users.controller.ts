@@ -155,7 +155,9 @@ export class UsersController {
             sameSite: 'none',
           }
         : {}),
-      expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
+      // Postaryx: one working session, not upstream's 365 days. While it is
+      // set, the admin acts as the customer (and /user/switch can swap logins)
+      expires: new Date(Date.now() + 1000 * 60 * 60 * 8),
     });
 
     if (process.env.NOT_SECURED) {

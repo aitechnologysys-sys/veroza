@@ -1,4 +1,9 @@
-import { Injectable, NestMiddleware } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  NestMiddleware,
+} from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { User } from '@prisma/client';
@@ -8,6 +13,7 @@ import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.man
 import { HttpForbiddenException } from '@gitroom/nestjs-libraries/services/exception.filter';
 import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
 import { setSentryUserContext } from '@gitroom/nestjs-libraries/sentry/initialize.sentry';
+import { isCrossSiteCookieRequest } from '@gitroom/backend/services/auth/csrf.origin.check';
 
 export const removeAuth = (res: Response) => {
   res.cookie('auth', '', {
@@ -35,6 +41,16 @@ export class AuthMiddleware implements NestMiddleware {
     const auth = req.headers.auth || req.cookies.auth;
     if (!auth) {
       throw new HttpForbiddenException();
+    }
+
+    // Postaryx: refuse state-changing requests another site started with our
+    // cookie (CSRF). A plain 403, not HttpForbiddenException, so a forged
+    // request can't log the user out either.
+    if (isCrossSiteCookieRequest(req)) {
+      throw new HttpException(
+        'Cross-site request blocked',
+        HttpStatus.FORBIDDEN
+      );
     }
     try {
       // Verify the JWT signature only. Never trust authorization-relevant

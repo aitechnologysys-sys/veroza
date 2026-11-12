@@ -263,7 +263,7 @@ own loopback-bound port plus an SSH tunnel (on the actual VM), or direct
 |---|---|---|
 | App processes | On host, hot-reload | Built into one image, run by pm2 |
 | Reverse proxy | None — hit 4200/3000 directly | nginx on :5000 → exposed as :4007 |
-| DB migration | Manual `pnpm run prisma-db-push` | Automatic on container boot |
+| DB migration | Manual `pnpm run prisma-db-push` | Manual: reviewed SQL from `docs/migrations/`, applied before the new image ([deployment-and-run-process.md](./deployment-and-run-process.md)). Never on boot |
 | Config source | `.env` via `dotenv` | `env_file: .env.prod` (secrets) + `.env` (`${...}` substitution for DB/Redis/Temporal passwords) |
 | Dev GUIs | pgAdmin, RedisInsight included | Not included — Postgres/Temporal UI reachable via loopback + SSH tunnel instead |
 | Image | None (runs from source on host) | Built from `Dockerfile.dev` (`postaryx-app:local`) |

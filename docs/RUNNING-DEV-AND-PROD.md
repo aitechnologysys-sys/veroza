@@ -181,8 +181,10 @@ Why it works: step 2 uses `postaryx-prod_*` volumes, so it never touches the
 `postaryx-dev_*` data from step 1. Step 3 finds your dev DB exactly as you left it.
 
 > First time you `up` **prod**, give it ~30–60s: it pulls the CI-built image
-> (no local build — see README.md §3), runs `prisma-db-push` automatically
-> (prod self-migrates on boot), and boots Temporal.
+> (no local build — see README.md §3) and boots Temporal. It does **not** create
+> the schema (no self-migration since PR #25): on an empty prod DB run
+> `docker exec postaryx pnpm run prisma-db-push` once, then
+> `docker compose -p postaryx-prod restart postaryx`.
 
 ---
 
@@ -227,7 +229,8 @@ Ask and I can apply this edit for you.
 
 `down -v` deletes that project's named volumes (DB, Redis, Temporal pg + es). Only
 use it when you intend to throw the data away. After a `-v` you'll re-run
-`prisma-db-push` (dev) — prod re-migrates itself on next boot.
+`prisma-db-push` (dev). The prod stack does **not** re-create its schema on boot:
+after a `-v` there, run `docker exec postaryx pnpm run prisma-db-push` once and restart the app.
 
 ---
 

@@ -340,9 +340,17 @@ docker compose -p postaryx-prod logs -f postaryx
 ```
 
 Cold start is slower than a recreate: Temporal's `auto-setup` rebuilds its schema
-and recreates the `default` namespace, and `prisma-db-push` builds the app schema
-from nothing. Budget 2–3 minutes, and ignore Temporal connection errors in the
-first 90s — that is what `start_period: 120s` on the healthcheck is for.
+and recreates the `default` namespace. Budget 2–3 minutes, and ignore Temporal
+connection errors in the first 90s — that is what `start_period: 120s` on the
+healthcheck is for.
+
+The app does **not** build its own schema on boot (since PR #25), so the empty
+database needs it once, then an app restart:
+
+```bash
+docker exec postaryx pnpm run prisma-db-push      # EMPTY database only
+docker compose -p postaryx-prod restart postaryx
+```
 
 Step 3 is not ceremony. If the stack was ever started without `-p postaryx-prod`,
 Compose owns a _second_ project whose volumes `down -v` never touched.
@@ -470,7 +478,7 @@ docker exec postaryx pm2 restart frontend
 docker compose -p postaryx-prod restart temporal
 docker exec postaryx pm2 restart orchestrator   # so it reconnects
 
-# Last resort: the whole app container (also re-runs prisma-db-push)
+# Last resort: the whole app container (does not touch the schema)
 docker compose -p postaryx-prod restart postaryx
 ```
 

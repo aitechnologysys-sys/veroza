@@ -7,6 +7,7 @@ import { Button } from '@gitroom/react/form/button';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { getTimezone } from '@gitroom/frontend/components/layout/set.timezone';
 
 const useApprovedApps = () => {
   const fetch = useFetch();
@@ -60,16 +61,11 @@ export const ApprovedAppsComponent: FC = () => {
 
   return (
     <div className="flex flex-col gap-[20px]">
-      <div className="flex flex-col">
-        <h3 className="text-[20px]">
-          {t('approved_apps', 'Approved Apps')}
-        </h3>
-        <div className="text-textItemBlur mt-[4px]">
-          {t(
-            'apps_you_have_authorized',
-            'Applications you have authorized to access your Postaryx account.'
-          )}
-        </div>
+      <div className="text-textItemBlur">
+        {t(
+          'apps_you_have_authorized',
+          'Applications you have authorized to access your Postaryx account.'
+        )}
       </div>
 
       <div className="bg-newBgColorInner border-newBorder border rounded-[12px] p-[20px]">
@@ -107,7 +103,9 @@ export const ApprovedAppsComponent: FC = () => {
                     )}
                     <div className="text-textItemBlur text-[12px]">
                       {t('authorized_on', 'Authorized on')}{' '}
-                      {new Date(app.createdAt).toLocaleDateString()}
+                      {new Date(app.createdAt).toLocaleDateString(undefined, {
+                        timeZone: getTimezone(),
+                      })}
                     </div>
                   </div>
                 </div>

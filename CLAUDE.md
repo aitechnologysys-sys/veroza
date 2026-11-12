@@ -22,12 +22,12 @@ Postiz/Postaryx is an AI social media scheduling tool supporting 28+ channels (I
 
 ## Billing
 
-Both `StripeService` and `PolarService` implement `IBillingProvider` and live behind two independent env switches:
+Billing runs on upstream's payment-provider system (`libraries/nestjs-libraries/src/services/payment/`): `StripeService` and `PolarService` both extend `PaymentProviderAbstract` (web providers `stripe` / `polar`; upstream's RevenueCat is the mobile one). Controllers resolve the provider per organization through `PaymentService` (the provider stored on `Subscription.provider`, else the web default). Two independent env switches:
 
 | Var | Question it answers | Values |
 |---|---|---|
 | `BILLING_ENABLED` | Is billing **enforced** at all? | must be the literal `"true"`; anything else = free/self-hosted mode |
-| `BILLING_PROVIDER` | **Which gateway** handles checkout? | `stripe` (default) \| `polar` |
+| `BILLING_PROVIDER` | **Which web gateway** takes *new* checkouts? (existing subscriptions keep their row's provider) | `stripe` (default) \| `polar` |
 
 **Currently active: Stripe.** Polar is implemented and parked.
 

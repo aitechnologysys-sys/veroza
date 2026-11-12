@@ -87,9 +87,12 @@ of custom Postiz headers (`Reload`, `Onboarding`, `Auth`, `Showorg`,
 > `start:prod:*` scripts exist for exactly this), but the default compose ships
 > them together.
 
-On first boot the entrypoint also runs `pnpm run prisma-db-push` (via the `pm2`
-script) to sync the database schema — so the app self-migrates against
-`postaryx-postgres`.
+The container does **not** touch the database schema on boot (since PR #25,
+`pm2-run` only starts the processes). Production schema changes are the reviewed
+SQL files in `docs/migrations/`, applied by hand **before** the image that needs
+them — see [deployment-and-run-process.md](./deployment-and-run-process.md) §2.
+A brand-new, empty database gets its schema once with
+`docker exec postaryx pnpm run prisma-db-push`.
 
 ---
 
@@ -464,12 +467,13 @@ Two commands fetch and run the entire stack. But "everything" means the producti
    GitHub Actions — see §2a. Never builds locally on the server).
 2. Starts all 8 containers — the app + Postgres + Redis + the Temporal stack.
 3. Inside the `postaryx` container, the entrypoint (CMD) runs `nginx && pnpm run pm2`, which:
-   - runs `prisma-db-push` (auto-migrates the DB), then
    - starts backend + frontend + orchestrator under pm2 using their start
      scripts (the built `dist/` output, e.g. `next start`, `node dist/.../main.js`)
      — not `pnpm run dev`.
-4. So: no separate terminal, no manual migration, no `pnpm dev`. It's
-   `pnpm run pm2`, the production runner.
+4. So: no separate terminal, no `pnpm dev`. It's `pnpm run pm2`, the
+   production runner. Schema changes are **not** part of this: they're applied
+   by hand from `docs/migrations/` before the deploy (see
+   [deployment-and-run-process.md](./deployment-and-run-process.md) §2).
 
 **Local: two manual steps, on purpose.** The dev compose runs only the
 dependencies (no app container). So you run the apps yourself:
@@ -489,7 +493,7 @@ pnpm run dev
 |---|---|---|
 | Who runs the apps? | The container (pm2) | You (`pnpm run dev`) |
 | Which mode? | Built apps (`start`) | Dev mode (`dev`, hot-reload) |
-| DB migration | Automatic on boot | Manual `prisma-db-push` |
+| DB migration | Manual: reviewed SQL from `docs/migrations/`, applied **before** the new image | Manual `prisma-db-push` |
 | Command count | 2 (`pull` + `up -d`) | 2 (`compose up` + `pnpm dev`) |
 
 Why the difference? Prod wants one self-contained, optimized image that just

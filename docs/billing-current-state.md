@@ -12,7 +12,7 @@ Companion docs:
 
 ## TL;DR
 
-1. Both `StripeService` and `PolarService` exist and both implement `IBillingProvider`. The active one is chosen at runtime by `BILLING_PROVIDER` (`polar` → Polar, anything else including unset → Stripe).
+1. `StripeService` and `PolarService` are both providers in upstream's payment-provider system (since the 2026-11-07 upstream sync). `BILLING_PROVIDER` (`polar` → Polar, anything else including unset → Stripe) picks the provider for **new** checkouts; an existing subscription stays with the provider stored on its row.
 2. **The active provider is Stripe.** Polar is parked — its code, env vars and webhook route are all still in place, and switching back is a one-line env change.
 3. **Two independent switches**, as of the `BILLING_ENABLED` refactor:
    - `BILLING_ENABLED` — is billing *enforced*? Single source of truth, read only through `isBillingEnabled()`.
@@ -26,56 +26,53 @@ Companion docs:
 
 ## 1. Current architecture
 
+> **Changed 2026-11-07 (upstream sync, Postiz v2.24.0).** Our own
+> `IBillingProvider` / `'BILLING_PROVIDER'` DI token are retired. Billing now
+> runs on upstream's payment-provider system, with Polar plugged in as one more
+> provider. Details: `docs/UPSTREAM-SYNC-LOG.md`, step 2.
+
 ```
 BillingController (apps/backend/src/api/routes/billing.controller.ts)
-    └── @Inject('BILLING_PROVIDER') → IBillingProvider
-            ├── StripeService   (libraries/nestjs-libraries/src/services/stripe.service.ts,  998 lines)
-            └── PolarService    (libraries/nestjs-libraries/src/services/polar.service.ts,   554 lines)
+    └── provider(org) = PaymentService.getProviderForOrganization(org.id, 'web')
+            the provider that owns the org's subscription (Subscription.provider),
+            or the web default for an org without one
+            ├── StripeService   'stripe'      web     (services/stripe.service.ts)
+            ├── PolarService    'polar'       web     (services/polar.service.ts)
+            └── RevenueCatProvider 'revenuecat' mobile (upstream, unused by us)
                     └── SubscriptionService → SubscriptionRepository → Prisma
 
-StripeController  POST /stripe                                    → StripeService  (direct, not via the interface)
-PolarController   POST /payment-webhook, POST /api/payment-webhook → PolarService   (direct, not via the interface)
+PaymentController POST /payment/:provider                    → PaymentService.webhook(provider, …)
+StripeController  POST /stripe                               → PaymentService.webhook('stripe', …)
+PolarController   POST /payment-webhook, /api/payment-webhook → PolarService (kept for the existing Polar webhook URL)
 ```
 
-`SubscriptionService` / `SubscriptionRepository` / `pricing.ts` remain payment-provider-agnostic — they only touch the local DB. That was true before the migration and is still true.
+Each provider extends `PaymentProviderAbstract`
+(`services/payment/payment.provider.interface.ts`) and registers itself with
+`@PaymentProvider({ provider: '<name>' })`. Anything a provider does not
+implement answers "not supported" (HTTP 400), e.g. coupons on Polar.
 
-### Provider selection (DI)
+### Provider selection
 
-`libraries/nestjs-libraries/src/database/prisma/database.module.ts:73-78`:
+- **New checkouts** (an org with no subscription row) use the web default from
+  `PaymentProviderManager.getDefaultProvider('web')`. Postaryx change: it picks
+  `process.env.BILLING_PROVIDER` (default `stripe`) instead of registration order.
+- **Existing subscriptions** stay with the provider stored on the row
+  (`Subscription.provider`, default `'stripe'`), whatever `BILLING_PROVIDER` says.
+- Customer-keyed webhook flows only touch rows owned by their own provider
+  (`SubscriptionService.deleteSubscription(customerId, provider, status)`).
 
-```ts
-{
-  provide: 'BILLING_PROVIDER',
-  useFactory: (stripe: StripeService, polar: PolarService) =>
-    process.env.BILLING_PROVIDER === 'polar' ? polar : stripe,
-  inject: [StripeService, PolarService],
-}
-```
+### Postaryx additions on top of upstream's abstract class
 
-Note the default: anything other than the exact string `polar` — including unset — resolves to **Stripe**.
-
-### The interface
-
-`libraries/nestjs-libraries/src/services/billing.provider.interface.ts`:
-
-```
-checkSubscription(organizationId, subscriptionId): Promise<number>   // 0 = none, 1 = cancelled, 2 = active
-checkDiscount(paymentId): Promise<boolean>
-applyDiscount(paymentId): Promise<boolean>
-finishTrial(paymentId): Promise<any>
-embedded(uniqueId, organizationId, userId, body, allowTrial): Promise<CheckoutResult>   // { client_secret?, url?, auto_apply_coupon? }
-subscribe(uniqueId, organizationId, userId, body, allowTrial): Promise<SubscribeResult> // { url?, portal?, id? }
-getCustomerByOrganizationId(organizationId): Promise<string | null>
-createBillingPortalLink(customerId): Promise<{ url }>
-setToCancel(organizationId): Promise<{ id, cancel_at? }>
-prorate(organizationId, body): Promise<{ price }>
-lifetimeDeal(organizationId, code): Promise<{ success }>
-getCharges(organizationId): Promise<any[]>
-refundCharges(organizationId, chargeIds): Promise<{ refunded, failed }>
-cancelSubscription(organizationId): Promise<{ cancelled }>
-```
-
-Webhook handling is **not** on the interface. Each provider has its own controller and its own webhook methods. Both controllers are registered unconditionally in `apps/backend/src/api/api.module.ts:72-82`, so both endpoints are live regardless of `BILLING_PROVIDER`. In practice this is harmless — the inactive one will reject anything it receives on signature verification — but it does mean `POST /stripe` is a reachable route today.
+- `refundCharges(orgId, chargeIds, actorUserId?)` and
+  `cancelSubscription(orgId, actorUserId?)`: the admin is written to the
+  `BillingEvent` audit trail.
+- `StripeService.processWebhook` keeps our dispatch: `metadata.service ===
+  'postaryx'` (upstream: `'gitroom'`), plus `invoice.payment_failed` and the
+  dispute events.
+- `deleteSubscription(..., status)` keeps our terminal statuses
+  (FAILED / CANCELED / EXPIRED) and soft delete.
+- `PolarService.cancelAllSubscriptions` is a safe no-op when Polar owns
+  nothing, because upstream calls it on every provider during account deletion.
 
 ### Frontend
 

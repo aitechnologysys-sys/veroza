@@ -1,4 +1,4 @@
-import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
 import { SocialAbstract } from '../social.abstract';
 import {
   AuthTokenDetails,
@@ -13,7 +13,11 @@ import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import slugify from 'slugify';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import { logProviderError } from '@gitroom/nestjs-libraries/helpers/redact';
+import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 
+@Rules(
+  'ListMonk sends the content as an email: pictures go inside the content as <img src="..."> where they should appear, the src must be a picture from the media library (upload it with uploadFromUrlTool first), attachments are not sent'
+)
 export class ListmonkProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 100; // Bluesky has moderate rate limits
   identifier = 'listmonk';
@@ -25,6 +29,10 @@ export class ListmonkProvider extends SocialAbstract implements SocialProvider {
 
   maxLength() {
     return 100000000;
+  }
+
+  inlineImages() {
+    return true;
   }
 
   async customFields() {
@@ -64,10 +72,10 @@ export class ListmonkProvider extends SocialAbstract implements SocialProvider {
   }
 
   async generateAuthUrl() {
-    const state = makeId(6);
+    const state = makeSecureId(6);
     return {
       url: state,
-      codeVerifier: makeId(10),
+      codeVerifier: makeSecureId(10),
       state,
     };
   }
@@ -188,6 +196,10 @@ export class ListmonkProvider extends SocialAbstract implements SocialProvider {
   padding: 20px;
   font-size: 15px;
   line-height: 1.6;
+}
+.content img {
+  max-width: 100%;
+  height: auto;
 }
 </style>
 <div class="hidden-preheader"

@@ -15,12 +15,13 @@ import { Request, Response } from 'express';
 import crypto from 'crypto';
 import path from 'path';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import {
   maxUploadSizeFor,
   maxUploadSizeLabelFor,
 } from '@gitroom/helpers/utils/max.upload.size';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { fromBuffer } = require('file-type');
+const { fileTypeFromBuffer } = require('file-type');
 
 const ALLOWED_EXT_TO_MIME: Record<string, string> = {
   '.jpg': 'image/jpeg',
@@ -35,9 +36,18 @@ const ALLOWED_EXT_TO_MIME: Record<string, string> = {
   '.mp4': 'video/mp4',
 };
 
+// Multipart uploads go through the normalizer, so they may also carry
+// QuickTime, which it turns into an mp4; simple uploads never do
+function multipartExtToMime(): Record<string, string> {
+  return {
+    ...ALLOWED_EXT_TO_MIME,
+    ...(UploadFactory.processorEnabled() ? { '.mov': 'video/quicktime' } : {}),
+  };
+}
+
 function normalizeExtension(filename: string): string | null {
   const ext = path.extname(filename || '').toLowerCase();
-  return ALLOWED_EXT_TO_MIME[ext] ? ext : null;
+  return multipartExtToMime()[ext] ? ext : null;
 }
 
 const {
@@ -89,7 +99,7 @@ export async function simpleUpload(
   originalFilename: string,
   _contentType: string
 ) {
-  const detected = await fromBuffer(data);
+  const detected = await fileTypeFromBuffer(data);
   if (!detected || !Object.values(ALLOWED_EXT_TO_MIME).includes(detected.mime)) {
     throw new Error('Unsupported file type.');
   }
@@ -116,7 +126,7 @@ export async function createMultipartUpload(req: Request, res: Response) {
   if (!safeExt) {
     return res.status(400).json({ message: 'Unsupported file type.' });
   }
-  const safeContentType = ALLOWED_EXT_TO_MIME[safeExt];
+  const safeContentType = multipartExtToMime()[safeExt];
   const declaredSize = Number(file?.size);
   if (
     !Number.isFinite(declaredSize) ||
@@ -219,7 +229,7 @@ export async function completeMultipartUpload(req: Request, res: Response) {
       );
       return res.status(400).json({ message: 'Unsupported file type.' });
     }
-    const expectedMime = ALLOWED_EXT_TO_MIME[safeExt];
+    const expectedMime = multipartExtToMime()[safeExt];
 
     // The client declares the size up front, but parts go straight to R2 via
     // presigned URLs, so check the real object size before accepting it.
@@ -248,9 +258,18 @@ export async function completeMultipartUpload(req: Request, res: Response) {
       chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     }
     const prefix = Buffer.concat(chunks);
-    const detected = await fromBuffer(prefix);
+    const detected = await fileTypeFromBuffer(prefix);
 
-    if (!detected || detected.mime !== expectedMime) {
+    // .mov and .mp4 are the same ISO BMFF family: a .mov with an ISO brand
+    // sniffs as video/mp4 and a QuickTime-brand file is often named .mp4.
+    // The normalizer reads both and always writes an mp4, so accept both
+    // for either extension whenever it is on; without it .mp4 stays strict.
+    const acceptedMimes =
+      UploadFactory.processorEnabled() &&
+      (safeExt === '.mov' || safeExt === '.mp4')
+        ? ['video/quicktime', 'video/mp4']
+        : [expectedMime];
+    if (!detected || !acceptedMimes.includes(detected.mime)) {
       await R2.send(
         new DeleteObjectCommand({ Bucket: CLOUDFLARE_BUCKETNAME, Key: key })
       );

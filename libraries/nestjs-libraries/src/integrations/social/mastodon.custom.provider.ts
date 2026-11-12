@@ -4,9 +4,10 @@ import {
   PostResponse,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { MastodonProvider } from '@gitroom/nestjs-libraries/integrations/social/mastodon.provider';
-import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
-import { Integration } from '@prisma/client';
+import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
+import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
+import { Integration } from '@prisma/client';
 
 export class MastodonCustomProvider extends MastodonProvider {
   override identifier = 'mastodon-custom';
@@ -27,6 +28,8 @@ export class MastodonCustomProvider extends MastodonProvider {
       await fetch(url + '/api/v1/apps', {
         method: 'POST',
         body: form,
+        // @ts-ignore - undici-only option; blocks SSRF to internal IPs
+        dispatcher: getSsrfSafeDispatcher(),
       })
     ).json();
 
@@ -35,8 +38,10 @@ export class MastodonCustomProvider extends MastodonProvider {
       client_secret,
     };
   }
+  // Postaryx: the manager passes the client information as the first argument
+  // (SocialProvider.generateAuthUrl), so `external` must come first (#10).
   override async generateAuthUrl(external?: ClientInformation) {
-    const state = makeId(6);
+    const state = makeSecureId(6);
     const url = this.generateUrlDynamic(
       external?.instanceUrl!,
       state,
@@ -46,7 +51,7 @@ export class MastodonCustomProvider extends MastodonProvider {
 
     return {
       url,
-      codeVerifier: makeId(10),
+      codeVerifier: makeSecureId(10),
       state,
     };
   }
@@ -67,35 +72,42 @@ export class MastodonCustomProvider extends MastodonProvider {
     );
   }
 
-  /**
-   * The instance a channel was connected on. The OAuth callback stores the
-   * external client information (client_id, client_secret, instanceUrl) encrypted
-   * in `customInstanceDetails`; without it we would post every custom-instance
-   * channel to mastodon.social with a token that server has never seen.
-   */
-  private instanceUrl(integration?: Integration): string {
+  // The user's instance URL, saved encrypted at connection time. Falls back to
+  // the default instance for legacy integrations that predate storing it.
+  private instanceUrl(integration?: Integration) {
     try {
-      const details = JSON.parse(
-        AuthService.fixedDecryption(integration?.customInstanceDetails!)
-      ) as Partial<ClientInformation>;
-      if (details?.instanceUrl) {
-        return details.instanceUrl.replace(/\/+$/, '');
-      }
-    } catch {
-      // fall through to the default instance
+      const { instanceUrl } = JSON.parse(
+        AuthService.fixedDecryption(integration?.customInstanceDetails || '')
+      );
+      return instanceUrl || process.env.MASTODON_URL || 'https://mastodon.social';
+    } catch (err) {
+      return process.env.MASTODON_URL || 'https://mastodon.social';
     }
-    return process.env.MASTODON_URL || 'https://mastodon.social';
   }
 
   override async post(
     id: string,
     accessToken: string,
     postDetails: PostDetails[],
-    // Optional only to stay assignable to MastodonProvider.post, which upstream
-    // declares with three parameters; the manager always passes it.
-    integration?: Integration
+    integration: Integration
   ): Promise<PostResponse[]> {
     return this.dynamicPost(
+      id,
+      accessToken,
+      this.instanceUrl(integration),
+      postDetails
+    );
+  }
+
+  // checkPostStatus / finalizePost are inherited as-is: the instance url
+  // travels inside pendingData, set here once.
+  override async postPending(
+    id: string,
+    accessToken: string,
+    postDetails: PostDetails[],
+    integration: Integration
+  ): Promise<PostResponse[]> {
+    return this.dynamicPostPending(
       id,
       accessToken,
       this.instanceUrl(integration),

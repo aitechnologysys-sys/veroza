@@ -75,6 +75,14 @@ schema changes are reviewed SQL.
 
 5. **Deploy** the application image.
 
+6. **Record it** in the ledger in [migrations/README.md](./migrations/README.md),
+   one row per database. A new SQL file must arrive with "not yet" rows for every
+   environment, so a missing apply is visible in the PR.
+
+[migrations/README.md](./migrations/README.md) has the files in order, the ledger,
+a one-query "is it applied?" check, and copy-paste commands for the production
+server (`pg_dump` backup, single-transaction `psql` apply).
+
 ## Rollback
 
 Because startup no longer touches the schema, rolling the application back is
@@ -84,6 +92,9 @@ not know about.
 
 Only reverse a schema change if you have decided the data is genuinely
 disposable, and then with a reviewed `DROP` of its own.
+
+When to roll back the image, and what not to roll back, is listed under
+"Rollback criteria" in [migrations/README.md](./migrations/README.md).
 
 ## Development
 

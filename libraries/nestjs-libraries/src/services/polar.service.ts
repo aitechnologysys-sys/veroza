@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { createHmac } from 'crypto';
 import axios from 'axios';
 import { Organization, SubscriptionStatus } from '@prisma/client';
@@ -12,10 +11,27 @@ import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import {
-  IBillingProvider,
-  CheckoutResult,
-  SubscribeResult,
-} from '@gitroom/nestjs-libraries/services/billing.provider.interface';
+  PaymentPlatform,
+  PaymentProvider,
+  PaymentProviderAbstract,
+} from '@gitroom/nestjs-libraries/services/payment/payment.provider.interface';
+
+// Postaryx: Polar is a web payment provider in upstream's provider system
+// (services/payment). BILLING_PROVIDER picks which web provider takes new
+// checkouts; existing subscriptions stay with the provider stored on the row.
+export const POLAR_PROVIDER = 'polar';
+
+export interface CheckoutResult {
+  client_secret?: string;
+  url?: string;
+  auto_apply_coupon?: string;
+}
+
+export interface SubscribeResult {
+  url?: string;
+  portal?: string;
+  id?: string;
+}
 
 // Polar mirrors Stripe's rule: nothing here refunds on its own. refundCharges()
 // is the only path that returns money and it is superadmin-only.
@@ -47,8 +63,10 @@ const POLAR_BASE =
     ? 'https://sandbox-api.polar.sh'
     : 'https://api.polar.sh';
 
-@Injectable()
-export class PolarService implements IBillingProvider {
+@PaymentProvider({ provider: POLAR_PROVIDER })
+export class PolarService extends PaymentProviderAbstract {
+  platform: PaymentPlatform = 'web';
+
   private readonly http = axios.create({
     baseURL: POLAR_BASE,
     headers: {
@@ -63,7 +81,9 @@ export class PolarService implements IBillingProvider {
     private _organizationService: OrganizationService,
     private _userService: UsersService,
     private _trackService: TrackService
-  ) {}
+  ) {
+    super();
+  }
 
   // ─── Webhook ────────────────────────────────────────────────────────────────
 
@@ -107,6 +127,24 @@ export class PolarService implements IBillingProvider {
     return JSON.parse(rawBody.toString('utf8'));
   }
 
+  // Same dispatch as PolarController (POST /payment-webhook), so upstream's
+  // generic /payment/polar route works too.
+  async processWebhook(event: any) {
+    switch (event?.type) {
+      case 'subscription.created':
+        return this.handleSubscriptionCreated(event);
+      case 'subscription.updated':
+        return this.handleSubscriptionUpdated(event);
+      case 'subscription.canceled':
+      case 'subscription.revoked':
+        return this.handleSubscriptionDeleted(event);
+      case 'order.created':
+        return this.handlePaymentSucceeded(event);
+      default:
+        return { ok: true };
+    }
+  }
+
   async handleSubscriptionCreated(event: any) {
     return this._handleSubscriptionUpsert(event);
   }
@@ -118,7 +156,10 @@ export class PolarService implements IBillingProvider {
   async handleSubscriptionDeleted(event: any) {
     const customerId = event.data?.customer_id;
     if (!customerId) return { ok: true };
-    await this._subscriptionService.deleteSubscription(customerId);
+    await this._subscriptionService.deleteSubscription(
+      customerId,
+      POLAR_PROVIDER
+    );
     return { ok: true };
   }
 
@@ -169,6 +210,7 @@ export class PolarService implements IBillingProvider {
       : null;
 
     return this._subscriptionService.createOrUpdateSubscription(
+      POLAR_PROVIDER,
       !isActive,
       uniqueId,
       customerId,
@@ -404,12 +446,16 @@ export class PolarService implements IBillingProvider {
     if (!activeSubs.length) throw new Error('No active subscription found');
 
     await this.http.delete(`/v1/subscriptions/${activeSubs[0].id}`);
-    await this._subscriptionService.deleteSubscription(org.paymentId);
+    await this._subscriptionService.deleteSubscription(
+      org.paymentId,
+      POLAR_PROVIDER,
+      'CANCELED'
+    );
 
     return { cancelled: true };
   }
 
-  async finishTrial(paymentId: string): Promise<any> {
+  async finishTrial(_organization: Organization): Promise<any> {
     // Polar does not expose an API to end a trial early.
     // The trial will expire naturally on the trial_end date.
     // If needed in the future, cancel and recreate the subscription without a trial.
@@ -417,6 +463,31 @@ export class PolarService implements IBillingProvider {
   }
 
   // ─── Portal ──────────────────────────────────────────────────────────────────
+
+  async portalLink(organizationId: string): Promise<{ url: string }> {
+    const customer = await this.getCustomerByOrganizationId(organizationId);
+    if (!customer) throw new Error('No payment customer found');
+    return this.createBillingPortalLink(customer);
+  }
+
+  // Account deletion: upstream calls this on every provider when the org has
+  // no subscription row, so it must quietly do nothing when Polar owns nothing.
+  async cancelAllSubscriptions(organizationId: string): Promise<void> {
+    if (!process.env.POLAR_ACCESS_TOKEN) return;
+    const org = await this._organizationService.getOrgById(organizationId);
+    if (!org?.paymentId) return;
+
+    const activeSubs = await this._getActiveSubscriptions(org.paymentId);
+    for (const sub of activeSubs) {
+      await this.http.delete(`/v1/subscriptions/${sub.id}`);
+    }
+
+    await this._subscriptionService.deleteSubscription(
+      org.paymentId,
+      POLAR_PROVIDER,
+      'CANCELED'
+    );
+  }
 
   async createBillingPortalLink(customerId: string): Promise<{ url: string }> {
     const { data } = await this.http.post('/v1/customer-sessions', {
@@ -427,11 +498,11 @@ export class PolarService implements IBillingProvider {
 
   // ─── Discounts / proration ───────────────────────────────────────────────────
 
-  async checkDiscount(_paymentId: string): Promise<boolean> {
+  async checkDiscount(_organization: Organization): Promise<boolean> {
     return false;
   }
 
-  async applyDiscount(_paymentId: string): Promise<boolean> {
+  async applyDiscount(_organization: Organization): Promise<boolean> {
     return false;
   }
 
@@ -551,6 +622,7 @@ export class PolarService implements IBillingProvider {
       const findPricing = pricing[nextPackage];
 
       await this._subscriptionService.createOrUpdateSubscription(
+      POLAR_PROVIDER,
         false,
         makeId(10),
         organizationId,

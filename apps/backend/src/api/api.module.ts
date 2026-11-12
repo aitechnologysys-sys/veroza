@@ -3,11 +3,14 @@ import { AuthController } from '@gitroom/backend/api/routes/auth.controller';
 import { AuthService } from '@gitroom/backend/services/auth/auth.service';
 import { UsersController } from '@gitroom/backend/api/routes/users.controller';
 import { AuthMiddleware } from '@gitroom/backend/services/auth/auth.middleware';
-import { StripeController } from '@gitroom/backend/api/routes/stripe.controller';
 import { MetaController } from '@gitroom/backend/api/routes/meta.controller';
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 import { PolarController } from '@gitroom/backend/api/routes/polar.controller';
 import { PolarService } from '@gitroom/nestjs-libraries/services/polar.service';
+import { PaymentController } from '@gitroom/backend/api/routes/payment.controller';
+import { PaymentService } from '@gitroom/nestjs-libraries/services/payment/payment.service';
+import { PaymentProviderManager } from '@gitroom/nestjs-libraries/services/payment/payment.provider.manager';
+import { RevenueCatProvider } from '@gitroom/nestjs-libraries/services/payment/providers/revenuecat.provider';
 import { AnalyticsController } from '@gitroom/backend/api/routes/analytics.controller';
 import { PoliciesGuard } from '@gitroom/backend/services/auth/permissions/permissions.guard';
 import { PermissionsService } from '@gitroom/backend/services/auth/permissions/permissions.service';
@@ -16,6 +19,11 @@ import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integ
 import { SettingsController } from '@gitroom/backend/api/routes/settings.controller';
 import { PostsController } from '@gitroom/backend/api/routes/posts.controller';
 import { MediaController } from '@gitroom/backend/api/routes/media.controller';
+import { ClippingController } from '@gitroom/backend/api/routes/clipping.controller';
+import { MediaWidgetController } from '@gitroom/backend/api/routes/media.widget.controller';
+import { UploadWidgetAuthMiddleware } from '@gitroom/backend/services/auth/upload.widget.auth.middleware';
+import { ClippingWidgetController } from '@gitroom/backend/api/routes/clipping.widget.controller';
+import { ClippingWidgetAuthMiddleware } from '@gitroom/backend/services/auth/clipping.widget.auth.middleware';
 import { UploadModule } from '@gitroom/nestjs-libraries/upload/upload.module';
 import { BillingController } from '@gitroom/backend/api/routes/billing.controller';
 import { NotificationsController } from '@gitroom/backend/api/routes/notifications.controller';
@@ -37,15 +45,20 @@ import { NoAuthIntegrationsController } from '@gitroom/backend/api/routes/no.aut
 import { EnterpriseController } from '@gitroom/backend/api/routes/enterprise.controller';
 import { OAuthAppController } from '@gitroom/backend/api/routes/oauth-app.controller';
 import { ApprovedAppsController } from '@gitroom/backend/api/routes/approved-apps.controller';
-import { OAuthController, OAuthAuthorizedController } from '@gitroom/backend/api/routes/oauth.controller';
+import {
+  OAuthController,
+  OAuthAuthorizedController,
+} from '@gitroom/backend/api/routes/oauth.controller';
 import { AnnouncementsController } from '@gitroom/backend/api/routes/announcements.controller';
 import { AdminController } from '@gitroom/backend/api/routes/admin.controller';
 import { AuthProviderManager } from '@gitroom/backend/services/auth/providers/providers.manager';
 import { GithubProvider } from '@gitroom/backend/services/auth/providers/github.provider';
 import { GoogleProvider } from '@gitroom/backend/services/auth/providers/google.provider';
+import { AppleProvider } from '@gitroom/backend/services/auth/providers/apple.provider';
 import { FarcasterProvider } from '@gitroom/backend/services/auth/providers/farcaster.provider';
 import { WalletProvider } from '@gitroom/backend/services/auth/providers/wallet.provider';
 import { OauthProvider } from '@gitroom/backend/services/auth/providers/oauth.provider';
+import { StripeController } from '@gitroom/backend/api/routes/stripe.controller';
 
 const authenticatedController = [
   UsersController,
@@ -54,6 +67,7 @@ const authenticatedController = [
   SettingsController,
   PostsController,
   MediaController,
+  ClippingController,
   BillingController,
   NotificationsController,
   CopilotController,
@@ -70,28 +84,42 @@ const authenticatedController = [
 ];
 @Module({
   imports: [UploadModule],
-  controllers: [
-    RootController,
-    StripeController,
-    PolarController,
-    AuthController,
-    PublicController,
-    MonitorController,
-    EnterpriseController,
-    NoAuthIntegrationsController,
-    // Meta calls these server to server with no session; authenticity comes
-    // from the signed_request HMAC, so they stay outside AuthMiddleware.
-    MetaController,
-    OAuthController,
-    ...authenticatedController,
-  ],
+  controllers: process.env.MCP_ONLY
+    ? [
+        RootController,
+        OAuthController,
+        MediaWidgetController,
+        ClippingWidgetController,
+      ]
+    : [
+        RootController,
+        PaymentController,
+        StripeController,
+        PolarController,
+        AuthController,
+        PublicController,
+        MonitorController,
+        EnterpriseController,
+        NoAuthIntegrationsController,
+        // Meta calls these server to server with no session; authenticity comes
+        // from the signed_request HMAC, so they stay outside AuthMiddleware.
+        MetaController,
+        OAuthController,
+        MediaWidgetController,
+        ClippingWidgetController,
+        ...authenticatedController,
+      ],
   providers: [
     AuthService,
     StripeService,
     PolarService,
+    PaymentService,
+    PaymentProviderManager,
+    RevenueCatProvider,
     OpenaiService,
     ExtractContentService,
     AuthMiddleware,
+    UploadWidgetAuthMiddleware,
     PoliciesGuard,
     PermissionsService,
     CodesService,
@@ -101,6 +129,7 @@ const authenticatedController = [
     AuthProviderManager,
     GithubProvider,
     GoogleProvider,
+    AppleProvider,
     FarcasterProvider,
     WalletProvider,
     OauthProvider,
@@ -112,5 +141,9 @@ const authenticatedController = [
 export class ApiModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(AuthMiddleware).forRoutes(...authenticatedController);
+    consumer.apply(UploadWidgetAuthMiddleware).forRoutes(MediaWidgetController);
+    consumer
+      .apply(ClippingWidgetAuthMiddleware)
+      .forRoutes(ClippingWidgetController);
   }
 }

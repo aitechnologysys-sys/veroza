@@ -1,26 +1,59 @@
-import { Body, Controller, Get, HttpException, Inject, Param, Post, Query, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpException,
+  NotFoundException,
+  Param,
+  Post,
+  Query,
+  Req,
+} from '@nestjs/common';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
-import { IBillingProvider } from '@gitroom/nestjs-libraries/services/billing.provider.interface';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization, User } from '@prisma/client';
 import { BillingSubscribeDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.subscribe.dto';
+import { AdminApplyCouponDto } from '@gitroom/nestjs-libraries/dtos/billing/admin.apply.coupon.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { Request } from 'express';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
+import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
+import { PaymentService } from '@gitroom/nestjs-libraries/services/payment/payment.service';
+import { BillingSyncDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.sync.dto';
 import { BillingEventsService } from '@gitroom/nestjs-libraries/database/prisma/billing-events/billing.events.service';
 import { BillingEventType } from '@prisma/client';
+import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
+import {
+  AuthorizationActions,
+  Sections,
+} from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 
 @ApiTags('Billing')
 @Controller('/billing')
 export class BillingController {
   constructor(
     private _subscriptionService: SubscriptionService,
-    @Inject('BILLING_PROVIDER') private _billingService: IBillingProvider,
     private _notificationService: NotificationService,
+    private _usersService: UsersService,
+    private _paymentService: PaymentService,
     private _billingEventsService: BillingEventsService
   ) {}
+
+  // Billing routes are the web platform; the org's own provider (or the web
+  // default when it has none) handles the action.
+  private provider(org: Organization) {
+    return this._paymentService.getProviderForOrganization(org.id, 'web');
+  }
+
+  private async assertNoOtherSubscribedAccount(user: User) {
+    const other = await this._usersService.getUserWithActiveSubscriptionByEmail(
+      user.email,
+      user.id
+    );
+    return !!other;
+  }
 
   @Get('/check/:id')
   async checkId(
@@ -28,14 +61,14 @@ export class BillingController {
     @Param('id') body: string
   ) {
     return {
-      status: await this._billingService.checkSubscription(org.id, body),
+      status: await (await this.provider(org)).checkSubscription(org.id, body),
     };
   }
 
   @Get('/check-discount')
   async checkDiscount(@GetOrgFromRequest() org: Organization) {
     return {
-      offerCoupon: !(await this._billingService.checkDiscount(org.paymentId))
+      offerCoupon: !(await (await this.provider(org)).checkDiscount(org))
         ? false
         : AuthService.signJWT({ discount: true }),
     };
@@ -43,17 +76,22 @@ export class BillingController {
 
   @Post('/apply-discount')
   async applyDiscount(@GetOrgFromRequest() org: Organization) {
-    await this._billingService.applyDiscount(org.paymentId);
+    await (await this.provider(org)).applyDiscount(org);
   }
 
   @Post('/finish-trial')
   async finishTrial(@GetOrgFromRequest() org: Organization) {
+    const provider = await this.provider(org);
     try {
-      await this._billingService.finishTrial(org.paymentId);
-    } catch (err) {}
-    return {
-      finish: true,
-    };
+      const action = await provider.finishTrial(org);
+      if (action.requiresAction) {
+        return { finish: false, ...action };
+      }
+      return { finish: true };
+    } catch (err) {
+      console.error('finishTrial failed', err);
+      return { finish: false };
+    }
   }
 
   @Get('/is-trial-finished')
@@ -64,14 +102,18 @@ export class BillingController {
   }
 
   @Post('/embedded')
-  embedded(
+  async embedded(
     @GetOrgFromRequest() org: Organization,
     @GetUserFromRequest() user: User,
     @Body() body: BillingSubscribeDto,
     @Req() req: Request
   ) {
+    if (await this.assertNoOtherSubscribedAccount(user)) {
+      return { blocked: true };
+    }
+
     const uniqueId = req?.cookies?.track;
-    return this._billingService.embedded(
+    return (await this.provider(org)).embedded(
       uniqueId,
       org.id,
       user.id,
@@ -81,14 +123,18 @@ export class BillingController {
   }
 
   @Post('/subscribe')
-  subscribe(
+  async subscribe(
     @GetOrgFromRequest() org: Organization,
     @GetUserFromRequest() user: User,
     @Body() body: BillingSubscribeDto,
     @Req() req: Request
   ) {
+    if (await this.assertNoOtherSubscribedAccount(user)) {
+      return { blocked: true };
+    }
+
     const uniqueId = req?.cookies?.track;
-    return this._billingService.subscribe(
+    return (await this.provider(org)).subscribe(
       uniqueId,
       org.id,
       user.id,
@@ -97,20 +143,49 @@ export class BillingController {
     );
   }
 
+  @Post('/sync')
+  async sync(
+    @GetOrgFromRequest() org: Organization,
+    @GetUserFromRequest() user: User,
+    @Body() body: BillingSyncDto
+  ) {
+    if (await this.assertNoOtherSubscribedAccount(user)) {
+      return { blocked: true };
+    }
+    await this._paymentService.assertCanUseProvider(org.id, body.provider);
+
+    try {
+      return await this._paymentService.syncSubscription(body.provider, org.id);
+    } catch (e) {
+      if (e instanceof HttpException) {
+        throw e;
+      }
+      throw new HttpException((e as Error)?.message || 'Sync failed', 400);
+    }
+  }
+
   @Get('/portal')
   async modifyPayment(@GetOrgFromRequest() org: Organization) {
-    const customer = await this._billingService.getCustomerByOrganizationId(
-      org.id
-    );
-    const { url } = await this._billingService.createBillingPortalLink(customer);
+    const { url } = await (await this.provider(org)).portalLink(org.id);
     return {
       portal: url,
     };
   }
 
+  @Get('/invoices')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
+  async getInvoices(@GetOrgFromRequest() org: Organization) {
+    return (await this.provider(org)).getInvoices(org.id);
+  }
+
+  @Get('/renewal')
+  async getRenewal(@GetOrgFromRequest() org: Organization) {
+    return (await this.provider(org)).getRenewalDate(org.id);
+  }
+
   @Get('/')
   getCurrentBilling(@GetOrgFromRequest() org: Organization) {
-    return this._subscriptionService.getSubscriptionByOrganizationId(org.id);
+    return this._paymentService.getSubscription(org.id);
   }
 
   @Post('/cancel')
@@ -119,30 +194,36 @@ export class BillingController {
     @GetUserFromRequest() user: User,
     @Body() body: { feedback: string }
   ) {
-    await this._notificationService.sendEmail(
-      process.env.EMAIL_FROM_ADDRESS,
-      'Subscription Cancelled',
-      `Organization ${org.name} has cancelled their subscription because: ${body.feedback}`,
-      user.email
-    );
+    const result = await (await this.provider(org)).setToCancel(org.id);
 
-    return this._billingService.setToCancel(org.id);
+    if (result.cancel_at) {
+      await this._notificationService.sendEmail(
+        process.env.EMAIL_FROM_ADDRESS,
+        'Subscription Cancelled',
+        `Organization ${org.name} has cancelled their subscription because: ${body.feedback}`,
+        user.email
+      );
+    }
+
+    return result;
   }
 
   @Post('/prorate')
-  prorate(
+  async prorate(
     @GetOrgFromRequest() org: Organization,
     @Body() body: BillingSubscribeDto
   ) {
-    return this._billingService.prorate(org.id, body);
+    return (await this.provider(org)).prorate(org.id, body);
   }
 
+  // Postaryx: kept although upstream removed it in v2.23.0 (our lifetime-deal
+  // page still uses it). See docs/UPSTREAM-SYNC-LOG.md, step 1.
   @Post('/lifetime')
   async lifetime(
     @GetOrgFromRequest() org: Organization,
     @Body() body: { code: string }
   ) {
-    return this._billingService.lifetimeDeal(org.id, body.code);
+    return (await this.provider(org)).lifetimeDeal(org.id, body.code);
   }
 
   @Get('/charges')
@@ -154,7 +235,7 @@ export class BillingController {
       throw new HttpException('Unauthorized', 400);
     }
 
-    return this._billingService.getCharges(org.id);
+    return (await this.provider(org)).getCharges(org.id);
   }
 
   @Post('/refund-charges')
@@ -167,7 +248,7 @@ export class BillingController {
       throw new HttpException('Unauthorized', 400);
     }
 
-    return this._billingService.refundCharges(
+    return (await this.provider(org)).refundCharges(
       org.id,
       body.chargeIds,
       user.id
@@ -206,7 +287,78 @@ export class BillingController {
       throw new HttpException('Unauthorized', 400);
     }
 
-    return this._billingService.cancelSubscription(org.id, user.id);
+    return (await this.provider(org)).cancelSubscription(org.id, user.id);
+  }
+
+  @Get('/coupon-info')
+  async couponInfo(
+    @GetUserFromRequest() user: User,
+    @GetOrgFromRequest() org: Organization
+  ) {
+    if (!user.isSuperAdmin) {
+      throw new HttpException('Unauthorized', 400);
+    }
+
+    return (await this.provider(org)).getCouponInfo(org.id);
+  }
+
+  @Post('/apply-coupon')
+  async applyCoupon(
+    @GetUserFromRequest() user: User,
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: AdminApplyCouponDto
+  ) {
+    if (!user.isSuperAdmin) {
+      throw new HttpException('Unauthorized', 400);
+    }
+
+    return (await this.provider(org)).applyCoupon(org.id, body);
+  }
+
+  @Post('/cancel-coupon')
+  async cancelCoupon(
+    @GetUserFromRequest() user: User,
+    @GetOrgFromRequest() org: Organization
+  ) {
+    if (!user.isSuperAdmin) {
+      throw new HttpException('Unauthorized', 400);
+    }
+
+    return (await this.provider(org)).cancelCoupon(org.id);
+  }
+
+  // Postaryx divergence: upstream's self-serve refund for its Chatbase support
+  // bot is disabled. Refunds stay admin-approved with a BillingEvent audit
+  // record (docs/billing-refund-policy.md). The upstream code below is kept
+  // only so future upstream merges stay small.
+  private chatbaseRefundDisabled(): never {
+    throw new NotFoundException();
+  }
+
+  @Get('/chatbase-refund/preview')
+  async chatbaseRefundPreview(@GetOrgFromRequest() org: Organization) {
+    this.chatbaseRefundDisabled();
+    return (await this.provider(org)).chatbaseRefundPreview(org.id);
+  }
+
+  @Post('/chatbase-refund')
+  async chatbaseRefund(
+    @GetUserFromRequest() user: User,
+    @GetOrgFromRequest() org: Organization
+  ) {
+    this.chatbaseRefundDisabled();
+    const refund = await (await this.provider(org)).chatbaseRefund(org.id);
+
+    if (refund.refunded) {
+      await this._notificationService.sendEmail(
+        process.env.EMAIL_FROM_ADDRESS,
+        'Refund issued from Chatbase',
+        `Organization ${org.name} received a refund of ${refund.amount} ${refund.currency} and their subscription was cancelled`,
+        user.email
+      );
+    }
+
+    return refund;
   }
 
   @Post('/add-subscription')
@@ -222,8 +374,8 @@ export class BillingController {
     await this._subscriptionService.addSubscription(
       org.id,
       user.id,
-      body.subscription
+      body.subscription,
+      this._paymentService.getDefaultProviderName('web')
     );
   }
-
 }

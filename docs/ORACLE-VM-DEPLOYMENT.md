@@ -36,8 +36,10 @@ Two consequences that drive every decision below:
 1. **Postiz already routes `/` and `/api` internally**, so the host only proxies
    **one** upstream port (`127.0.0.1:4007`).
 2. **It pulls a CI-built image** (built from `Dockerfile.dev` in GitHub
-   Actions — never on this box) and **self-migrates the DB on boot**
-   (`prisma-db-push`). The full stack is **8 containers** (app + Postgres +
+   Actions — never on this box). It does **not** migrate the DB on boot (since
+   PR #25): schema changes are reviewed SQL from `docs/migrations/`, applied by
+   hand before the new image ([deployment-and-run-process.md](./deployment-and-run-process.md) §2).
+   The full stack is **8 containers** (app + Postgres +
    Redis + a 5-container Temporal stack including Elasticsearch). Budget
    ~3–4 GB RAM steady-state for Postiz alone.
 
@@ -49,7 +51,7 @@ Two consequences that drive every decision below:
 |---|---|---|
 | **Reverse proxy** | **Nginx on the host** (systemd) + Certbot | One auto-renewing cert store for all current/future apps; decoupled from app rebuilds; trivial to add vhosts. Traefik/Caddy-in-Docker only pay off at ~10+ apps and couple every app onto a shared proxy network. |
 | **Docker networks** | **One bridge network per project** (the default) | Keeps each app isolated (security + no DNS collisions). The host Nginx bridges apps at the loopback layer, so they never need to share a network. |
-| **Auto-updates (Watchtower)** | **No** | Postiz runs DB migrations on boot — an unattended update could migrate/break production even though it's just a pull now (no local build). Use deliberate `git pull && docker compose pull` with a rollback path. |
+| **Auto-updates (Watchtower)** | **No** | A new image can need schema changes that must be applied by hand first (`docs/migrations/`); an unattended update would start new code on the old schema and break production. Use the deliberate deploy in [deployment-and-run-process.md](./deployment-and-run-process.md) §2. |
 | **Domains** | **Single domain** for Postiz | Postiz's internal Nginx already serves `/api`. Splitting into `api.*` would force internal-nginx edits + cross-origin cookies/CORS for zero benefit. (Multi-domain pattern below is for *future, separate* apps.) |
 
 ### Three gotchas that dominate this setup
@@ -215,7 +217,7 @@ P1-2 for the full DBeaver-over-SSH-tunnel walkthrough.
 cd /opt/postaryx/postaryx-app
 docker compose -p postaryx-prod pull postaryx        # fetch the newest CI-built image
 docker compose -p postaryx-prod up -d
-docker compose -p postaryx-prod logs -f postaryx     # watch nginx + pm2 + prisma-db-push
+docker compose -p postaryx-prod logs -f postaryx     # watch nginx + pm2 start
 docker compose -p postaryx-prod ps                 # all required containers healthy/running
 curl -I http://127.0.0.1:4007               # expect 200 once warmed up (~90s healthcheck)
 ```
@@ -413,6 +415,10 @@ gunzip -c db-YYYY-MM-DD.sql.gz | docker exec -i postaryx-postgres psql -U postar
 
 ## 14. Updating after new commits
 
+> **If the release adds files to `docs/migrations/`, apply them before the
+> commands below** (back up the DB, run each new `.sql` in order, then roll out).
+> The app never migrates itself. Step by step: [deployment-and-run-process.md](./deployment-and-run-process.md) §2.
+
 Merging to `main` triggers the CI build (see §2a of
 [INFRASTRUCTURE-AND-DEPLOYMENT.md](./INFRASTRUCTURE-AND-DEPLOYMENT.md) and
 [CI-BUILD-CUTOVER.md](./CI-BUILD-CUTOVER.md)) — the VM never builds, only pulls:
@@ -421,8 +427,8 @@ Merging to `main` triggers the CI build (see §2a of
 cd /opt/postaryx/postaryx-app
 git pull                                      # picks up any tracked-file changes (compose, configs)
 docker compose -p postaryx-prod pull postaryx      # fetch the newest CI-built image
-docker compose -p postaryx-prod up -d postaryx     # recreate the app container; runs prisma-db-push
-docker compose -p postaryx-prod logs -f postaryx   # watch boot + migration
+docker compose -p postaryx-prod up -d postaryx     # recreate the app container (no schema change on boot)
+docker compose -p postaryx-prod logs -f postaryx   # watch boot
 docker image prune -f                         # reclaim old image layers
 ```
 Bump `version.txt` to show the new version in the UI — CI stamps it as
@@ -441,9 +447,11 @@ restarts, and host Nginx holds the connection during it.
 2. Flip the host Nginx `proxy_pass` from `:4007` to `:4008` and `sudo systemctl reload nginx`.
 3. Retire the old container.
 
-**Migration caveat:** `prisma-db-push` runs on every app boot. Prefer
-backward-compatible schema changes, and **back up the DB before any deploy that
-touches `schema.prisma`**.
+**Migration caveat:** the app never changes the schema on boot. A deploy that
+touches `schema.prisma` needs its reviewed SQL from `docs/migrations/` applied
+**first** (after a DB backup), while the old container still serves; keep schema
+changes backward-compatible so the old code runs on the new schema. Full
+procedure: [deployment-and-run-process.md](./deployment-and-run-process.md) §2.
 
 ---
 
@@ -530,6 +538,6 @@ touches `schema.prisma`**.
 6. In a browser: load the site, register/login, and **schedule a test post a few
    minutes out** → confirms the Temporal orchestrator works end-to-end (the real
    integration test for this app).
-7. `docker compose -p postaryx-prod logs postaryx | grep -i prisma` → migration ran clean.
+7. `docker compose -p postaryx-prod logs postaryx | grep -E 'P20(21|22)'` → no output (no "table/column does not exist": the schema matches the code).
 8. Run `backup.sh` once manually; verify `db-*.sql.gz` and `uploads-*.tar.gz` are
    non-empty.

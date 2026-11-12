@@ -29,7 +29,10 @@ const INTEGRATION = {
 
 const buildService = (provider: any) => {
   const integrationService = {
-    refreshNeeded: jest.fn(async () => undefined),
+    // true = this attempt flagged the channel (see integration.repository)
+    refreshNeeded: jest.fn(async () => true),
+    // no concurrent refresh stored newer tokens
+    getIntegrationById: jest.fn(async () => INTEGRATION),
     informAboutRefreshError: jest.fn(async () => undefined),
     disconnectChannel: jest.fn(async () => undefined),
     createOrUpdateIntegration: jest.fn(async () => ({ id: 'row-1' })),
@@ -95,8 +98,10 @@ describe('refresh — providers that cannot refresh', () => {
       'org-1',
       'row-1'
     );
-    // disconnectChannel only sets refreshNeeded; nothing is deleted or disabled.
-    expect(integrationService.disconnectChannel).toHaveBeenCalled();
+    // Upstream dropped the extra disconnectChannel call (it only set the same
+    // refreshNeeded flag and sent a second, cause-less email); nothing is
+    // deleted or disabled.
+    expect(integrationService.disconnectChannel).not.toHaveBeenCalled();
   });
 
   it('tells the user, and returns false rather than a broken credential', async () => {

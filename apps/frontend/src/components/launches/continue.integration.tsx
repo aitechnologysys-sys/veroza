@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { Redirect } from '@gitroom/frontend/components/layout/redirect';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
-import dayjs from 'dayjs';
 import { continueProviderList } from '@gitroom/frontend/components/new-launch/providers/continue-provider/list';
 import { IntegrationContext } from '@gitroom/frontend/components/launches/helpers/use.integration';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
@@ -74,6 +73,15 @@ export const ContinueIntegration: FC<{
 
     // VK removed deliberately — see scripts/check-banned-providers.mjs
 
+    if (provider === 'tiktok-business') {
+      // The TikTok Business API redirects back with `auth_code` instead of `code`
+      return {
+        state: searchParams.state || '',
+        code: searchParams.auth_code || searchParams.code || '',
+        refresh: searchParams.refresh || '',
+      };
+    }
+
     if (provider === 'mewe') {
       const hash =
         typeof window !== 'undefined' ? window.location.hash.substring(1) : '';
@@ -90,7 +98,7 @@ export const ContinueIntegration: FC<{
 
   useEffect(() => {
     (async () => {
-      const timezone = String(dayjs.tz().utcOffset());
+      const timezone = String(newDayjs().utcOffset());
 
       // Try public endpoint first (handles both public and fallback scenarios)
       let data = await fetch(`/integrations/social-connect/${provider}`, {
@@ -168,7 +176,11 @@ export const ContinueIntegration: FC<{
               jwt: extensionToken,
               backendUrl,
             },
-            () => {}
+            () => {
+              if (chrome.runtime.lastError) {
+                return;
+              }
+            }
           );
         } catch {
           // Silently ignore — extension may not be available
@@ -253,6 +265,8 @@ export const ContinueIntegration: FC<{
       'linkedin-page': 'LinkedIn',
       youtube: 'YouTube',
       gmb: 'Google Business',
+      tumblr: 'Tumblr',
+      'tiktok-business': 'TikTok Business',
     };
     return names[provider] || provider;
   }, [provider]);

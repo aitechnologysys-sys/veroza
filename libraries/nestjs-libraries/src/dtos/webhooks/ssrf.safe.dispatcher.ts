@@ -1,4 +1,4 @@
-import { Agent } from 'undici';
+import { Agent, buildConnector } from 'undici';
 import axios, { AxiosInstance } from 'axios';
 import dns from 'node:dns';
 import net from 'node:net';
@@ -45,20 +45,65 @@ function ssrfSafeLookup(
   });
 }
 
+// Postaryx: Node never calls `lookup` when the host is already an IP literal
+// (http://127.0.0.1/, http://[::1]/, http://2130706433/ which URL parsing turns
+// into 127.0.0.1, or a redirect to any of them), so the lookup hook alone let
+// those straight through. Both clients below also check the literal host at
+// connect time. Every redirect hop opens its connection through the same
+// agent, so redirects are covered too.
+const isBlockedLiteral = (host?: string | null) => {
+  const bare = String(host || '').replace(/^\[|\]$/g, '');
+  return net.isIP(bare) !== 0 && isBlockedIp(bare);
+};
+
+const baseConnector = buildConnector({ lookup: ssrfSafeLookup } as any);
+
 export const ssrfSafeDispatcher = new Agent({
-  connect: {
-    lookup: ssrfSafeLookup,
+  connect: (options, callback) => {
+    if (isBlockedLiteral(options.hostname)) {
+      callback(new Error('Blocked IP'), null);
+      return;
+    }
+    baseConnector(options, callback);
   },
 });
+
+// Node's Agent calls createConnection(options, oncreate) and only uses the
+// return value when it is a socket, so failing through the callback is the
+// supported way to refuse a connection. https.Agent also accepts
+// (port, host, options), hence the argument scan.
+const guardCreateConnection = <T extends http.Agent>(agent: T): T => {
+  const original = (agent as any).createConnection.bind(agent);
+  (agent as any).createConnection = (...args: any[]) => {
+    const options = args.find((arg) => arg && typeof arg === 'object');
+    const callback = args.find((arg) => typeof arg === 'function');
+    const host =
+      typeof args[0] === 'object' ? options?.host ?? options?.hostname : args[1];
+    if (isBlockedLiteral(host)) {
+      const error = new Error('Blocked IP');
+      if (callback) {
+        callback(error);
+        return undefined;
+      }
+      throw error;
+    }
+    return original(...args);
+  };
+  return agent;
+};
 
 // axios can't use an undici dispatcher, but Node's http(s) agents accept the
 // same `lookup` hook, so axios requests (providers that need form-data /
 // stream uploads) get the identical pinned-DNS guard as `this.fetch`.
 const ssrfSafeAxios = axios.create({
-  httpAgent: new http.Agent({ lookup: ssrfSafeLookup } as http.AgentOptions),
-  httpsAgent: new https.Agent({
-    lookup: ssrfSafeLookup,
-  } as https.AgentOptions),
+  httpAgent: guardCreateConnection(
+    new http.Agent({ lookup: ssrfSafeLookup } as http.AgentOptions)
+  ),
+  httpsAgent: guardCreateConnection(
+    new https.Agent({
+      lookup: ssrfSafeLookup,
+    } as https.AgentOptions)
+  ),
 });
 
 // Self-hosters legitimately connect Postiz to WordPress/Mastodon/Lemmy/Listmonk

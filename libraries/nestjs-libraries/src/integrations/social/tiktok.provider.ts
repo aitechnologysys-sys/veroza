@@ -8,6 +8,7 @@ import {
 import dayjs from 'dayjs';
 import {
   BadBody,
+  RefreshToken,
   SocialAbstract,
   ValidityMedia,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
@@ -16,6 +17,7 @@ import { timer } from '@gitroom/helpers/utils/timer';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { Integration } from '@prisma/client';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
+import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 
 @Rules(
   'TikTok can have one video or one picture or multiple pictures, it cannot be without an attachment'
@@ -384,10 +386,26 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     };
   }
 
-  async maxVideoLength(accessToken: string) {
-    const {
-      data: { max_video_post_duration_sec },
-    } = await (
+  // creator_info/query must be called before every post (TikTok Content
+  // Sharing Guidelines): it returns the creator's nickname, the privacy levels
+  // they may use, which interactions they have turned off and the max video
+  // duration. The settings panel renders these via /integrations/function.
+  @Tool({
+    description: 'TikTok creator info for the posting screen',
+    dataSchema: [],
+  })
+  async creatorInfo(accessToken: string): Promise<{
+    nickname?: string;
+    username?: string;
+    avatar?: string;
+    privacyLevelOptions?: string[];
+    commentDisabled?: boolean;
+    duetDisabled?: boolean;
+    stitchDisabled?: boolean;
+    maxVideoPostDurationSec?: number;
+    error?: string;
+  }> {
+    const { data, error } = await (
       await fetch(
         'https://open.tiktokapis.com/v2/post/publish/creator_info/query/',
         {
@@ -400,8 +418,27 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       )
     ).json();
 
+    if (error?.code === 'access_token_invalid') {
+      throw new RefreshToken('tiktok', JSON.stringify(error), undefined);
+    }
+
+    if (error?.code && error.code !== 'ok') {
+      return {
+        error:
+          this.handleErrors(error.code)?.value ||
+          'This TikTok account cannot post right now. Please try again later.',
+      };
+    }
+
     return {
-      maxDurationSeconds: max_video_post_duration_sec,
+      nickname: data?.creator_nickname,
+      username: data?.creator_username,
+      avatar: data?.creator_avatar_url,
+      privacyLevelOptions: data?.privacy_level_options || [],
+      commentDisabled: !!data?.comment_disabled,
+      duetDisabled: !!data?.duet_disabled,
+      stitchDisabled: !!data?.stitch_disabled,
+      maxVideoPostDurationSec: data?.max_video_post_duration_sec,
     };
   }
 
@@ -441,14 +478,12 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       }
 
       if (status === 'PUBLISH_COMPLETE') {
+        const videoId = publicaly_available_post_id?.[0];
         return {
-          url: !publicaly_available_post_id
+          url: !videoId
             ? `https://www.tiktok.com/@${id}`
-            : `https://www.tiktok.com/@${id}/video/` +
-              publicaly_available_post_id,
-          id: !publicaly_available_post_id
-            ? publishId
-            : publicaly_available_post_id?.[0],
+            : `https://www.tiktok.com/@${id}/video/${videoId}`,
+          id: !videoId ? publishId : videoId,
         };
       }
 
@@ -493,8 +528,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
             ? { title: firstPost.message }
             : {}),
           ...(isPhoto ? { description: firstPost.message } : {}),
-          privacy_level:
-            firstPost.settings.privacy_level || 'PUBLIC_TO_EVERYONE',
+          privacy_level: firstPost.settings.privacy_level,
           ...(isPhoto
             ? {}
             : { disable_duet: !firstPost.settings.duet || false }),
@@ -568,12 +602,26 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     integration: Integration
   ): Promise<PostResponse[]> {
     const [firstPost] = postDetails;
-    const isPhoto = !hasExtension(firstPost?.media?.[0]?.path, 'mp4');
 
-    console.log({
-      ...this.buildTikokPostInfoBody(firstPost),
-      ...this.buildTikokSourceInfoBody(firstPost),
-    });
+    if (firstPost?.settings?.content_posting_method !== 'UPLOAD') {
+      // Re-check against creator_info at publish time: the creator's allowed
+      // privacy levels can change between scheduling and publishing.
+      const creator = await this.creatorInfo(accessToken);
+      if (creator.error) {
+        throw new BadBody(
+          'tiktok-creator-info',
+          creator.error,
+          undefined,
+          creator.error
+        );
+      }
+      const privacy = firstPost?.settings?.privacy_level;
+      if (!privacy || !creator.privacyLevelOptions?.includes(privacy)) {
+        const message =
+          'The selected privacy level is not available for this TikTok account, please choose who can see this video again';
+        throw new BadBody('tiktok-privacy-level', message, undefined, message);
+      }
+    }
     const {
       data: { publish_id },
     } = await (

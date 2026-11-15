@@ -115,10 +115,10 @@ Add a row each time you apply a file to a database.
 
 | Database | File | Applied on | By |
 |---|---|---|---|
-| production | 1 | unknown, check it (step 2) | |
-| production | 2 | not yet | |
-| production | 3 | not yet | |
-| production | 4 | not yet | |
+| production | 1 | before 2026-11-12 (found already applied by the pre-deploy check) | |
+| production | 2 | 2026-11-12 (version with the `mastra_*` statements removed, PR #35) | Koushik Deb |
+| production | 3 | 2026-11-12 | Koushik Deb |
+| production | 4 | 2026-11-12 | Koushik Deb |
 
 ---
 

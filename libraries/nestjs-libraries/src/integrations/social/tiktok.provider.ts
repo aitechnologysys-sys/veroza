@@ -24,6 +24,7 @@ import { createReadStream } from 'fs';
 import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { Integration } from '@prisma/client';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
+import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 
 @Rules(
   [
@@ -418,10 +419,26 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     };
   }
 
-  async maxVideoLength(accessToken: string) {
-    const {
-      data: { max_video_post_duration_sec },
-    } = await (
+  // creator_info/query must be called before every post (TikTok Content
+  // Sharing Guidelines): it returns the creator's nickname, the privacy levels
+  // they may use, which interactions they have turned off and the max video
+  // duration. The settings panel renders these via /integrations/function.
+  @Tool({
+    description: 'TikTok creator info for the posting screen',
+    dataSchema: [],
+  })
+  async creatorInfo(accessToken: string): Promise<{
+    nickname?: string;
+    username?: string;
+    avatar?: string;
+    privacyLevelOptions?: string[];
+    commentDisabled?: boolean;
+    duetDisabled?: boolean;
+    stitchDisabled?: boolean;
+    maxVideoPostDurationSec?: number;
+    error?: string;
+  }> {
+    const { data, error } = await (
       await fetch(
         'https://open.tiktokapis.com/v2/post/publish/creator_info/query/',
         {
@@ -434,8 +451,27 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       )
     ).json();
 
+    if (error?.code === 'access_token_invalid') {
+      throw new RefreshToken('tiktok', JSON.stringify(error), undefined);
+    }
+
+    if (error?.code && error.code !== 'ok') {
+      return {
+        error:
+          this.handleErrors(error.code)?.value ||
+          'This TikTok account cannot post right now. Please try again later.',
+      };
+    }
+
     return {
-      maxDurationSeconds: max_video_post_duration_sec,
+      nickname: data?.creator_nickname,
+      username: data?.creator_username,
+      avatar: data?.creator_avatar_url,
+      privacyLevelOptions: data?.privacy_level_options || [],
+      commentDisabled: !!data?.comment_disabled,
+      duetDisabled: !!data?.duet_disabled,
+      stitchDisabled: !!data?.stitch_disabled,
+      maxVideoPostDurationSec: data?.max_video_post_duration_sec,
     };
   }
 
@@ -574,8 +610,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
             ? { title: firstPost.message }
             : {}),
           ...(isPhoto ? { description: firstPost.message } : {}),
-          privacy_level:
-            firstPost.settings.privacy_level || 'PUBLIC_TO_EVERYONE',
+          privacy_level: firstPost.settings.privacy_level,
           ...(isPhoto
             ? {}
             : { disable_duet: !this.assetBoolean(firstPost.settings.duet) }),
@@ -909,6 +944,26 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     integration: Integration
   ): Promise<PostResponse[]> {
     const [firstPost] = postDetails;
+    if (this.contentPostingMethod(firstPost) === 'DIRECT_POST') {
+      // Re-check against creator_info at publish time: the creator's allowed
+      // privacy levels can change between scheduling and publishing.
+      const creator = await this.creatorInfo(accessToken);
+      if (creator.error) {
+        throw new BadBody(
+          'tiktok-creator-info',
+          creator.error,
+          undefined,
+          creator.error
+        );
+      }
+      const privacy = firstPost?.settings?.privacy_level;
+      if (!privacy || !creator.privacyLevelOptions?.includes(privacy)) {
+        const message =
+          'The selected privacy level is not available for this TikTok account, please choose who can see this video again';
+        throw new BadBody('tiktok-privacy-level', message, undefined, message);
+      }
+    }
+
     const isPhoto = !hasExtension(firstPost?.media?.[0]?.path, 'mp4');
     const videoPath = firstPost?.media?.[0]?.path!;
 
